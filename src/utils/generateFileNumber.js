@@ -2,7 +2,7 @@ const pad = (num) => {
   return num.toString().padStart(2, '0');
 };
 
-export const generateFileNumber = () => {
+const generateFileNumber = () => {
      const now = new Date();
   const year = now.getFullYear();
   const month = pad(now.getMonth() + 1);
@@ -13,3 +13,5 @@ export const generateFileNumber = () => {
   const fileNumber = `${year}${month}${day}${hour}${minute}${second}`;
     return fileNumber;
 };
+
+module.exports = { generateFileNumber };
