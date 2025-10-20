@@ -1,0 +1,156 @@
+const employeeModel = require("../models/employeeModel");
+const permissionsModel = require("../models/permissionsModel");
+const { logAdd, logUpdate, logDelete } = require('./logsService');
+
+const listEmployees = async () => {
+  return await employeeModel.getAllEmployees();
+};
+
+const getEmployee = async (id) => {
+  const employee = await employeeModel.getEmployeeById(id);
+  if (!employee) {
+    throw new Error("Employee not found");
+  }
+  return employee;
+};
+
+const addEmployee = async (data, createdBy = null) => {
+try {  
+    // Validate status field (if provided)
+    if (data.status && !['active', 'inactive'].includes(data.status)) {
+      throw new Error("Status must be either 'active' or 'inactive'");
+    }
+    
+    const userId = await employeeModel.createEmployee(data);
+    
+    if (data.permissions && data.permissions.length > 0 && userId) {
+      for (const permId of data.permissions) {
+        await permissionsModel.addEmployeePermission(userId, permId);
+      }
+    }
+    
+    // Log employee creation
+    if (createdBy) {
+      await logAdd(
+        createdBy,
+        'موظف',
+        data.name || data.username || 'موظف جديد',
+        userId
+      );
+    }
+    
+    return userId;
+  } catch (error) {
+    console.error("Error adding employee:", error);
+    throw new Error("Failed to add employee");
+  }
+
+};
+
+const updateEmployee = async (id, data, updatedBy = null) => {
+  // Check if employee exists
+  const existingEmployee = await employeeModel.getEmployeeById(id);
+  if (!existingEmployee) {
+    throw new Error("Employee not found");
+  }
+
+  // Validate status field (if provided)
+  if (data.status && !['active', 'inactive'].includes(data.status)) {
+    throw new Error("Status must be either 'active' or 'inactive'");
+  }
+
+  // Validate email format (if provided)
+  if (data.email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      throw new Error("Invalid email format");
+    }
+  }
+
+  // Validate phone format (if provided)
+  if (data.phone && !/^[0-9+\-\s()]+$/.test(data.phone)) {
+    throw new Error("Invalid phone format");
+  }
+
+  // Validate dates (if provided)
+  const dateFields = [
+    'residenceEndDate', 'idEndDate', 'passportEndDate', 
+    'laborCardEndDate', 'healthInsuranceEndDate', 'contractEndDate',
+    'registrationExpirationDate'
+  ];
+  
+  for (const field of dateFields) {
+    if (data[field] && isNaN(Date.parse(data[field]))) {
+      throw new Error(`Invalid date format for ${field}`);
+    }
+  }
+
+  // Validate salary (if provided)
+  if (data.basicSalary !== undefined && (isNaN(data.basicSalary) || data.basicSalary < 0)) {
+    throw new Error("Basic salary must be a positive number");
+  }
+
+  // Validate allowances and deductions format
+  if (data.allowances && !Array.isArray(data.allowances)) {
+    throw new Error("Allowances must be an array");
+  }
+  
+  if (data.deductions && !Array.isArray(data.deductions)) {
+    throw new Error("Deductions must be an array");
+  }
+
+  // Merge with existing data
+  const updatedData = { ...existingEmployee, ...data };
+  
+  const success = await employeeModel.updateEmployee(id, updatedData);
+  if (!success) {
+    throw new Error("Failed to update employee");
+  }
+  
+  // Log employee update
+  if (updatedBy) {
+    await logUpdate(
+      updatedBy,
+      'موظف',
+      existingEmployee.name || existingEmployee.username || 'موظف',
+      id
+    );
+  }
+  
+  return await employeeModel.getEmployeeById(id);
+};
+
+const removeEmployee = async (id, deletedBy = null) => {
+  // Check if employee exists
+  const existingEmployee = await employeeModel.getEmployeeById(id);
+  if (!existingEmployee) {
+    throw new Error("Employee not found");
+  }
+
+  const success = await employeeModel.deleteEmployee(id);
+  if (!success) {
+    throw new Error("Failed to delete employee");
+  }
+  
+  // Log employee deletion
+  if (deletedBy) {
+    await logDelete(
+      deletedBy,
+      'موظف',
+      existingEmployee.name || existingEmployee.username || 'موظف',
+      id
+    );
+  }
+  
+  return { message: "Employee deleted successfully" };
+};
+
+
+
+module.exports = {
+  listEmployees,
+  getEmployee,
+  addEmployee,
+  updateEmployee,
+  removeEmployee,
+};

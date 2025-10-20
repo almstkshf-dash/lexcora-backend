@@ -1,0 +1,336 @@
+const db = require("../config/db");
+const { generateCredentials } = require("../utils/generateCredentials");
+
+const getAllParties = async (filters = {}) => {
+  const { page = 1, limit = 10, name, phone, party_type } = filters;
+  const offset = (page - 1) * limit;
+
+  // Build WHERE clause dynamically
+  let whereClause = '';
+  const params = [];
+
+  const conditions = [];
+  
+  // Always filter to show only 'client' and 'opponent' types
+  conditions.push("(party_type = 'client' OR party_type = 'opponent')");
+  
+  if (name) {
+    conditions.push('name LIKE ?');
+    params.push(`%${name}%`);
+  }
+  if (phone) {
+    conditions.push('phone LIKE ?');
+    params.push(`%${phone}%`);
+  }
+  if (party_type) {
+    conditions.push('party_type = ?');
+    params.push(party_type);
+  }
+
+  if (conditions.length > 0) {
+    whereClause = 'WHERE ' + conditions.join(' AND ');
+  }
+
+  // Get total count for pagination
+  const countQuery = `SELECT COUNT(*) as total FROM parties ${whereClause}`;
+  const [countResult] = await db.query(countQuery, params);
+  const total = countResult[0].total;
+
+  // Get paginated data
+  const dataQuery = `
+    SELECT id, name, phone, category, party_type, status, nationality, e_id, address, consultation_type, passport, source, created_by 
+    FROM parties 
+    ${whereClause} 
+    ORDER BY id DESC 
+    LIMIT ? OFFSET ?
+  `;
+  const [rows] = await db.query(dataQuery, [...params, limit, offset]);
+
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
+
+const getPartiesByBranchId = async (branchId) => {
+  const [rows] = await db.query(`
+    SELECT id, name, phone, category, email, party_type, status, nationality, branch_id, e_id, address, username, consultation_type, passport, source, created_by 
+    FROM parties 
+    WHERE branch_id = ?
+  `, [branchId]);
+  return rows;
+};
+
+const createParty = async (party) => {
+  const { name, phone, address, e_id, category, email, party_type, status, nationality, branch_id, consultation_type, passport, source, created_by } = party;
+  
+  // Ensure status is either 'active' or 'inactive', default to 'active'
+  const partyStatus = status && ['active', 'inactive'].includes(status) ? status : 'active';
+  
+  // Generate unique username and password using utility function
+  let username, password;
+  let isUnique = false;
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (!isUnique && attempts < maxAttempts) {
+    // Generate credentials using the utility function
+    const credentials = await generateCredentials();
+    username = credentials.username;
+    password = credentials.password;
+    
+    // Check if username already exists
+    const [existingUser] = await db.query(
+      'SELECT id FROM parties WHERE username = ?',
+      [username]
+    );
+    
+    if (existingUser.length === 0) {
+      isUnique = true;
+    }
+    attempts++;
+  }
+  
+  if (!isUnique) {
+    throw new Error('Failed to generate unique username after multiple attempts');
+  }
+  
+  try {
+    const [result] = await db.query(`
+      INSERT INTO parties (name, phone, address, e_id, category, email, party_type, username, password, status, nationality, branch_id, consultation_type, passport, source, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [name, phone, address, e_id, category, email, party_type, username, password, partyStatus, nationality, branch_id, consultation_type, passport, source, created_by]);
+    return result.insertId;
+  } catch (error) {
+    console.error("Error inserting party:", error);
+    throw error; // Re-throw to allow proper error handling
+  }
+};
+
+const deleteParty = async (id) => {
+  const [result] = await db.query("DELETE FROM parties WHERE id = ?", [id]);
+  return result.affectedRows > 0;
+};
+const getPartyById = async (id) => {
+  const [rows] = await db.query(`
+    SELECT p.*, e.name AS created_by_name 
+    FROM parties p 
+    LEFT JOIN employees e ON p.created_by = e.id 
+    WHERE p.id = ?
+  `, [id]);
+  return rows[0];
+}
+const updateParty = async (id, party) => {
+  const { name, phone, address, category, email, party_type, username, password, status, nationality, branch_id, e_id, consultation_type, passport, source } = party;
+  
+  // Ensure status is either 'active' or 'inactive', default to 'active'
+  const partyStatus = status && ['active', 'inactive'].includes(status) ? status : 'active';
+  
+  // Build dynamic update query based on provided fields
+  const updates = [];
+  const params = [];
+  
+  if (name !== undefined) {
+    updates.push('name = ?');
+    params.push(name);
+  }
+  if (phone !== undefined) {
+    updates.push('phone = ?');
+    params.push(phone);
+  }
+  if (address !== undefined) {
+    updates.push('address = ?');
+    params.push(address);
+  }
+  if (category !== undefined) {
+    updates.push('category = ?');
+    params.push(category);
+  }
+  if (email !== undefined) {
+    updates.push('email = ?');
+    params.push(email);
+  }
+  if (party_type !== undefined) {
+    updates.push('party_type = ?');
+    params.push(party_type);
+  }
+  if (username !== undefined) {
+    updates.push('username = ?');
+    params.push(username);
+  }
+  if (password !== undefined) {
+    updates.push('password = ?');
+    params.push(password);
+  }
+  if (status !== undefined) {
+    updates.push('status = ?');
+    params.push(partyStatus);
+  }
+  if (nationality !== undefined) {
+    updates.push('nationality = ?');
+    params.push(nationality);
+  }
+  if (branch_id !== undefined) {
+    updates.push('branch_id = ?');
+    params.push(branch_id);
+  }
+  if (e_id !== undefined) {
+    updates.push('e_id = ?');
+    params.push(e_id);
+  }
+  if (consultation_type !== undefined) {
+    updates.push('consultation_type = ?');
+    params.push(consultation_type);
+  }
+  if (passport !== undefined) {
+    updates.push('passport = ?');
+    params.push(passport);
+  }
+  if (source !== undefined) {
+    updates.push('source = ?');
+    params.push(source);
+  }
+  
+  // If no fields to update, return false
+  if (updates.length === 0) {
+    return false;
+  }
+  
+  params.push(id); // Add id at the end for WHERE clause
+  
+  const query = `UPDATE parties SET ${updates.join(', ')} WHERE id = ?`;
+  const [result] = await db.query(query, params);
+  return result.affectedRows > 0;
+};
+
+const addPartyDocument = async (party_id, document_name, document_url, uploaded_by = null) => {
+  try {
+    const [result] = await db.query(`
+      INSERT INTO parties_documents (party_id, document_name, document_url, uploaded_by)
+      VALUES (?, ?, ?, ?)
+    `, [party_id, document_name, document_url, uploaded_by]);
+    return result.insertId;
+  } catch (error) {
+    console.error("Error inserting party document:", error);
+    throw error;
+  }
+};
+ 
+const getPartyDocuments= async (partyId) => {
+  const [rows] = await db.query("SELECT pd.id, pd.document_name, pd.document_url, e.name AS uploaded_by_name FROM parties_documents pd LEFT JOIN employees e ON pd.uploaded_by = e.id WHERE pd.party_id = ?", [partyId]);
+  return rows;
+}
+
+const getPotentialClients = async (filters = {}) => {
+  const { page = 1, limit = 10, name, phone, party_type } = filters;
+  const offset = (page - 1) * limit;
+
+  // Build WHERE clause dynamically
+  let whereClause = 'WHERE party_type NOT IN (?, ?)';
+  const params = ['client', 'opponent'];
+
+  const conditions = [];
+  if (name) {
+    conditions.push('name LIKE ?');
+    params.push(`%${name}%`);
+  }
+  if (phone) {
+    conditions.push('phone LIKE ?');
+    params.push(`%${phone}%`);
+  }
+  if (party_type) {
+    conditions.push('party_type = ?');
+    params.push(party_type);
+  }
+
+  if (conditions.length > 0) {
+    whereClause += ' AND ' + conditions.join(' AND ');
+  }
+
+  // Get total count for pagination
+  const countQuery = `SELECT COUNT(*) as total FROM parties ${whereClause}`;
+  const [countResult] = await db.query(countQuery, params);
+  const total = countResult[0].total;
+
+  // Get paginated data with joins for source name and created_by name
+  const dataQuery = `
+    SELECT 
+      p.id, 
+      p.name, 
+      p.phone, 
+      p.source, 
+      p.category, 
+      p.party_type, 
+      p.status, 
+      p.nationality, 
+      p.e_id, 
+      p.address, 
+      p.consultation_type, 
+      p.passport, 
+      p.created_by,
+      e.name as created_by_name
+    FROM parties p
+    LEFT JOIN employees e ON p.created_by = e.id 
+    ${whereClause} 
+    ORDER BY p.id DESC 
+    LIMIT ? OFFSET ?
+  `;
+  const [rows] = await db.query(dataQuery, [...params, limit, offset]);
+
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
+
+const searchParties = async (query) => {
+  // Search by name or phone, return maximum 10 results
+  const searchPattern = `%${query}%`;
+  
+  const [rows] = await db.query(`
+    SELECT id, name, phone, category, party_type, status, nationality, e_id, address 
+    FROM parties 
+    WHERE (name LIKE ? OR phone LIKE ?) 
+      AND (party_type = 'client' OR party_type = 'opponent')
+    ORDER BY 
+      CASE 
+        WHEN name LIKE ? THEN 1
+        WHEN phone LIKE ? THEN 2
+        ELSE 3
+      END,
+      name ASC
+    LIMIT 10
+  `, [searchPattern, searchPattern, `${query}%`, `${query}%`]);
+  
+  return rows;
+};
+
+const getPartyByUsername = async (username) => {
+  const [rows] = await db.query(`
+    SELECT * FROM parties WHERE username = ?
+  `, [username]);
+  return rows[0];
+};
+
+module.exports = {
+  getAllParties,
+  getPartiesByBranchId,
+  createParty,
+  deleteParty,
+  addPartyDocument,
+  getPartyById,
+  updateParty,
+  getPartyDocuments,
+  getPotentialClients,
+  searchParties,
+  getPartyByUsername
+};
