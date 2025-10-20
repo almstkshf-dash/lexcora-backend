@@ -14,6 +14,12 @@ const pool = mysql.createPool({
 // Test the database connection
 const testConnection = async () => {
   try {
+    // Only test connection if all required env vars are present
+    if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+      console.log("⚠️  Database configuration incomplete - skipping connection test");
+      return;
+    }
+    
     const connection = await pool.getConnection();
     console.log("✅ Database connected successfully!");
     console.log(`📊 Connected to database: ${process.env.DB_NAME}`);
@@ -26,7 +32,9 @@ const testConnection = async () => {
   }
 };
 
-// Test connection when module is loaded
-testConnection();
+// Test connection when module is loaded (only in non-build environment)
+if (process.env.NODE_ENV !== 'build') {
+  testConnection();
+}
 
 module.exports = pool;

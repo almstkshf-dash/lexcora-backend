@@ -1,0 +1,6 @@
+node_modules
+.env*
+uploads/
+*.log
+.vercel
+law-office-471918-7fe7e2024102.json
