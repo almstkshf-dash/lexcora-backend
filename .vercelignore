@@ -4,3 +4,10 @@ uploads/
 *.log
 .vercel
 law-office-471918-7fe7e2024102.json
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+docs/
+database_schema_bank_accounts.sql

@@ -137,6 +137,7 @@ app.get("/health", async (req, res) => {
       status: "OK", 
       message: "Law Backend API is running",
       timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
       services: {
         api: "✅ Running",
         fileStorage: "✅ Local Storage"
@@ -150,6 +151,11 @@ app.get("/health", async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Simple ping endpoint for deployment verification
+app.get("/ping", (req, res) => {
+  res.json({ message: "pong", timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware

@@ -1,15 +1,26 @@
 const mysql = require("mysql2/promise");
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Only create pool if database configuration is available
+let pool = null;
+
+const createPool = () => {
+  if (!pool && process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD && process.env.DB_NAME) {
+    pool = mysql.createPool({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT || 3306,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      acquireTimeout: 60000,
+      timeout: 60000,
+      reconnect: true
+    });
+  }
+  return pool;
+};
 
 // Test the database connection
 const testConnection = async () => {
@@ -17,24 +28,36 @@ const testConnection = async () => {
     // Only test connection if all required env vars are present
     if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
       console.log("⚠️  Database configuration incomplete - skipping connection test");
-      return;
+      return false;
     }
     
-    const connection = await pool.getConnection();
+    const dbPool = createPool();
+    if (!dbPool) {
+      console.log("⚠️  Database pool not created - skipping connection test");
+      return false;
+    }
+    
+    const connection = await dbPool.getConnection();
     console.log("✅ Database connected successfully!");
     console.log(`📊 Connected to database: ${process.env.DB_NAME}`);
     console.log(`🌐 Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
     connection.release();
+    return true;
   } catch (error) {
     console.error("❌ Database connection failed:");
     console.error("Error:", error.message);
     console.error("Please check your database configuration in .env file");
+    return false;
   }
 };
 
 // Test connection when module is loaded (only in non-build environment)
-if (process.env.NODE_ENV !== 'build') {
+if (process.env.NODE_ENV !== 'build' && process.env.NODE_ENV === 'production') {
+  // Don't test connection during deployment to avoid timeouts
+  console.log("🚀 Production deployment - skipping initial database connection test");
+} else if (process.env.NODE_ENV !== 'build') {
   testConnection();
 }
 
-module.exports = pool;
+// Export a function that returns the pool
+module.exports = createPool();
