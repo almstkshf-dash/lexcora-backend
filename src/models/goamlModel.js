@@ -40,7 +40,7 @@ const createGoamlRecord = async (recordData) => {
   const {
     name,
     phone,
-    amount,
+    type,
     note,
     status,
     created_by
@@ -48,9 +48,9 @@ const createGoamlRecord = async (recordData) => {
   
   const [result] = await db.query(
     `INSERT INTO goaml 
-    (name, phone, amount, note, status, created_by)
+    (name, phone, type, note, status, created_by)
     VALUES (?, ?, ?, ?, ?, ?)`,
-    [name, phone, amount, note, status, created_by]
+    [name, phone, type, note, status, created_by]
   );
   
   return result.insertId;
@@ -63,16 +63,16 @@ const updateGoamlRecord = async (id, recordData) => {
   const {
     name,
     phone,
-    amount,
     note,
+    type,
     status
   } = recordData;
   
   const [result] = await db.query(
     `UPDATE goaml 
-    SET name = ?, phone = ?, amount = ?, note = ?, status = ?
+    SET name = ?, phone = ?, type = ?, note = ?, status = ?
     WHERE id = ?`,
-    [name, phone, amount, note, status, id]
+    [name, phone, type, note, status, id]
   );
   
   return result.affectedRows > 0;

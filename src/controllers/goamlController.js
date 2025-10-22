@@ -68,16 +68,16 @@ const createGoamlRecord = async (req, res) => {
     const {
       name,
       phone,
-      amount,
+      type,
       note,
       status
     } = req.body;
 
     // Validation
-    if (!name || !phone) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'الاسم ورقم الهاتف مطلوبان'
+        message: 'الاسم مطلوب'
       });
     }
 
@@ -90,12 +90,21 @@ const createGoamlRecord = async (req, res) => {
       });
     }
 
+    // Validate type values
+    const validTypes = ['فرد', 'شركة', 'كيان', 'منظمة'];
+    if (!type || !validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'نوع غير صالح. القيم المسموحة: فرد, شركة, كيان, منظمة'
+      });
+    }
+
     const created_by = req.user?.id || null;
 
     const recordId = await goamlModel.createGoamlRecord({
       name,
       phone,
-      amount,
+      type,
       note,
       status: status || 'under_review',
       created_by
@@ -125,7 +134,7 @@ const updateGoamlRecord = async (req, res) => {
     const {
       name,
       phone,
-      amount,
+      type,
       note,
       status
     } = req.body;
@@ -151,8 +160,8 @@ const updateGoamlRecord = async (req, res) => {
     const result = await goamlModel.updateGoamlRecord(id, {
       name,
       phone,
-      amount,
       note,
+      type,
       status
     });
 
