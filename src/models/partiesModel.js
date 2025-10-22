@@ -38,7 +38,7 @@ const getAllParties = async (filters = {}) => {
 
   // Get paginated data
   const dataQuery = `
-    SELECT id, name, phone, category, party_type, status, nationality, e_id, address, consultation_type, passport, source, created_by 
+    SELECT id, name, phone, category, party_type, status, nationality, e_id, address, consultation_type, passport, source, created_by, is_vip 
     FROM parties 
     ${whereClause} 
     ORDER BY id DESC 
@@ -59,7 +59,7 @@ const getAllParties = async (filters = {}) => {
 
 const getPartiesByBranchId = async (branchId) => {
   const [rows] = await db.query(`
-    SELECT id, name, phone, category, email, party_type, status, nationality, branch_id, e_id, address, username, consultation_type, passport, source, created_by 
+    SELECT id, name, phone, category, email, party_type, status, nationality, branch_id, e_id, address, username, consultation_type, passport, source, created_by, is_vip 
     FROM parties 
     WHERE branch_id = ?
   `, [branchId]);
@@ -67,10 +67,13 @@ const getPartiesByBranchId = async (branchId) => {
 };
 
 const createParty = async (party) => {
-  const { name, phone, address, e_id, category, email, party_type, status, nationality, branch_id, consultation_type, passport, source, created_by } = party;
+  const { name, phone, address, e_id, category, email, party_type, status, nationality, branch_id, consultation_type, passport, source, created_by, is_vip } = party;
   
   // Ensure status is either 'active' or 'inactive', default to 'active'
   const partyStatus = status && ['active', 'inactive'].includes(status) ? status : 'active';
+  
+  // Handle is_vip, default to 0 (false)
+  const vipStatus = is_vip ? 1 : 0;
   
   // Generate unique username and password using utility function
   let username, password;
@@ -102,8 +105,8 @@ const createParty = async (party) => {
   
   try {
     const [result] = await db.query(`
-      INSERT INTO parties (name, phone, address, e_id, category, email, party_type, username, password, status, nationality, branch_id, consultation_type, passport, source, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [name, phone, address, e_id, category, email, party_type, username, password, partyStatus, nationality, branch_id, consultation_type, passport, source, created_by]);
+      INSERT INTO parties (name, phone, address, e_id, category, email, party_type, username, password, status, nationality, branch_id, consultation_type, passport, source, created_by, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [name, phone, address, e_id, category, email, party_type, username, password, partyStatus, nationality, branch_id, consultation_type, passport, source, created_by, vipStatus]);
     return result.insertId;
   } catch (error) {
     console.error("Error inserting party:", error);
@@ -117,15 +120,16 @@ const deleteParty = async (id) => {
 };
 const getPartyById = async (id) => {
   const [rows] = await db.query(`
-    SELECT p.*, e.name AS created_by_name 
+    SELECT p.*, e.name AS created_by_name, b.name_ar AS branch_name_ar, b.name_en AS branch_name_en 
     FROM parties p 
     LEFT JOIN employees e ON p.created_by = e.id 
+    LEFT JOIN branches b ON p.branch_id = b.id
     WHERE p.id = ?
   `, [id]);
   return rows[0];
 }
 const updateParty = async (id, party) => {
-  const { name, phone, address, category, email, party_type, username, password, status, nationality, branch_id, e_id, consultation_type, passport, source } = party;
+  const { name, phone, address, category, email, party_type, username, password, status, nationality, branch_id, e_id, consultation_type, passport, source, is_vip } = party;
   
   // Ensure status is either 'active' or 'inactive', default to 'active'
   const partyStatus = status && ['active', 'inactive'].includes(status) ? status : 'active';
@@ -193,6 +197,10 @@ const updateParty = async (id, party) => {
   if (source !== undefined) {
     updates.push('source = ?');
     params.push(source);
+  }
+  if (is_vip !== undefined) {
+    updates.push('is_vip = ?');
+    params.push(is_vip ? 1 : 0);
   }
   
   // If no fields to update, return false
@@ -272,6 +280,7 @@ const getPotentialClients = async (filters = {}) => {
       p.consultation_type, 
       p.passport, 
       p.created_by,
+      p.is_vip,
       e.name as created_by_name
     FROM parties p
     LEFT JOIN employees e ON p.created_by = e.id 
@@ -297,7 +306,7 @@ const searchParties = async (query) => {
   const searchPattern = `%${query}%`;
   
   const [rows] = await db.query(`
-    SELECT id, name, phone, category, party_type, status, nationality, e_id, address 
+    SELECT id, name, phone, category, party_type, status, nationality, e_id, address, is_vip 
     FROM parties 
     WHERE (name LIKE ? OR phone LIKE ?) 
       AND (party_type = 'client' OR party_type = 'opponent')

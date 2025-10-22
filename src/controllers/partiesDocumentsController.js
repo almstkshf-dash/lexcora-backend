@@ -167,31 +167,95 @@ const getDocumentsStatistics = async (req, res) => {
 
 const uploadPartiesDocument = async (req, res) => {
   try {
-    // This would handle file upload logic
-    // The actual file upload would be handled by middleware like multer
-    if (!req.file) {
+    // Check if files were uploaded
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
         message: "No file uploaded"
       });
     }
 
-    const documentData = {
-      party_id: req.body.party_id,
-      file_name: req.file.originalname,
-      url: req.file.path || req.file.url, // depending on storage method
-      file_size: req.file.size,
-      file_type: req.file.mimetype,
-      description: req.body.description
-    };
+    const { party_id } = req.body;
+    
+    if (!party_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Party ID is required"
+      });
+    }
 
-    const newDocument = await partiesDocumentsService.addPartiesDocument(documentData);
+    // Import required modules for R2 upload
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const path = require('path');
+
+    // Configure Cloudflare R2 client
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+      },
+    });
+
+    const folder = 'parties-documents';
+    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const usePublicUrl = process.env.CLOUDFLARE_R2_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+
+    // Upload all files and create document records
+    const uploadPromises = req.files.map(async (file) => {
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileExtension = path.extname(file.originalname);
+      const filename = `${timestamp}-${randomString}${fileExtension}`;
+      const key = `${folder}/${filename}`;
+
+      // Upload to R2
+      const putCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      });
+
+      await s3Client.send(putCommand);
+
+      // Generate file URL
+      let fileUrl;
+      if (usePublicUrl && publicUrl) {
+        fileUrl = `${publicUrl}/${key}`;
+      } else {
+        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+        const { GetObjectCommand } = require('@aws-sdk/client-s3');
+        const getCommand = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        });
+        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+      }
+
+      // Create document record in database
+      const documentData = {
+        party_id: party_id,
+        file_name: file.originalname,
+        url: fileUrl,
+        uploaded_by: req.user?.id || null // If user is authenticated
+      };
+
+      return await partiesDocumentsService.addPartiesDocument(documentData);
+    });
+
+    const uploadedDocuments = await Promise.all(uploadPromises);
+
     res.status(201).json({
       success: true,
-      message: "File uploaded and document created successfully",
-      data: newDocument
+      message: `${uploadedDocuments.length} file(s) uploaded successfully`,
+      data: uploadedDocuments
     });
   } catch (error) {
+    console.error('Error uploading parties documents:', error);
     const status = error.message.includes("Missing required fields") ||
                    error.message.includes("must be") ||
                    error.message.includes("Party not found") ? 400 : 500;

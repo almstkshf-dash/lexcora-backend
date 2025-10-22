@@ -123,7 +123,8 @@ const getFormTypes = () => {
     'sickness self certificate',
     'short absent',
     'salary advance',
-    'new starter'
+    'new starter',
+    'others'
   ];
 };
 

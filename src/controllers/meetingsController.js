@@ -100,11 +100,61 @@ const deleteMeeting = async (req, res) => {
   }
 };
 
+// Meeting Documents Controllers
+const getMeetingDocuments = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const documents = await meetingsService.getMeetingDocuments(meetingId);
+    res.json({ success: true, data: documents });
+  } catch (error) {
+    console.error('Error fetching meeting documents:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch meeting documents' });
+  }
+};
+
+const addMeetingDocuments = async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { documents } = req.body;
+    const createdBy = req.user?.id || null;
+    
+    if (!documents || !Array.isArray(documents) || documents.length === 0) {
+      return res.status(400).json({ success: false, error: 'No documents provided' });
+    }
+    
+    const documentIds = await meetingsService.addMeetingDocuments(meetingId, documents, createdBy);
+    res.status(201).json({ success: true, data: documentIds });
+  } catch (error) {
+    console.error('Error adding meeting documents:', error);
+    res.status(500).json({ success: false, error: 'Failed to add meeting documents' });
+  }
+};
+
+const deleteMeetingDocument = async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const deletedBy = req.user?.id || null;
+    const deleted = await meetingsService.deleteMeetingDocument(documentId, deletedBy);
+    
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: 'Document not found' });
+    }
+    
+    res.json({ success: true, message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting meeting document:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete meeting document' });
+  }
+};
+
 module.exports = {
   getAllMeetings,
   getMeetingById,
   getMeetingsByPartyId,
   createMeeting,
   updateMeeting,
-  deleteMeeting
+  deleteMeeting,
+  getMeetingDocuments,
+  addMeetingDocuments,
+  deleteMeetingDocument
 };

@@ -58,12 +58,12 @@ const createOtherLeave = async (req, res) => {
     }
     
     // Validate leave_reason
-    if (!['maternity', 'paternity', 'study', 'emergency'].includes(leave_reason)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid leave_reason. Must be 'maternity', 'paternity', 'study', or 'emergency'"
-      });
-    }
+    // if (!['maternity', 'paternity', 'study', 'emergency'].includes(leave_reason)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Invalid leave_reason. Must be 'maternity', 'paternity', 'study', or 'emergency'"
+    //   });
+    // }
     
     // Validate leave_type
     if (!['paid', 'unpaid'].includes(leave_type)) {
@@ -121,12 +121,12 @@ const updateOtherLeave = async (req, res) => {
     }
     
     // Validate leave_reason
-    if (!['maternity', 'paternity', 'study', 'emergency'].includes(leave_reason)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid leave_reason. Must be 'maternity', 'paternity', 'study', or 'emergency'"
-      });
-    }
+    // if (!['maternity', 'paternity', 'study', 'emergency'].includes(leave_reason)) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Invalid leave_reason. Must be 'maternity', 'paternity', 'study', or 'emergency'"
+    //   });
+    // }
     
     // Validate leave_type
     if (!['paid', 'unpaid'].includes(leave_type)) {

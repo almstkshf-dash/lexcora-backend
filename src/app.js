@@ -58,7 +58,8 @@ const externalLinksRoute = require("./routes/externalLinksRoute");
 const callLogsRoute = require("./routes/callLogsRoute");
 const goamlRoute = require("./routes/goamlRoute");
 const bankAccountsRoute = require("./routes/bankAccountsRoute");
-const depositsRoute = require("./routes/depositsRoute");
+const walletsRoute = require("./routes/walletsRoute");
+const walletDepositsRoute = require("./routes/walletDepositsRoute");
 
 const app = express();
 
@@ -129,7 +130,8 @@ app.use("/api/external-links", externalLinksRoute);
 app.use("/api/call-logs", callLogsRoute);
 app.use("/api/goaml", goamlRoute);
 app.use("/api/bank-accounts", bankAccountsRoute);
-app.use("/api/deposits", depositsRoute);
+app.use("/api/wallets", walletsRoute);
+app.use("/api/wallet-deposits", walletDepositsRoute);
 
 app.get("/health", async (req, res) => {
   try {

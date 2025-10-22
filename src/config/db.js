@@ -13,10 +13,11 @@ const createPool = () => {
       database: process.env.DB_NAME,
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0,
-      acquireTimeout: 60000,
-      timeout: 60000,
-      reconnect: true
+      queueLimit: 0
+      // Removed all potentially invalid options to eliminate warnings:
+      // - acquireTimeout, timeout, reconnect (causing warnings)
+      // - maxIdle, idleTimeout, enableKeepAlive (may not be supported)
+      // Using only basic, well-documented MySQL2 pool options
     });
   }
   return pool;

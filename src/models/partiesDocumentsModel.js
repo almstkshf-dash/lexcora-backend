@@ -6,9 +6,11 @@ const getAllPartiesDocuments = async () => {
       pd.*, 
       p.name as partyName,
       p.phone as partyPhone,
-      p.email as partyEmail
+      p.email as partyEmail,
+      u.name as uploaded_by_name
     FROM parties_documents pd
     LEFT JOIN parties p ON pd.party_id = p.id
+    LEFT JOIN employees u ON pd.uploaded_by = u.id
     ORDER BY pd.created_at DESC
   `);
   
@@ -21,9 +23,11 @@ const getPartiesDocumentById = async (id) => {
       pd.*, 
       p.name as partyName,
       p.phone as partyPhone,
-      p.email as partyEmail
+      p.email as partyEmail,
+      u.name as uploaded_by_name
     FROM parties_documents pd
     LEFT JOIN parties p ON pd.party_id = p.id
+    LEFT JOIN employees u ON pd.uploaded_by = u.id
     WHERE pd.id = ?
   `, [id]);
   
@@ -36,9 +40,11 @@ const getPartiesDocumentsByPartyId = async (partyId) => {
       pd.*, 
       p.name as partyName,
       p.phone as partyPhone,
-      p.email as partyEmail
+      p.email as partyEmail,
+      u.name as uploaded_by_name
     FROM parties_documents pd
     LEFT JOIN parties p ON pd.party_id = p.id
+    LEFT JOIN employees u ON pd.uploaded_by = u.id
     WHERE pd.party_id = ?
     ORDER BY pd.created_at DESC
   `, [partyId]);
@@ -51,15 +57,13 @@ const createPartiesDocument = async (document) => {
     party_id,
     file_name,
     url,
-    description,
-    file_size,
-    file_type
+    uploaded_by
   } = document;
 
   const [result] = await db.query(
-    `INSERT INTO parties_documents (party_id, file_name, url, description, file_size, file_type, created_at, updated_at) 
-     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-    [party_id, file_name, url, description, file_size, file_type]
+    `INSERT INTO parties_documents (party_id, document_name, document_url, uploaded_by) 
+     VALUES (?, ?, ?, ?)`,
+    [party_id, file_name, url, uploaded_by || null]
   );
 
   return result.insertId;
@@ -70,9 +74,7 @@ const updatePartiesDocument = async (id, document) => {
     party_id,
     file_name,
     url,
-    description,
-    file_size,
-    file_type
+    uploaded_by
   } = document;
 
   let query = `UPDATE parties_documents SET `;
@@ -84,31 +86,22 @@ const updatePartiesDocument = async (id, document) => {
     params.push(party_id);
   }
   if (file_name !== undefined) {
-    updates.push(`file_name = ?`);
+    updates.push(`document_name = ?`);
     params.push(file_name);
   }
   if (url !== undefined) {
-    updates.push(`url = ?`);
+    updates.push(`document_url = ?`);
     params.push(url);
   }
-  if (description !== undefined) {
-    updates.push(`description = ?`);
-    params.push(description);
-  }
-  if (file_size !== undefined) {
-    updates.push(`file_size = ?`);
-    params.push(file_size);
-  }
-  if (file_type !== undefined) {
-    updates.push(`file_type = ?`);
-    params.push(file_type);
+  if (uploaded_by !== undefined) {
+    updates.push(`uploaded_by = ?`);
+    params.push(uploaded_by);
   }
 
   if (updates.length === 0) {
     throw new Error("No fields to update");
   }
 
-  updates.push(`updated_at = NOW()`);
   query += updates.join(", ") + ` WHERE id = ?`;
   params.push(id);
 
@@ -157,7 +150,7 @@ const searchDocuments = async (searchTerm) => {
       p.email as partyEmail
     FROM parties_documents pd
     LEFT JOIN parties p ON pd.party_id = p.id
-    WHERE pd.file_name LIKE ? OR pd.description LIKE ? OR p.name LIKE ?
+    WHERE pd.document_name LIKE ? OR pd.description LIKE ? OR p.name LIKE ?
     ORDER BY pd.created_at DESC
   `, [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]);
   

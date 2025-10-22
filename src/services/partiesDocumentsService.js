@@ -53,33 +53,18 @@ const addPartiesDocument = async (data) => {
     throw new Error("url must be 500 characters or less");
   }
 
-  // Validate optional fields
-  if (data.description && data.description.length > 1000) {
-    throw new Error("description must be 1000 characters or less");
-  }
-
-  if (data.file_size && (isNaN(data.file_size) || data.file_size < 0)) {
-    throw new Error("file_size must be a positive number");
-  }
-
-  if (data.file_type && data.file_type.length > 50) {
-    throw new Error("file_type must be 50 characters or less");
-  }
-
   // Check if party exists
   const partyExists = await partiesDocumentsModel.checkPartyExists(data.party_id);
   if (!partyExists) {
     throw new Error("Party not found");
   }
 
-  // Clean data
+  // Clean data - only include fields that exist in the table
   const documentData = {
     party_id: parseInt(data.party_id),
     file_name: data.file_name.trim(),
     url: data.url.trim(),
-    description: data.description ? data.description.trim() : null,
-    file_size: data.file_size ? parseInt(data.file_size) : null,
-    file_type: data.file_type ? data.file_type.trim() : null
+    uploaded_by: data.uploaded_by || null
   };
 
   const documentId = await partiesDocumentsModel.createPartiesDocument(documentData);
@@ -127,28 +112,6 @@ const updatePartiesDocument = async (id, data) => {
       throw new Error("url must be 500 characters or less");
     }
     data.url = data.url.trim();
-  }
-
-  // Validate optional fields if provided
-  if (data.description !== undefined) {
-    if (data.description && data.description.length > 1000) {
-      throw new Error("description must be 1000 characters or less");
-    }
-    data.description = data.description ? data.description.trim() : null;
-  }
-
-  if (data.file_size !== undefined) {
-    if (data.file_size && (isNaN(data.file_size) || data.file_size < 0)) {
-      throw new Error("file_size must be a positive number");
-    }
-    data.file_size = data.file_size ? parseInt(data.file_size) : null;
-  }
-
-  if (data.file_type !== undefined) {
-    if (data.file_type && data.file_type.length > 50) {
-      throw new Error("file_type must be 50 characters or less");
-    }
-    data.file_type = data.file_type ? data.file_type.trim() : null;
   }
 
   const updated = await partiesDocumentsModel.updatePartiesDocument(id, data);

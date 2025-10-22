@@ -28,7 +28,7 @@ const uploadDocument = async (req, res) => {
     }
 
     // Validate document type
-    const validTypes = ['cv', 'id', 'passport', 'insurance', 'contract', 'others'];
+    const validTypes = ['cv', 'id', 'passport', 'insurance', 'contract', 'good_conduct', 'work_permit', 'education_certificate', 'others'];
     if (!validTypes.includes(document_type)) {
       return res.status(400).json({
         success: false,

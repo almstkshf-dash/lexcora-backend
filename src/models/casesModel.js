@@ -801,6 +801,7 @@ const getPartyCases = async (partyId) => {
         c.start_date,
         c.is_important,
         c.is_secret,
+        c.fees,
         c.is_archived,
         courts.court_ar,
         courts.court_en,

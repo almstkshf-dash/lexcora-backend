@@ -1,4 +1,5 @@
 const formsModel = require("../models/formsModel");
+const { deleteFileFromR2 } = require("../services/cloudflareService");
 
 // Get all forms
 const getForms = async (req, res) => {
@@ -136,6 +137,17 @@ const deleteForm = async (req, res) => {
   try {
     const { id } = req.params;
     
+    // First, get the form to retrieve the document_url
+    const form = await formsModel.getFormById(id);
+    
+    if (!form) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found"
+      });
+    }
+    
+    // Delete the form from database
     const deleted = await formsModel.deleteForm(id);
     
     if (!deleted) {
@@ -143,6 +155,17 @@ const deleteForm = async (req, res) => {
         success: false,
         message: "Form not found"
       });
+    }
+    
+    // Delete the file from Cloudflare R2
+    if (form.document_url) {
+      try {
+        await deleteFileFromR2(form.document_url);
+        console.log(`✓ Deleted form file from R2: ${form.document_url}`);
+      } catch (r2Error) {
+        // Log the error but don't fail the request since the DB record is already deleted
+        console.error('Error deleting file from R2:', r2Error);
+      }
     }
     
     res.json({

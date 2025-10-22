@@ -21,4 +21,14 @@ router.put('/:id', authenticateToken, meetingsController.updateMeeting);
 // Delete a meeting
 router.delete('/:id', authenticateToken, meetingsController.deleteMeeting);
 
+// Meeting Documents routes
+// Get all documents for a meeting
+router.get('/:meetingId/documents', authenticateToken, meetingsController.getMeetingDocuments);
+
+// Add documents to a meeting
+router.post('/:meetingId/documents', authenticateToken, meetingsController.addMeetingDocuments);
+
+// Delete a meeting document
+router.delete('/documents/:documentId', authenticateToken, meetingsController.deleteMeetingDocument);
+
 module.exports = router;
