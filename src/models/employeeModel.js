@@ -398,6 +398,111 @@ const deleteCaseEmployeeDocument = async (documentId, case_id) => {
   }
 };
 
+// Get employee account statement
+const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
+  try {
+    let dateFilter = '';
+    const params = [employeeId];
+    
+    if (fromDate && toDate) {
+      dateFilter = 'AND DATE(created_at) BETWEEN ? AND ?';
+      params.push(fromDate, toDate);
+    } else if (fromDate) {
+      dateFilter = 'AND DATE(created_at) >= ?';
+      params.push(fromDate);
+    } else if (toDate) {
+      dateFilter = 'AND DATE(created_at) <= ?';
+      params.push(toDate);
+    }
+    
+    // Get wallet expenses where employee is related
+    const expensesQuery = `
+      SELECT 
+        we.id,
+        we.amount,
+        we.invoice_date as transaction_date,
+        we.created_at,
+        we.created_by,
+        'expense' as type,
+        GROUP_CONCAT(wei.description SEPARATOR ', ') as description,
+        we.invoice_number as reference,
+        c.case_number,
+        c.file_number,
+        creator.name as created_by_name
+      FROM wallet_expenses we
+      LEFT JOIN wallet_expenses_items wei ON we.id = wei.wallet_expense_id
+      LEFT JOIN cases c ON we.case_id = c.id
+      LEFT JOIN employees creator ON we.created_by = creator.id
+      WHERE we.employee_relat_id = ? ${dateFilter.replace(/created_at/g, 'we.created_at')}
+      GROUP BY we.id
+    `;
+    
+    // Get invoices where employee referred the client
+    const invoicesQuery = `
+      SELECT 
+        i.id,
+        i.amount,
+        i.invoice_date as transaction_date,
+        i.created_at,
+        i.created_by,
+        'income' as type,
+        CONCAT('Invoice ', i.invoice_number, ' - ', c.name) as description,
+        i.invoice_number as reference,
+        NULL as case_number,
+        NULL as file_number,
+        creator.name as created_by_name
+      FROM invoices i
+      LEFT JOIN parties c ON i.client_id = c.id
+      LEFT JOIN employees creator ON i.created_by = creator.id
+      WHERE i.referred_by_employee_id = ? ${dateFilter.replace(/created_at/g, 'i.created_at')}
+    `;
+    
+    // Get salaries/payments (if you have a salaries table)
+    // This is a placeholder - adjust based on your actual salary/payment structure
+    const salariesQuery = `
+      SELECT 
+        s.id,
+        s.amount,
+        s.payment_date as transaction_date,
+        s.created_at,
+        s.created_by,
+        'salary' as type,
+        CONCAT('Salary for ', DATE_FORMAT(s.payment_date, '%M %Y')) as description,
+        s.payment_reference as reference,
+        NULL as case_number,
+        NULL as file_number,
+        creator.name as created_by_name
+      FROM employee_salaries s
+      LEFT JOIN employees creator ON s.created_by = creator.id
+      WHERE s.employee_id = ? ${dateFilter.replace(/created_at/g, 's.created_at')}
+    `;
+    
+    // Execute queries
+    const [expensesRows] = await db.query(expensesQuery, params);
+    const [invoicesRows] = await db.query(invoicesQuery, params);
+    
+    // Try to get salaries (table might not exist)
+    let salariesRows = [];
+    try {
+      const [rows] = await db.query(salariesQuery, params);
+      salariesRows = rows;
+    } catch (err) {
+      // Salaries table might not exist, that's okay
+      console.log('Salaries table not found, skipping');
+    }
+    
+    // Combine all transactions
+    const transactions = [...expensesRows, ...invoicesRows, ...salariesRows].sort((a, b) => {
+      return new Date(b.transaction_date || b.created_at) - new Date(a.transaction_date || a.created_at);
+    });
+    
+    return { success: true, data: transactions };
+  } catch (error) {
+    console.error('Error getting employee account statement:', error);
+    return { success: false, message: error.message };
+  }
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
@@ -411,5 +516,6 @@ module.exports = {
   updateEmployeeLastLogin,
   addCaseEmployeeDocument,
   getCaseEmployeeDocuments,
-  deleteCaseEmployeeDocument
+  deleteCaseEmployeeDocument,
+  getEmployeeAccountStatement
 };

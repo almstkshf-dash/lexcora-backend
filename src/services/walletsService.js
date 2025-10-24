@@ -1,8 +1,17 @@
 const walletsModel = require('../models/walletsModel');
 
-const getAllWallets = async () => {
+const getWalletStats = async () => {
   try {
-    return await walletsModel.getAllWallets();
+    return await walletsModel.getWalletStats();
+  } catch (error) {
+    console.error('Error fetching wallet stats:', error);
+    throw error;
+  }
+};
+
+const getAllWallets = async (filters) => {
+  try {
+    return await walletsModel.getAllWallets(filters);
   } catch (error) {
     console.error('Error fetching all wallets:', error);
     throw error;
@@ -33,6 +42,10 @@ const updateWalletBalance = async (id, amount, operation, updated_by) => {
   return await walletsModel.updateWalletBalance(id, amount, operation, updated_by);
 };
 
+const getAccountStatement = async (walletId, fromDate, toDate) => {
+  return await walletsModel.getAccountStatement(walletId, fromDate, toDate);
+};
+
 module.exports = {
   getAllWallets,
   getWalletById,
@@ -40,5 +53,7 @@ module.exports = {
   createWallet,
   updateWallet,
   deleteWallet,
-  updateWalletBalance
+  updateWalletBalance,
+  getWalletStats,
+  getAccountStatement
 };

@@ -281,8 +281,7 @@ const deleteWalletDeposit = async (id) => {
     if (bank_account_id) {
       await connection.query(`
         UPDATE bank_accounts 
-        SET current_balance = current_balance - ?,
-            updated_at = NOW()
+        SET current_balance = current_balance - ?
         WHERE id = ?
       `, [amount, bank_account_id]);
     }

@@ -3,10 +3,62 @@
 
 const walletsService = require('../services/walletsService');
 
+const getWalletStats = async (req, res) => {
+  try {
+    const result = await walletsService.getWalletStats();
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching wallet stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch wallet stats' });
+  }
+};
+
 const getAllWallets = async (req, res) => {
   try {
-    const result = await walletsService.getAllWallets();
-    res.json(result);
+    // Extract query parameters
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      status,
+      currency,
+      sortBy = "created_at",
+      sortOrder = "desc"
+    } = req.query;
+
+    // Validate pagination params
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid pagination parameters'
+      });
+    }
+
+    // Get wallets with filters
+    const result = await walletsService.getAllWallets({
+      page: pageNum,
+      limit: limitNum,
+      search,
+      status,
+      currency,
+      sortBy,
+      sortOrder
+    });
+
+    // Get stats
+    const statsResult = await walletsService.getWalletStats();
+
+    // Combine results
+    const response = {
+      success: result.success,
+      data: result.data,
+      pagination: result.pagination,
+      stats: statsResult.success ? statsResult.data : null
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching wallets:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch wallets' });
@@ -149,6 +201,24 @@ const updateWalletBalance = async (req, res) => {
   }
 };
 
+const getAccountStatement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { from, to } = req.query;
+    
+    const result = await walletsService.getAccountStatement(id, from, to);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching account statement:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch account statement' });
+  }
+};
+
 module.exports = {
   getAllWallets,
   getWalletById,
@@ -156,5 +226,7 @@ module.exports = {
   createWallet,
   updateWallet,
   deleteWallet,
-  updateWalletBalance
+  updateWalletBalance,
+  getWalletStats,
+  getAccountStatement
 };

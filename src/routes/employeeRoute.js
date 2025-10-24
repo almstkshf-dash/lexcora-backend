@@ -10,4 +10,7 @@ router.get("/:id", authenticateToken, employeeController.getEmployee);          
 router.put("/:id", authenticateToken, employeeController.updateEmployee);             // PUT /employees/:id
 router.delete("/:id", authenticateToken, employeeController.deleteEmployee);          // DELETE /employees/:id
 
+// Employee account statement
+router.get("/:id/account-statement", authenticateToken, employeeController.getEmployeeAccountStatement);  // GET /employees/:id/account-statement
+
 module.exports = router;

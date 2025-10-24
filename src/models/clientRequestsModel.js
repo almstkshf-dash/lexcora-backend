@@ -28,7 +28,7 @@ const getAllClientRequests = async () => {
     const [rows] = await db.query(`
       SELECT cr.*, c.name as client_name
       FROM client_requests cr
-      LEFT JOIN clients c ON cr.client_id = c.id
+      LEFT JOIN parties c ON cr.client_id = c.id
       ORDER BY cr.request_date DESC
     `);
     return rows;
@@ -43,7 +43,7 @@ const getClientRequestById = async (id) => {
     const [rows] = await db.query(`
       SELECT cr.*, c.name as client_name
       FROM client_requests cr
-      LEFT JOIN clients c ON cr.client_id = c.id
+      LEFT JOIN parties c ON cr.client_id = c.id
       WHERE cr.id = ?
     `, [id]);
     return rows[0];
@@ -58,7 +58,7 @@ const getClientRequestsByClientId = async (client_id) => {
     const [rows] = await db.query(`
       SELECT cr.*, c.name as client_name
       FROM client_requests cr
-      LEFT JOIN clients c ON cr.client_id = c.id
+      LEFT JOIN parties c ON cr.client_id = c.id
       WHERE cr.client_id = ?
       ORDER BY cr.request_date DESC
     `, [client_id]);

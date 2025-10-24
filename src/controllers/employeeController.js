@@ -103,8 +103,27 @@ const deleteEmployee = async (req, res) => {
   }
 };
 
-
-
+// Get employee account statement
+const getEmployeeAccountStatement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { from, to } = req.query;
+    
+    const result = await employeeService.getEmployeeAccountStatement(id, from, to);
+    
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    console.error('Error in getEmployeeAccountStatement controller:', err);
+    res.status(500).json({ 
+      success: false,
+      message: err.message 
+    });
+  }
+};
 
 
 module.exports = {
@@ -113,4 +132,5 @@ module.exports = {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  getEmployeeAccountStatement,
 };

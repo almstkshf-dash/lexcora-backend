@@ -155,6 +155,10 @@ const removeEmployee = async (id, deletedBy = null) => {
   return { message: "Employee deleted successfully" };
 };
 
+// Get employee account statement
+const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
+  return await employeeModel.getEmployeeAccountStatement(employeeId, fromDate, toDate);
+};
 
 
 module.exports = {
@@ -163,4 +167,5 @@ module.exports = {
   addEmployee,
   updateEmployee,
   removeEmployee,
+  getEmployeeAccountStatement,
 };
