@@ -9,6 +9,8 @@ router.get('/', branchesController.getAllBranches);
 
 router.post('/', authenticateToken, branchesController.createBranch);
 
+router.put('/:id', authenticateToken, branchesController.updateBranch);
+
 router.delete('/:id', authenticateToken, branchesController.deleteBranch);
 
 module.exports = router;

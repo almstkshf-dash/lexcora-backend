@@ -4,6 +4,7 @@
 const db = require('../config/db');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { deleteFileFromR2 } = require('../services/cloudflareService');
+const { logAdd, logUpdate, logDelete } = require('../services/logsService');
 const path = require('path');
 
 // Generate invoice number
@@ -296,6 +297,16 @@ const createWalletExpense = async (req, res) => {
     
     await connection.commit();
     
+    // Log wallet expense creation
+    if (created_by) {
+      await logAdd(
+        created_by,
+        'مصروف محفظة',
+        `مصروف بمبلغ ${amount} - فاتورة رقم ${invoice_number}`,
+        expenseId
+      );
+    }
+    
     res.status(201).json({ 
       success: true, 
       message: 'Wallet expense created successfully',
@@ -402,6 +413,17 @@ const updateWalletExpense = async (req, res) => {
     
     await connection.commit();
     
+    // Log wallet expense update
+    const updated_by = req.user?.id || req.userId || null;
+    if (updated_by) {
+      await logUpdate(
+        updated_by,
+        'مصروف محفظة',
+        `مصروف رقم ${id}`,
+        id
+      );
+    }
+    
     res.json({ 
       success: true, 
       message: 'Wallet expense updated successfully'
@@ -426,7 +448,7 @@ const deleteWalletExpense = async (req, res) => {
     
     // Get expense details to restore wallet balance
     const [expense] = await connection.query(
-      'SELECT amount, wallet_id, bank_account_id FROM wallet_expenses WHERE id = ?',
+      'SELECT amount, wallet_id, bank_account_id, invoice_number FROM wallet_expenses WHERE id = ?',
       [id]
     );
     
@@ -438,6 +460,7 @@ const deleteWalletExpense = async (req, res) => {
     const amount = parseFloat(expense[0].amount);
     const walletId = expense[0].wallet_id;
     const bankAccountId = expense[0].bank_account_id;
+    const invoiceNumber = expense[0].invoice_number;
     
     // Delete expense (items will be deleted automatically due to CASCADE)
     await connection.query('DELETE FROM wallet_expenses WHERE id = ?', [id]);
@@ -459,6 +482,17 @@ const deleteWalletExpense = async (req, res) => {
     }
     
     await connection.commit();
+    
+    // Log wallet expense deletion
+    const deleted_by = req.user?.id || req.userId || null;
+    if (deleted_by) {
+      await logDelete(
+        deleted_by,
+        'مصروف محفظة',
+        `مصروف بمبلغ ${amount} - فاتورة رقم ${invoiceNumber || id}`,
+        id
+      );
+    }
     
     res.json({ 
       success: true, 

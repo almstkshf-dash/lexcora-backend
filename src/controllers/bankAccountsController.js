@@ -50,7 +50,7 @@ const createBankAccount = async (req, res) => {
       current_balance, 
       status,
       created_by 
-    });
+    }, created_by);
     
     if (!result.success) {
       return res.status(400).json(result);
@@ -75,6 +75,9 @@ const updateBankAccount = async (req, res) => {
       status 
     } = req.body;
     
+    // Get updated_by from authenticated user
+    const updated_by = req.user?.id || req.userId || null;
+    
     const result = await bankAccountsService.updateBankAccount(req.params.id, { 
       bank_name, 
       account_name, 
@@ -83,7 +86,7 @@ const updateBankAccount = async (req, res) => {
       branch_id, 
       current_balance, 
       status 
-    });
+    }, updated_by);
     
     if (!result.success) {
       return res.status(404).json(result);
@@ -98,7 +101,10 @@ const updateBankAccount = async (req, res) => {
 
 const deleteBankAccount = async (req, res) => {
   try {
-    const result = await bankAccountsService.deleteBankAccount(req.params.id);
+    // Get deleted_by from authenticated user
+    const deleted_by = req.user?.id || req.userId || null;
+    
+    const result = await bankAccountsService.deleteBankAccount(req.params.id, deleted_by);
     
     if (!result.success) {
       return res.status(404).json(result);

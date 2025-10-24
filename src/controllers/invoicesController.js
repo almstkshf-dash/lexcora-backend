@@ -86,7 +86,7 @@ const createInvoice = async (req, res) => {
       status: status || 'draft',
       items,
       created_by 
-    });
+    }, created_by);
     
     if (!result.success) {
       return res.status(400).json(result);
@@ -111,6 +111,9 @@ const updateInvoice = async (req, res) => {
       items
     } = req.body;
     
+    // Get updated_by from authenticated user
+    const updated_by = req.user?.id || req.userId || null;
+    
     const result = await invoicesService.updateInvoice(req.params.id, { 
       invoice_date,
       amount,
@@ -119,7 +122,7 @@ const updateInvoice = async (req, res) => {
       bank_account_id,
       status,
       items
-    });
+    }, updated_by);
     
     if (!result.success) {
       return res.status(404).json(result);
@@ -134,7 +137,10 @@ const updateInvoice = async (req, res) => {
 
 const deleteInvoice = async (req, res) => {
   try {
-    const result = await invoicesService.deleteInvoice(req.params.id);
+    // Get deleted_by from authenticated user
+    const deleted_by = req.user?.id || req.userId || null;
+    
+    const result = await invoicesService.deleteInvoice(req.params.id, deleted_by);
     
     if (!result.success) {
       return res.status(404).json(result);

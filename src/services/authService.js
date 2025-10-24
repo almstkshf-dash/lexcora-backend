@@ -97,12 +97,16 @@ const getUserProfile = async (userId) => {
       throw new Error('User not found');
     }
 
+    // Get employee permissions
+    const permissions = await getEmployeePermissions(userId);
+
     // Return user without password
     const { password: _, ...userProfile } = user;
     
     return {
       success: true,
-      data: userProfile
+      data: userProfile,
+      permissions
     };
   } catch (error) {
     throw error;

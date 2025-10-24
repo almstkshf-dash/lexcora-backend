@@ -90,7 +90,7 @@ const createWalletDeposit = async (req, res) => {
       reference_no,
       note,
       created_by 
-    });
+    }, created_by);
     
     if (!result.success) {
       return res.status(400).json(result);
@@ -115,6 +115,9 @@ const updateWalletDeposit = async (req, res) => {
       note
     } = req.body;
     
+    // Get updated_by from authenticated user
+    const updated_by = req.user?.id || req.userId || null;
+    
     const result = await walletDepositsService.updateWalletDeposit(req.params.id, { 
       case_id,
       bank_account_id,
@@ -123,7 +126,7 @@ const updateWalletDeposit = async (req, res) => {
       cheque_number,
       reference_no,
       note
-    });
+    }, updated_by);
     
     if (!result.success) {
       return res.status(404).json(result);
@@ -138,7 +141,10 @@ const updateWalletDeposit = async (req, res) => {
 
 const deleteWalletDeposit = async (req, res) => {
   try {
-    const result = await walletDepositsService.deleteWalletDeposit(req.params.id);
+    // Get deleted_by from authenticated user
+    const deleted_by = req.user?.id || req.userId || null;
+    
+    const result = await walletDepositsService.deleteWalletDeposit(req.params.id, deleted_by);
     
     if (!result.success) {
       return res.status(404).json(result);

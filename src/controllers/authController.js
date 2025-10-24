@@ -109,11 +109,10 @@ const logoutUser = async (req, res) => {
  */
 const getCurrentUser = async (req, res) => {
   try {
-    // User info is available from authentication middleware
-    res.status(200).json({
-      success: true,
-      data: req.user
-    });
+    // Get user profile with permissions from service
+    const result = await authService.getUserProfile(req.user.id);
+    
+    res.status(200).json(result);
   } catch (error) {
     console.error('Get current user error:', error.message);
     res.status(500).json({

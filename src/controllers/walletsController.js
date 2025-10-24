@@ -112,7 +112,7 @@ const createWallet = async (req, res) => {
       currency, 
       status,
       created_by 
-    });
+    }, created_by);
     
     if (!result.success) {
       return res.status(400).json(result);
@@ -141,7 +141,7 @@ const updateWallet = async (req, res) => {
       currency, 
       status,
       updated_by 
-    });
+    }, updated_by);
     
     if (!result.success) {
       return res.status(404).json(result);
@@ -156,7 +156,10 @@ const updateWallet = async (req, res) => {
 
 const deleteWallet = async (req, res) => {
   try {
-    const result = await walletsService.deleteWallet(req.params.id);
+    // Get deleted_by from authenticated user
+    const deleted_by = req.user?.id || req.userId || null;
+    
+    const result = await walletsService.deleteWallet(req.params.id, deleted_by);
     
     if (!result.success) {
       return res.status(404).json(result);

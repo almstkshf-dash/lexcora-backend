@@ -1,4 +1,5 @@
 const walletsModel = require('../models/walletsModel');
+const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getWalletStats = async () => {
   try {
@@ -26,16 +27,65 @@ const getWalletsByClientId = async (clientId) => {
   return await walletsModel.getWalletsByClientId(clientId);
 };
 
-const createWallet = async (wallet) => {
-  return await walletsModel.createWallet(wallet);
+const createWallet = async (wallet, createdBy = null) => {
+  const result = await walletsModel.createWallet(wallet);
+  
+  // Log wallet creation
+  if (createdBy && result.success) {
+    await logAdd(
+      createdBy,
+      'محفظة',
+      wallet.wallet_name || 'محفظة جديدة',
+      result.data?.id
+    );
+  }
+  
+  return result;
 };
 
-const updateWallet = async (id, wallet) => {
-  return await walletsModel.updateWallet(id, wallet);
+const updateWallet = async (id, wallet, updatedBy = null) => {
+  const result = await walletsModel.updateWallet(id, wallet);
+  
+  // Log wallet update
+  if (updatedBy && result.success) {
+    await logUpdate(
+      updatedBy,
+      'محفظة',
+      wallet.wallet_name || 'محفظة',
+      id
+    );
+  }
+  
+  return result;
 };
 
-const deleteWallet = async (id) => {
-  return await walletsModel.deleteWallet(id);
+const deleteWallet = async (id, deletedBy = null) => {
+  // Get wallet details before deletion
+  let wallet = null;
+  if (deletedBy) {
+    try {
+      const walletResult = await walletsModel.getWalletById(id);
+      if (walletResult.success) {
+        wallet = walletResult.data;
+      }
+    } catch (error) {
+      console.error('Error getting wallet:', error);
+    }
+  }
+  
+  const result = await walletsModel.deleteWallet(id);
+  
+  // Log wallet deletion
+  if (deletedBy && result.success && wallet) {
+    await logDelete(
+      deletedBy,
+      'محفظة',
+      wallet.wallet_name || 'محفظة',
+      id
+    );
+  }
+  
+  return result;
 };
 
 const updateWalletBalance = async (id, amount, operation, updated_by) => {

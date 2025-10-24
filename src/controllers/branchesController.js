@@ -23,6 +23,21 @@ const createBranch = async (req, res) => {
   }
 };
 
+const updateBranch = async (req, res) => {
+  try {
+    const { name_ar, name_en, location } = req.body;
+    const updatedBy = req.user?.id || null;
+    const success = await branchesService.updateBranch(req.params.id, { name_ar, name_en, location }, updatedBy);
+    if (success) {
+      res.json({ message: 'Branch updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Branch not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update branch' });
+  }
+};
+
 const deleteBranch = async (req, res) => {
   try {
     const deletedBy = req.user?.id || null;
@@ -40,5 +55,6 @@ const deleteBranch = async (req, res) => {
 module.exports = {
   getAllBranches,
   createBranch,
+  updateBranch,
   deleteBranch
 };

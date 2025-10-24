@@ -14,12 +14,28 @@ const createBranch = async (branch, createdBy = null) => {
     await logAdd(
       createdBy,
       'فرع',
-      branch.name || 'فرع جديد',
+      branch.name_ar || branch.name_en || 'فرع جديد',
       branchId
     );
   }
   
   return branchId;
+};
+
+const updateBranch = async (id, branch, updatedBy = null) => {
+  const result = await branchesModel.updateBranch(id, branch);
+  
+  // Log branch update
+  if (updatedBy && result) {
+    await logAdd(
+      updatedBy,
+      'تعديل فرع',
+      branch.name_ar || branch.name_en || 'فرع',
+      id
+    );
+  }
+  
+  return result;
 };
 
 const deleteBranch = async (id, deletedBy = null) => {
@@ -52,5 +68,6 @@ const deleteBranch = async (id, deletedBy = null) => {
 module.exports = {
   getAllBranches,
   createBranch,
+  updateBranch,
   deleteBranch
 };
