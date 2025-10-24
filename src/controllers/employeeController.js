@@ -125,6 +125,42 @@ const getEmployeeAccountStatement = async (req, res) => {
   }
 };
 
+const checkDuplicateEmployee = async (req, res) => {
+  try {
+    const { name, phone, email, excludeId } = req.query;
+    
+    if (!name && !phone && !email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Name, phone, or email is required' 
+      });
+    }
+    
+    const duplicate = await employeeService.checkDuplicateEmployee(name, phone, email, excludeId);
+    
+    if (duplicate) {
+      return res.json({
+        success: true,
+        isDuplicate: true,
+        duplicate: {
+          id: duplicate.id,
+          name: duplicate.name,
+          phone: duplicate.phone,
+          email: duplicate.email
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      isDuplicate: false
+    });
+  } catch (error) {
+    console.error('Error checking duplicate employee:', error);
+    res.status(500).json({ success: false, error: 'Failed to check duplicate' });
+  }
+};
+
 
 module.exports = {
   getEmployees,
@@ -133,4 +169,5 @@ module.exports = {
   updateEmployee,
   deleteEmployee,
   getEmployeeAccountStatement,
+  checkDuplicateEmployee
 };

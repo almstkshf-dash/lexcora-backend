@@ -330,6 +330,26 @@ const getPartyByUsername = async (username) => {
   return rows[0];
 };
 
+const checkDuplicateParty = async (name, phone, excludeId = null) => {
+  let query = `
+    SELECT id, name, phone 
+    FROM parties 
+    WHERE (name = ? OR phone = ?)
+  `;
+  const params = [name, phone];
+  
+  // If excludeId is provided, exclude that party from the check (for updates)
+  if (excludeId) {
+    query += ' AND id != ?';
+    params.push(excludeId);
+  }
+  
+  query += ' LIMIT 1';
+  
+  const [rows] = await db.query(query, params);
+  return rows[0] || null;
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -341,5 +361,6 @@ module.exports = {
   getPartyDocuments,
   getPotentialClients,
   searchParties,
-  getPartyByUsername
+  getPartyByUsername,
+  checkDuplicateParty
 };

@@ -5,6 +5,7 @@ const { authenticateToken } = require("../middliewares/authMiddleware");
 
 // Main employee routes
 router.get("/", authenticateToken, employeeController.getEmployees);                    // GET /employees
+router.get("/check-duplicate", employeeController.checkDuplicateEmployee);             // GET /employees/check-duplicate (before authenticated routes)
 router.post("/", authenticateToken, employeeController.createEmployee);               // POST /employees
 router.get("/:id", authenticateToken, employeeController.getEmployee);                // GET /employees/:id
 router.put("/:id", authenticateToken, employeeController.updateEmployee);             // PUT /employees/:id

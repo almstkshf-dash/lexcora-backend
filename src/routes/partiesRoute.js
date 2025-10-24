@@ -7,6 +7,9 @@ const { authenticateToken } = require('../middliewares/authMiddleware');
 // Get all parties
 router.get('/', partiesController.getAllParties);
 
+// Check for duplicate party (before creating)
+router.get('/check-duplicate', partiesController.checkDuplicateParty);
+
 // Search parties by name or phone (for combobox)
 router.get('/search', partiesController.searchParties);
 

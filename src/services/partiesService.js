@@ -97,6 +97,10 @@ const searchParties = async (query) => {
   return await partiesModel.searchParties(query);
 };
 
+const checkDuplicateParty = async (name, phone, excludeId = null) => {
+  return await partiesModel.checkDuplicateParty(name, phone, excludeId);
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -107,5 +111,6 @@ module.exports = {
   updateParty,
   getPartyCases,
   getPotentialClients,
-  searchParties
+  searchParties,
+  checkDuplicateParty
 };

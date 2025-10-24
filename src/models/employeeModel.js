@@ -503,6 +503,26 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
   }
 };
 
+const checkDuplicateEmployee = async (name, phone, email, excludeId = null) => {
+  let query = `
+    SELECT id, name, phone, email 
+    FROM employees 
+    WHERE (name = ? OR phone = ? OR email = ?)
+  `;
+  const params = [name, phone || '', email || ''];
+  
+  // If excludeId is provided, exclude that employee from the check (for updates)
+  if (excludeId) {
+    query += ' AND id != ?';
+    params.push(excludeId);
+  }
+  
+  query += ' LIMIT 1';
+  
+  const [rows] = await db.query(query, params);
+  return rows[0] || null;
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
@@ -517,5 +537,6 @@ module.exports = {
   addCaseEmployeeDocument,
   getCaseEmployeeDocuments,
   deleteCaseEmployeeDocument,
-  getEmployeeAccountStatement
+  getEmployeeAccountStatement,
+  checkDuplicateEmployee
 };

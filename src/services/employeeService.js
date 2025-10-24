@@ -160,6 +160,9 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
   return await employeeModel.getEmployeeAccountStatement(employeeId, fromDate, toDate);
 };
 
+const checkDuplicateEmployee = async (name, phone, email, excludeId = null) => {
+  return await employeeModel.checkDuplicateEmployee(name, phone, email, excludeId);
+};
 
 module.exports = {
   listEmployees,
@@ -168,4 +171,5 @@ module.exports = {
   updateEmployee,
   removeEmployee,
   getEmployeeAccountStatement,
+  checkDuplicateEmployee
 };

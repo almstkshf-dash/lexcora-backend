@@ -172,6 +172,41 @@ const searchParties = async (req, res) => {
   }
 };
 
+const checkDuplicateParty = async (req, res) => {
+  try {
+    const { name, phone, excludeId } = req.query;
+    
+    if (!name && !phone) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Name or phone is required' 
+      });
+    }
+    
+    const duplicate = await partiesService.checkDuplicateParty(name, phone, excludeId);
+    
+    if (duplicate) {
+      return res.json({
+        success: true,
+        isDuplicate: true,
+        duplicate: {
+          id: duplicate.id,
+          name: duplicate.name,
+          phone: duplicate.phone
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      isDuplicate: false
+    });
+  } catch (error) {
+    console.error('Error checking duplicate party:', error);
+    res.status(500).json({ success: false, error: 'Failed to check duplicate' });
+  }
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -181,5 +216,6 @@ module.exports = {
   updateParty,
   getPartyCases,
   getPotentialClients,
-  searchParties
+  searchParties,
+  checkDuplicateParty
 };
