@@ -21,12 +21,10 @@ const loginUser = async (req, res) => {
 
     res.cookie('authToken', result.token, cookieOptions);
 
-    // Remove token from response body since it's now in cookie
-    const { token, ...responseWithoutToken } = result;
-
+    // Send token in response body for localStorage AND in cookie for httpOnly
     res.status(200).json({
-      ...responseWithoutToken,
-      message: 'Login successful - token saved in cookie'
+      ...result,
+      message: 'Login successful'
     });
   } catch (error) {
     console.error('Login error:', error.message);
