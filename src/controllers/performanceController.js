@@ -5,16 +5,16 @@ const db = require('../config/db');
  */
 const getPerformanceStats = async (req, res) => {
   try {
-    // Get call logs count
-    const [callLogsResult] = await db.query('SELECT COUNT(*) as count FROM call_logs');
-    const callLogsCount = callLogsResult[0].count;
+    // Get system logs count
+    const [logsResult] = await db.query('SELECT COUNT(*) as count FROM logs');
+    const logsCount = logsResult[0].count;
 
     // Get notifications count
     const [notificationsResult] = await db.query('SELECT COUNT(*) as count FROM app_notifications');
     const notificationsCount = notificationsResult[0].count;
 
     res.json({
-      callLogsCount,
+      logsCount,
       notificationsCount
     });
   } catch (error) {
@@ -22,28 +22,29 @@ const getPerformanceStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch performance statistics',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
 
 /**
- * Clear all call logs
+ * Clear all system logs
  */
-const clearCallLogs = async (req, res) => {
+const clearSystemLogs = async (req, res) => {
   try {
-    const [result] = await db.query('DELETE FROM call_logs');
+    const [result] = await db.query('DELETE FROM logs');
     
     res.json({
       success: true,
-      message: `${result.affectedRows} call logs deleted successfully`,
+      message: `${result.affectedRows} system logs deleted successfully`,
       deletedCount: result.affectedRows
     });
   } catch (error) {
-    console.error('Clear call logs error:', error);
+    console.error('Clear system logs error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to clear call logs',
+      message: 'Failed to clear system logs',
       error: error.message
     });
   }
@@ -73,6 +74,6 @@ const clearNotifications = async (req, res) => {
 
 module.exports = {
   getPerformanceStats,
-  clearCallLogs,
+  clearSystemLogs,
   clearNotifications
 };
