@@ -62,6 +62,7 @@ const walletsRoute = require("./routes/walletsRoute");
 const walletDepositsRoute = require("./routes/walletDepositsRoute");
 const walletExpensesRoute = require("./routes/walletExpensesRoute");
 const invoicesRoute = require("./routes/invoicesRoute");
+const performanceRoute = require("./routes/performanceRoute");
 
 const app = express();
 
@@ -136,6 +137,7 @@ app.use("/api/wallets", walletsRoute);
 app.use("/api/wallet-deposits", walletDepositsRoute);
 app.use("/api/wallet-expenses", walletExpensesRoute);
 app.use("/api/invoices", invoicesRoute);
+app.use("/api/performance", performanceRoute);
 
 app.get("/health", async (req, res) => {
   try {

@@ -28,18 +28,15 @@ const testConnection = async () => {
   try {
     // Only test connection if all required env vars are present
     if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
-      console.log("⚠️  Database configuration incomplete - skipping connection test");
       return false;
     }
     
     const dbPool = createPool();
     if (!dbPool) {
-      console.log("⚠️  Database pool not created - skipping connection test");
       return false;
     }
     
     const connection = await dbPool.getConnection();
-    console.log("✅ Database connected successfully!");
     connection.release();
     return true;
   } catch (error) {
@@ -51,10 +48,7 @@ const testConnection = async () => {
 };
 
 // Test connection when module is loaded (only in non-build environment)
-if (process.env.NODE_ENV !== 'build' && process.env.NODE_ENV === 'production') {
-  // Don't test connection during deployment to avoid timeouts
-  console.log("🚀 Production deployment - skipping initial database connection test");
-} else if (process.env.NODE_ENV !== 'build') {
+if (process.env.NODE_ENV !== 'build' && process.env.NODE_ENV !== 'production') {
   testConnection();
 }
 
