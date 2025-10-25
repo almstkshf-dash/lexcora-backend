@@ -11,7 +11,7 @@ const getBankAccountById = async (id) => {
 
 const createBankAccount = async (bankAccount, createdBy = null) => {
   const result = await bankAccountsModel.createBankAccount(bankAccount);
-  
+  // console.log('Create Bank Account Result:', result);
   // Log bank account creation
   if (createdBy && result.success) {
     await logAdd(

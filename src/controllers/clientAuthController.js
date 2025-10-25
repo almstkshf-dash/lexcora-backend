@@ -24,11 +24,9 @@ const loginClient = async (req, res) => {
 
     res.cookie('clientAuthToken', result.token, cookieOptions);
 
-    // Remove token from response body since it's now in cookie
-    const { token, ...responseWithoutToken } = result;
-
+    // Send token in response body for localStorage AND in cookie
     res.status(200).json({
-      ...responseWithoutToken,
+      ...result,
       message: 'Login successful'
     });
   } catch (error) {
