@@ -28,15 +28,18 @@ const testConnection = async () => {
   try {
     // Only test connection if all required env vars are present
     if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+      console.error("❌ Database configuration missing in .env file");
       return false;
     }
     
     const dbPool = createPool();
     if (!dbPool) {
+      console.error("❌ Failed to create database pool");
       return false;
     }
     
     const connection = await dbPool.getConnection();
+    console.log("✅ Database connection successful");
     connection.release();
     return true;
   } catch (error) {
@@ -52,5 +55,16 @@ if (process.env.NODE_ENV !== 'build' && process.env.NODE_ENV !== 'production') {
   testConnection();
 }
 
-// Export a function that returns the pool
-module.exports = createPool();
+// Create a proxy object that checks if pool exists before calling methods
+const dbProxy = new Proxy({}, {
+  get(target, prop) {
+    const currentPool = createPool();
+    if (!currentPool) {
+      throw new Error('Database connection not available. Please check your database configuration.');
+    }
+    return currentPool[prop];
+  }
+});
+
+// Export the proxy instead of the raw pool
+module.exports = dbProxy;
