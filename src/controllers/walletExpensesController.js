@@ -109,8 +109,6 @@ const getExpenseById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log('Fetching expense with ID:', id);
-    
     // Get expense
     const [expenses] = await db.query(`
       SELECT 
@@ -132,8 +130,6 @@ const getExpenseById = async (req, res) => {
       LEFT JOIN bank_accounts ba ON we.bank_account_id = ba.id
       WHERE we.id = ?
     `, [id]);
-    
-    console.log('Query result:', expenses.length, 'rows');
     
     if (expenses.length === 0) {
       return res.status(404).json({ success: false, error: 'Expense not found' });
@@ -160,8 +156,6 @@ const getExpenseById = async (req, res) => {
     const expense = expenses[0];
     expense.items = items;
     expense.receipts = receipts;
-    
-    console.log('Returning expense:', expense.id);
     
     res.json({ success: true, data: expense });
   } catch (error) {

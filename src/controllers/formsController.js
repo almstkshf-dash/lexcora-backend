@@ -161,7 +161,6 @@ const deleteForm = async (req, res) => {
     if (form.document_url) {
       try {
         await deleteFileFromR2(form.document_url);
-        console.log(`✓ Deleted form file from R2: ${form.document_url}`);
       } catch (r2Error) {
         // Log the error but don't fail the request since the DB record is already deleted
         console.error('Error deleting file from R2:', r2Error);

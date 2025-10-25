@@ -7,7 +7,6 @@ const addMemo = async (req, res) => {
   try {
     const memoData = req.body;
     const userId = req.user ? req.user.id : null; // Assuming user info is in req.user
-    console.log(req.user);
     const result = await memosService.addMemo(userId, memoData);
 
     res.status(201).json({

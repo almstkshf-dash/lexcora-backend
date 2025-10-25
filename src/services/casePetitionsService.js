@@ -73,7 +73,6 @@ if (files.length > 0) {
     //    await casePetitionsModel.addCasePetitionDocument(id, file.document_name, file.document_url);
     //  }
     }
-    console.log(files);
     return await casePetitionsModel.updateCasePetition(id, petitionData);
   } catch (error) {
     console.error('Error in updateCasePetition service:', error);

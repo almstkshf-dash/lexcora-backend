@@ -67,7 +67,6 @@ const deleteFileFromR2 = async (documentUrl) => {
     });
 
     await s3Client.send(command);
-    console.log(`✓ Deleted file from R2: ${key}`);
     return true;
   } catch (error) {
     console.error('Error deleting file from Cloudflare R2:', error);
@@ -112,8 +111,6 @@ const deleteFilesFromR2 = async (documentUrls) => {
 
     const successCount = result.Deleted?.length || 0;
     const failedCount = result.Errors?.length || 0;
-
-    console.log(`✓ Deleted ${successCount} file(s) from R2`);
     
     if (failedCount > 0) {
       console.error(`✗ Failed to delete ${failedCount} file(s) from R2:`, result.Errors);

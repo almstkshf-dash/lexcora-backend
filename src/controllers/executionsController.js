@@ -96,7 +96,6 @@ const getExecutionsByAmountRange = async (req, res) => {
 };
 
 const getExecutionsByCaseId = async (req, res) => {
-  console.log("Fetching executions for case ID:", req.params.caseId);
   try {
     const executions = await executionsService.getExecutionsByCaseId(req.params.caseId);
 

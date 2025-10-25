@@ -39,11 +39,6 @@ const updateWorkingHours = async (req, res) => {
   try {
     const { start_time, end_time } = req.body;
 
-    // Log received data for debugging
-    console.log("Received working hours data:", { start_time, end_time });
-    console.log("Start time type:", typeof start_time, "Value:", JSON.stringify(start_time));
-    console.log("End time type:", typeof end_time, "Value:", JSON.stringify(end_time));
-
     // Validate input
     if (!start_time || !end_time) {
       return res.status(400).json({
@@ -76,11 +71,6 @@ const updateWorkingHours = async (req, res) => {
     if (trimmedEndTime.length === 4 && trimmedEndTime.charAt(1) === ':') {
       trimmedEndTime = '0' + trimmedEndTime;
     }
-    
-    console.log("Testing time format:", { 
-      original: { start_time, end_time },
-      processed: { trimmedStartTime, trimmedEndTime }
-    });
     
     // Final validation with HH:MM format
     const finalTimeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;

@@ -488,7 +488,6 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
       salariesRows = rows;
     } catch (err) {
       // Salaries table might not exist, that's okay
-      console.log('Salaries table not found, skipping');
     }
     
     // Combine all transactions

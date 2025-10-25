@@ -40,7 +40,6 @@ const addPartyDocuments = async (partyId, files) => {
 const deleteParty = async (id, deletedBy = null) => {
   const party = await partiesModel.getPartyById(id);
   const documents = await partiesModel.getPartyDocuments(id);
-  console.log("Deleting party documents from R2:", documents);
  if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }

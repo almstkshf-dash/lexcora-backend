@@ -127,11 +127,9 @@ const updateMemo = async (id, memoData) => {
 
 const updateMemoApproval = async (id, position, approvalType, isApproved) => {
     approvalType = approvalType.toLowerCase();
-    console.log('approvalType:', approvalType);
 
   try {
     const approvalField = `is_${approvalType}_approved`;
-    console.log(approvalField);
     const [result] = await db.query(`
       UPDATE memos 
       SET ${approvalField} = ? 
@@ -329,7 +327,6 @@ const updateEmployeeMemoStatus = async (id, status, position) => {
 
     
     const statusField = statusFieldMap[position];
-    console.log('statusField:', statusField);
     if (!statusField) {
       throw new Error(`Invalid position: ${position}`);
     }

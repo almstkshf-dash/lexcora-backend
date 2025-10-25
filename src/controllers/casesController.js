@@ -172,7 +172,6 @@ const addPartyToCase = async (req, res) => {
   try {
     const { caseId } = req.params;
     const partyData = req.body;
-    console.log("Received partyData:", partyData);
 
     // Validate required fields
     if (!partyData.party_id || !partyData.type) {

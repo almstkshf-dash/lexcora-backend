@@ -643,7 +643,6 @@ const getCasesByLegalResearcher = async (legalResearcherId) => {
 };
 
 const addCaseParty = async (caseId, party_id, type) => {
-  console.log("Adding party to case:", { caseId, party_id, type });
   try {
     const [result] = await db.query(
       `INSERT INTO case_parties (case_id, party_id, type) 
@@ -661,7 +660,6 @@ const addCaseParty = async (caseId, party_id, type) => {
   }
 };
 const updateCaseParty = async (caseId, partyId, partyData) => {
-  console.log("Updating party in case:", { caseId, partyId, partyData });
   try {
     await db.query(
       `UPDATE case_parties SET type = ? WHERE case_id = ? AND id = ?`,

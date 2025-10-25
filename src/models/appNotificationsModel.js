@@ -8,7 +8,6 @@ const createNotification = async ({ title, message, type = 'info', recipient_id 
       VALUES (?, ?, ?, ?, ?, ?)
     `;
     const [result] = await db.query(query, [title, message, type, recipient_id, related_type, created_by]);
-    console.log('Notification created successfully:', result);
     return { id: result.insertId, success: true };
   } catch (error) {
     console.error('Error creating notification:', error);

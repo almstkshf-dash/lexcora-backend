@@ -73,7 +73,6 @@ const getClientRequestsByClientId = async (client_id) => {
 };
 
 const updateClientRequest = async (id, clientRequestData, updatedBy) => {
-  console.log("Updating client request with data:", clientRequestData);
   try {
     // Get current request data to compare changes
     const currentRequest = await clientRequestsModel.getClientRequestById(id);

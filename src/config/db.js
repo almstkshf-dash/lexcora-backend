@@ -40,8 +40,6 @@ const testConnection = async () => {
     
     const connection = await dbPool.getConnection();
     console.log("✅ Database connected successfully!");
-    console.log(`📊 Connected to database: ${process.env.DB_NAME}`);
-    console.log(`🌐 Host: ${process.env.DB_HOST}:${process.env.DB_PORT || 3306}`);
     connection.release();
     return true;
   } catch (error) {

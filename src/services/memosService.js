@@ -5,7 +5,6 @@ const memosModel = require('../models/memosModel');
 const { deleteDocumentFiles } = require('./cloudflareService');
 
 const addMemo = async (userId,memoData) => {
-  console.log(userId);
   const files = memoData.files || [];
 
   try {
@@ -90,7 +89,6 @@ const updateMemo = async (userId, id, memoData) => {
     }
 
     const result = await memosModel.updateMemo( id, memoData);
-    console.log('Update result:', result);
     return result;
   } catch (error) {
     console.error('Error in updateMemo service:', error);
@@ -134,7 +132,6 @@ const deleteMemo = async (id) => {
 };
 
 const approveMemo = async (id, position, approvedType) => {
-  console.log(id, position, approvedType, isApproved);
 
   try {
     if (!id || !approvedType) {

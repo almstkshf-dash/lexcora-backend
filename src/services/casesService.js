@@ -115,6 +115,23 @@ const getAllCaseDetails = async (id) => {
 };
 
 const deleteCase = async (id, deletedBy = null) => {
+  /**
+   * Delete a case and all its related data including:
+   * - Case documents
+   * - Employee case documents
+   * - Court case documents
+   * - Case party documents (for all parties)
+   * - Session documents (for all sessions)
+   * - Task documents (for all tasks)
+   * - Memo documents (for all memos)
+   * - Petition documents (for all petitions)
+   * - Execution documents (for all executions)
+   * - Judicial order documents (for all judicial orders)
+   * 
+   * All documents are deleted from Cloudflare R2 storage before the case is deleted from the database.
+   * Database CASCADE constraints will automatically delete related records (sessions, tasks, memos, etc.)
+   */
+  
   // Get case details before deletion for logging
   let caseDetails = null;
   if (deletedBy) {
@@ -125,19 +142,154 @@ const deleteCase = async (id, deletedBy = null) => {
     }
   }
   
-  const result = await casesModel.deleteCase(id);
-  
-  // Log case deletion
-  if (deletedBy && caseDetails) {
-    await logDelete(
-      deletedBy, 
-      'قضية', 
-      caseDetails.file_number || caseDetails.case_number || 'قضية', 
-      id
-    );
+  try {
+    // Collect all documents related to this case for deletion from R2
+    const allDocuments = [];
+    
+    // 1. Get case documents
+    const caseDocuments = await casesModel.getCaseDocuments(id);
+    if (caseDocuments && caseDocuments.length > 0) {
+      allDocuments.push(...caseDocuments.map(doc => ({
+        document_url: doc.document_url || doc.url
+      })));
+    }
+    
+    // 2. Get employee case documents
+    const employeeDocuments = await casesModel.getEmployeesCaseDocuments(id);
+    if (employeeDocuments && employeeDocuments.length > 0) {
+      allDocuments.push(...employeeDocuments.map(doc => ({
+        document_url: doc.document_url || doc.url
+      })));
+    }
+    
+    // 3. Get court case documents
+    const courtDocuments = await casesModel.getCaseCourtDocuments(id);
+    if (courtDocuments && courtDocuments.length > 0) {
+      allDocuments.push(...courtDocuments.map(doc => ({
+        document_url: doc.document_url || doc.url
+      })));
+    }
+    
+    // 4. Get case party documents for all parties
+    const caseParties = await casesModel.getCaseParties(id);
+    if (caseParties && caseParties.length > 0) {
+      for (const party of caseParties) {
+        const partyDocuments = await casesModel.getCasePartyDocuments(id, party.party_id);
+        if (partyDocuments && partyDocuments.length > 0) {
+          allDocuments.push(...partyDocuments.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 5. Get session documents
+    const sessionsModel = require('../models/sessionsModel');
+    const sessions = await sessionsModel.getSessionsByCase(id);
+    if (sessions && sessions.length > 0) {
+      for (const session of sessions) {
+        const sessionDocuments = await sessionsModel.getSessionDocuments(session.id);
+        if (sessionDocuments && sessionDocuments.length > 0) {
+          allDocuments.push(...sessionDocuments.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 6. Get task documents
+    const tasksModel = require('../models/tasksModel');
+    const tasks = await tasksModel.getTasksByCaseId(id);
+    if (tasks && tasks.length > 0) {
+      for (const task of tasks) {
+        const taskDocuments = await tasksModel.getTaskDocuments(task.id);
+        if (taskDocuments && taskDocuments.length > 0) {
+          allDocuments.push(...taskDocuments.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 7. Get memo documents
+    const memosModel = require('../models/memosModel');
+    const memos = await memosModel.getMemosByCaseId(id);
+    if (memos && memos.length > 0) {
+      for (const memo of memos) {
+        const memoDocuments = await memosModel.getDocumentsByMemoId(memo.id);
+        if (memoDocuments && memoDocuments.length > 0) {
+          allDocuments.push(...memoDocuments.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 8. Get petition documents
+    const casePetitionsModel = require('../models/casePetitionsModel');
+    const petitions = await casePetitionsModel.getCasePetitionsByCaseId(id);
+    if (petitions && petitions.length > 0) {
+      for (const petition of petitions) {
+        const petitionDocuments = await casePetitionsModel.getCasePetitionDocuments(petition.id);
+        if (petitionDocuments && petitionDocuments.length > 0) {
+          allDocuments.push(...petitionDocuments.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 9. Get execution documents
+    const executionsModel = require('../models/executionsModel');
+    const executions = await executionsModel.getExecutionsByCaseId(id);
+    if (executions && executions.length > 0) {
+      for (const execution of executions) {
+        const executionDetails = await executionsModel.getExecutionById(execution.id);
+        if (executionDetails && executionDetails.documents && executionDetails.documents.length > 0) {
+          allDocuments.push(...executionDetails.documents.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // 10. Get judicial order documents
+    const judicialOrdersModel = require('../models/judicialOrdersModel');
+    const judicialOrders = await judicialOrdersModel.getJudicialOrdersByCaseId(id);
+    if (judicialOrders && judicialOrders.length > 0) {
+      for (const order of judicialOrders) {
+        const orderDetails = await judicialOrdersModel.getJudicialOrderById(order.id);
+        if (orderDetails && orderDetails.documents && orderDetails.documents.length > 0) {
+          allDocuments.push(...orderDetails.documents.map(doc => ({
+            document_url: doc.document_url || doc.url
+          })));
+        }
+      }
+    }
+    
+    // Delete all documents from R2 storage
+    if (allDocuments.length > 0) {
+      await deleteDocumentFiles(allDocuments);
+    }
+    
+    // Delete the case from database (CASCADE will delete all related records)
+    const result = await casesModel.deleteCase(id);
+    
+    // Log case deletion
+    if (deletedBy && caseDetails) {
+      await logDelete(
+        deletedBy, 
+        'قضية', 
+        caseDetails.file_number || caseDetails.case_number || 'قضية', 
+        id
+      );
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error in deleteCase service:', error);
+    throw error;
   }
-  
-  return result;
 };
 
 const getCasesByBranch = async (branchId) => {
