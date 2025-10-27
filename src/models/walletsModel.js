@@ -212,6 +212,19 @@ const createWallet = async (wallet) => {
   } = wallet;
   
   try {
+    // Check if party already has a wallet
+    const [existingWallet] = await db.query(`
+      SELECT id FROM wallets WHERE client_id = ? LIMIT 1
+    `, [client_id]);
+    
+    if (existingWallet.length > 0) {
+      return { 
+        success: false, 
+        message: 'This party already has a wallet',
+        error: 'PARTY_ALREADY_HAS_WALLET'
+      };
+    }
+    
     const [result] = await db.query(`
       INSERT INTO wallets 
       (client_id, currency, status, created_by, created_at) 
