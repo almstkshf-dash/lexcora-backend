@@ -2,7 +2,7 @@
 // Service functions for sessions
 
 const sessionsModel = require('../models/sessionsModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getAllSessions = async () => {
@@ -79,13 +79,13 @@ const deleteSession = async (id, deletedBy = null) => {
     // Get session details before deleting
     const session = await sessionsModel.getSessionById(id);
     
-    // Get session documents before deleting to clean up files from R2
+    // Get session documents before deleting to clean up files from AWS S3
     const documents = await sessionsModel.getSessionDocuments(id);
     
     // Delete the session from database (cascade will delete documents from DB)
     const result = await sessionsModel.deleteSession(id);
     
-    // Delete files from Cloudflare R2
+    // Delete files from AWS S3
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
@@ -151,7 +151,7 @@ const deleteSessionDocument = async (documentId, sessionId) => {
     // Delete from database
     const result = await sessionsModel.deleteSessionDocument(documentId, sessionId);
     
-    // Delete file from Cloudflare R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }

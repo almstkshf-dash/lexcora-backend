@@ -13,7 +13,9 @@ const createPool = () => {
       database: process.env.DB_NAME,
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      dateStrings: true,
+      timezone: '+00:00'
       // Removed all potentially invalid options to eliminate warnings:
       // - acquireTimeout, timeout, reconnect (causing warnings)
       // - maxIdle, idleTimeout, enableKeepAlive (may not be supported)

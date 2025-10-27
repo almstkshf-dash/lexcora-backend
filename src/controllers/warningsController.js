@@ -1,5 +1,5 @@
 const warningsModel = require("../models/warningsModel");
-const { deleteDocumentFiles } = require("../services/cloudflareService");
+const { deleteDocumentFiles } = require("../services/awsS3Service");
 
 // Get all warnings or by employee_id
 const getWarnings = async (req, res) => {

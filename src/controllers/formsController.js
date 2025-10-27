@@ -1,5 +1,5 @@
 const formsModel = require("../models/formsModel");
-const { deleteFileFromR2 } = require("../services/cloudflareService");
+const { deleteFileFromS3 } = require("../services/awsS3Service");
 
 // Get all forms
 const getForms = async (req, res) => {
@@ -157,13 +157,13 @@ const deleteForm = async (req, res) => {
       });
     }
     
-    // Delete the file from Cloudflare R2
+    // Delete the file from AWS S3
     if (form.document_url) {
       try {
-        await deleteFileFromR2(form.document_url);
-      } catch (r2Error) {
+        await deleteFileFromS3(form.document_url);
+      } catch (s3Error) {
         // Log the error but don't fail the request since the DB record is already deleted
-        console.error('Error deleting file from R2:', r2Error);
+        console.error('Error deleting file from S3:', s3Error);
       }
     }
     

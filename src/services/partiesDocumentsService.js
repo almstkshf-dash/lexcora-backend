@@ -1,5 +1,5 @@
 const partiesDocumentsModel = require("../models/partiesDocumentsModel");
-const { deleteDocumentFiles } = require("./cloudflareService");
+const { deleteDocumentFiles } = require("./awsS3Service");
 
 const listPartiesDocuments = async () => {
   return await partiesDocumentsModel.getAllPartiesDocuments();
@@ -129,7 +129,7 @@ const removePartiesDocument = async (id) => {
     throw new Error("Parties document not found");
   }
 
-  // Delete the file from Cloudflare R2
+  // Delete the file from AWS S3
 
     await deleteDocumentFiles([existingDocument]);
    

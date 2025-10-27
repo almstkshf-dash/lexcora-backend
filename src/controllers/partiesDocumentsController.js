@@ -184,24 +184,23 @@ const uploadPartiesDocument = async (req, res) => {
       });
     }
 
-    // Import required modules for R2 upload
+    // Import required modules for S3 upload
     const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
     const path = require('path');
 
-    // Configure Cloudflare R2 client
+    // Configure AWS S3 client
     const s3Client = new S3Client({
-      region: 'auto',
-      endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+      region: process.env.AWS_REGION || 'us-east-1',
       credentials: {
-        accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
     });
 
     const folder = 'parties-documents';
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-    const usePublicUrl = process.env.CLOUDFLARE_R2_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
     // Upload all files and create document records
     const uploadPromises = req.files.map(async (file) => {
@@ -212,7 +211,7 @@ const uploadPartiesDocument = async (req, res) => {
       const filename = `${timestamp}-${randomString}${fileExtension}`;
       const key = `${folder}/${filename}`;
 
-      // Upload to R2
+      // Upload to S3
       const putCommand = new PutObjectCommand({
         Bucket: bucketName,
         Key: key,

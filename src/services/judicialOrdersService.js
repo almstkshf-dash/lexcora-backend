@@ -2,7 +2,7 @@
 // Service functions for judicial orders
 
 const judicialOrdersModel = require('../models/judicialOrdersModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const getAllJudicialOrders = async () => {
   return await judicialOrdersModel.getAllJudicialOrders();
@@ -46,7 +46,7 @@ const deleteJudicialOrder = async (id) => {
     // Delete from database (CASCADE will delete document records)
     const result = await judicialOrdersModel.deleteJudicialOrder(id);
     
-    // Delete files from R2
+    // Delete files from AWS S3
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
@@ -82,7 +82,7 @@ const deleteJudicialOrderDocument = async (id) => {
     // Delete from database
     const result = await judicialOrdersModel.deleteJudicialOrderDocument(id);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }

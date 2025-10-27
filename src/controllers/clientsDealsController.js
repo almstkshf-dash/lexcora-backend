@@ -57,6 +57,9 @@ const createClientDeal = async (req, res) => {
   try {
     const data = JSON.parse(req.body.data || '{}');
     
+    // Get created_by from authenticated user
+    const created_by = req.user?.id || null;
+    
     // Handle uploaded files
     let uploadedFiles = [];
     if (req.body.files) {
@@ -67,7 +70,13 @@ const createClientDeal = async (req, res) => {
       }
     }
     
-    const id = await clientsDealsService.createClientDeal(data, uploadedFiles);
+    // Add created_by to data
+    const dealData = {
+      ...data,
+      created_by
+    };
+    
+    const id = await clientsDealsService.createClientDeal(dealData, uploadedFiles);
     res.status(201).json({ success: true, id });
   } catch (error) {
     console.error('Error creating client deal:', error);

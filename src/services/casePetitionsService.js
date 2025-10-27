@@ -2,7 +2,7 @@
 // Service functions for case petitions
 
 const casePetitionsModel = require('../models/casePetitionsModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const addCasePetition = async (petitionData) => {
   const files = petitionData.files || [];

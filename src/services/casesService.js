@@ -5,7 +5,7 @@ const e = require('express');
 const casesModel = require('../models/casesModel');
 const courtsModel = require('../models/courtsModel');
 const employeeModel = require('../models/employeeModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const addCase = async (caseData, createdBy = null) => {
@@ -128,7 +128,7 @@ const deleteCase = async (id, deletedBy = null) => {
    * - Execution documents (for all executions)
    * - Judicial order documents (for all judicial orders)
    * 
-   * All documents are deleted from Cloudflare R2 storage before the case is deleted from the database.
+   * All documents are deleted from AWS S3 storage before the case is deleted from the database.
    * Database CASCADE constraints will automatically delete related records (sessions, tasks, memos, etc.)
    */
   
@@ -143,7 +143,7 @@ const deleteCase = async (id, deletedBy = null) => {
   }
   
   try {
-    // Collect all documents related to this case for deletion from R2
+    // Collect all documents related to this case for deletion from AWS S3
     const allDocuments = [];
     
     // 1. Get case documents
@@ -267,7 +267,7 @@ const deleteCase = async (id, deletedBy = null) => {
       }
     }
     
-    // Delete all documents from R2 storage
+    // Delete all documents from AWS S3 storage
     if (allDocuments.length > 0) {
       await deleteDocumentFiles(allDocuments);
     }
@@ -346,7 +346,7 @@ const deleteCaseParty = async (caseId, partyId) => {
     // Delete from database (CASCADE will delete document records)
     const result = await casesModel.deleteCaseParty(caseId, partyId);
     
-    // Delete files from R2
+    // Delete files from AWS S3
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
@@ -395,7 +395,7 @@ const deleteEmployeeCaseDocument = async (caseId, documentId) => {
     // Delete from database
     const isDeleted = await employeeModel.deleteCaseEmployeeDocument(documentId, caseId);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }
@@ -426,7 +426,7 @@ const deleteCaseDocument = async (caseId, documentId) => {
     // Delete from database
     const isDeleted = await casesModel.deleteCaseDocument(documentId, caseId);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }
@@ -457,7 +457,7 @@ const deleteCaseCourtDocument = async (caseId, documentId) => {
     // Delete from database
     const isDeleted = await casesModel.deleteCaseCourtDocument(documentId, caseId);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }

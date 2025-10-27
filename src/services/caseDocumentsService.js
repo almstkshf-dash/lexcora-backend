@@ -1,5 +1,5 @@
 const caseDocumentsModel = require("../models/caseDocumentsModel");
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getAllCaseDocuments = async () => {
@@ -79,7 +79,7 @@ const deleteCaseDocument = async (id, deletedBy = null) => {
     // Delete from database
     const result = await caseDocumentsModel.deleteCaseDocument(id);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (existingDocument && existingDocument.url) {
       await deleteDocumentFiles([{ document_url: existingDocument.url }]);
     }

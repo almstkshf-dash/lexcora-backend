@@ -2,7 +2,7 @@
 // Service functions for memos
 
 const memosModel = require('../models/memosModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const addMemo = async (userId,memoData) => {
   const files = memoData.files || [];
@@ -119,7 +119,7 @@ const deleteMemo = async (id) => {
     // Delete from database (CASCADE will delete document records)
     const result = await memosModel.deleteMemo(id);
 
-    // Delete files from R2
+    // Delete files from AWS S3
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }

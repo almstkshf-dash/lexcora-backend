@@ -1,13 +1,12 @@
 const employeeDocumentsModel = require('../models/employeeDocumentsModel');
 const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
-// Configure Cloudflare R2 client
+// Configure AWS S3 client
 const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -153,8 +152,8 @@ const deleteDocument = async (req, res) => {
     const url = new URL(document.document_url);
     const key = url.pathname.substring(1); // Remove leading slash
 
-    // Delete from R2
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    // Delete from S3
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     const deleteParams = {
       Bucket: bucketName,
       Key: key,
@@ -163,8 +162,8 @@ const deleteDocument = async (req, res) => {
     try {
       await s3Client.send(new DeleteObjectCommand(deleteParams));
     } catch (error) {
-      console.error('Error deleting from R2:', error);
-      // Continue to delete from database even if R2 deletion fails
+      console.error('Error deleting from S3:', error);
+      // Continue to delete from database even if S3 deletion fails
     }
 
     // Delete from database

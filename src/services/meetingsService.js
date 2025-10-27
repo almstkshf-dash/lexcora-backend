@@ -1,6 +1,6 @@
 const meetingsModel = require('../models/meetingsModel');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const getAllMeetings = async (filters) => {
   return await meetingsModel.getAllMeetings(filters);
@@ -54,7 +54,7 @@ const deleteMeeting = async (id, deletedBy = null) => {
   const meeting = await meetingsModel.getMeetingById(id);
   const result = await meetingsModel.deleteMeeting(id);
   
-  // Delete files from Cloudflare R2
+  // Delete files from AWS S3
   if (documents && documents.length > 0) {
     await deleteDocumentFiles(documents);
   }
@@ -87,10 +87,10 @@ const addMeetingDocuments = async (meetingId, documents, createdBy) => {
 };
 
 const deleteMeetingDocument = async (documentId, deletedBy = null) => {
-  // Get document details before deleting (for R2 deletion)
+  // Get document details before deleting (for AWS S3 deletion)
   const document = await meetingsModel.deleteMeetingDocument(documentId);
   
-  // Delete file from Cloudflare R2
+  // Delete file from AWS S3
   if (document) {
     await deleteDocumentFiles([document]);
   }

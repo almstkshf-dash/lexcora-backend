@@ -127,9 +127,9 @@ const removeEmployee = async (id, deletedBy = null) => {
     throw new Error("Employee not found");
   }
 
-  // Get employee documents before deleting (for R2 cleanup)
+  // Get employee documents before deleting (for AWS S3 cleanup)
   const employeeDocumentsModel = require('../models/employeeDocumentsModel');
-  const { deleteDocumentFiles } = require('./cloudflareService');
+  const { deleteDocumentFiles } = require('./awsS3Service');
   const documents = await employeeDocumentsModel.getByEmployeeId(id);
 
   const success = await employeeModel.deleteEmployee(id);
@@ -137,7 +137,7 @@ const removeEmployee = async (id, deletedBy = null) => {
     throw new Error("Failed to delete employee");
   }
   
-  // Delete files from Cloudflare R2
+  // Delete files from AWS S3
   if (documents && documents.length > 0) {
     await deleteDocumentFiles(documents);
   }

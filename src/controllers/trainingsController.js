@@ -1,5 +1,5 @@
 const trainingsModel = require("../models/trainingsModel");
-const { deleteDocumentFiles } = require("../services/cloudflareService");
+const { deleteDocumentFiles } = require("../services/awsS3Service");
 
 // Get all trainings or by employee_id
 const getTrainings = async (req, res) => {

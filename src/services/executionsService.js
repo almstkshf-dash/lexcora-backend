@@ -2,7 +2,7 @@
 // Service functions for executions
 
 const executionsModel = require('../models/executionsModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const getAllExecutions = async () => {
   return await executionsModel.getAllExecutions();
@@ -39,7 +39,7 @@ const deleteExecution = async (id) => {
     // Delete from database (CASCADE will delete document records)
     const result = await executionsModel.deleteExecution(id);
     
-    // Delete files from R2
+    // Delete files from AWS S3
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
@@ -83,7 +83,7 @@ const deleteExecutionDocument = async (id) => {
     // Delete from database
     const result = await executionsModel.deleteExecutionDocument(id);
     
-    // Delete file from R2
+    // Delete file from AWS S3
     if (documentToDelete && documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }

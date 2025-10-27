@@ -1,5 +1,5 @@
 const clientsDealsModel = require('../models/clientsDealsModel');
-const { deleteDocumentFiles } = require('./cloudflareService');
+const { deleteDocumentFiles } = require('./awsS3Service');
 
 const getAllClientsDeals = async (filters) => {
   return await clientsDealsModel.getAllClientsDeals(filters);
@@ -63,7 +63,7 @@ const deleteClientDeal = async (id) => {
   // Delete from database (CASCADE will handle related records)
   const deleted = await clientsDealsModel.deleteClientDeal(id);
   
-  // Delete files from R2
+  // Delete files from AWS S3
   if (documents && documents.length > 0) {
     await deleteDocumentFiles(documents);
   }
@@ -79,7 +79,7 @@ const deleteDealDocument = async (documentId, dealId) => {
   // Delete from database
   const deleted = await clientsDealsModel.deleteDealDocument(documentId);
   
-  // Delete file from R2
+  // Delete file from AWS S3
   if (documentToDelete) {
     await deleteDocumentFiles([documentToDelete]);
   }

@@ -3,6 +3,9 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 
+// Import middlewares
+const { documentUrlMiddleware } = require("./middlewares/documentUrlMiddleware");
+
 // Import routes
 const authRoute = require("./routes/authRoute");
 const clientAuthRoute = require("./routes/clientAuthRoute");
@@ -72,8 +75,11 @@ app.use(cors({
   credentials: true 
 }));
 app.use(cookieParser('law-backend-cookie-secret-for-session-security-2024')); // COOKIE_SECRET
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increase limit for file uploads
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for file uploads
+
+// Apply document URL middleware globally to convert S3 keys to accessible URLs
+app.use(documentUrlMiddleware(['document_url', 'file_path', 'url', 'file_url']));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

@@ -2,8 +2,9 @@
 // Controller functions for wallet expenses
 
 const db = require('../config/db');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { deleteFileFromR2 } = require('../services/cloudflareService');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { deleteFileFromS3 } = require('../services/awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('../services/logsService');
 const path = require('path');
 
@@ -541,17 +542,16 @@ const uploadReceipts = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Expense not found' });
     }
 
-    // Configure R2 client
+    // Configure S3 client
     const s3Client = new S3Client({
-      region: 'auto',
-      endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+      region: process.env.AWS_REGION || 'us-east-1',
       credentials: {
-        accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
       },
     });
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     const folder = 'wallet-expense-receipts';
     const uploadedBy = req.user?.id || req.userId || null;
 
@@ -563,7 +563,7 @@ const uploadReceipts = async (req, res) => {
       const filename = `${timestamp}-${randomString}${fileExtension}`;
       const key = `${folder}/${filename}`;
 
-      // Upload to R2
+      // Upload to S3
       const putCommand = new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
@@ -573,10 +573,21 @@ const uploadReceipts = async (req, res) => {
 
       await s3Client.send(putCommand);
 
-      // Get file URL
-      const usePublicUrl = process.env.CLOUDFLARE_R2_USE_PUBLIC_URL === 'true';
-      const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-      const fileUrl = usePublicUrl && publicUrl ? `${publicUrl}/${key}` : key;
+      // Get file URL - use presigned URL for private buckets
+      const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+      const publicUrl = process.env.AWS_S3_PUBLIC_URL;
+      
+      let fileUrl;
+      if (usePublicUrl && publicUrl) {
+        fileUrl = `${publicUrl}/${key}`;
+      } else {
+        // Generate presigned URL valid for 7 days
+        const getCommand = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        });
+        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+      }
 
       // Save to database
       const [result] = await db.query(`
@@ -621,7 +632,43 @@ const getExpenseReceipts = async (req, res) => {
       ORDER BY r.uploaded_at DESC
     `, [id]);
     
-    res.json({ success: true, data: receipts });
+    // Generate presigned URLs for files if needed
+    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    
+    const receiptsWithUrls = await Promise.all(receipts.map(async (receipt) => {
+      let fileUrl = receipt.file_path;
+      
+      // If file_path doesn't start with http, it's a key - generate URL
+      if (!fileUrl.startsWith('http')) {
+        if (usePublicUrl && publicUrl) {
+          fileUrl = `${publicUrl}/${fileUrl}`;
+        } else {
+          // Generate presigned URL
+          const s3Client = new S3Client({
+            region: process.env.AWS_REGION || 'us-east-1',
+            credentials: {
+              accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            },
+          });
+          
+          const getCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: fileUrl,
+          });
+          fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+        }
+      }
+      
+      return {
+        ...receipt,
+        file_url: fileUrl // Add new field with accessible URL
+      };
+    }));
+    
+    res.json({ success: true, data: receiptsWithUrls });
   } catch (error) {
     console.error('Error fetching expense receipts:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch receipts' });
@@ -643,8 +690,8 @@ const deleteReceipt = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Receipt not found' });
     }
     
-    // Delete from R2
-    await deleteFileFromR2(receipt[0].file_path);
+    // Delete from S3
+    await deleteFileFromS3(receipt[0].file_path);
     
     // Delete from database
     await db.query('DELETE FROM wallet_expense_receipts WHERE id = ?', [receiptId]);

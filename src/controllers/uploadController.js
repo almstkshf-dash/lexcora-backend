@@ -3,13 +3,12 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const multer = require('multer');
 const path = require('path');
 
-// Configure Cloudflare R2 client
+// Configure AWS S3 client
 const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT, // e.g., https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
@@ -23,7 +22,7 @@ const upload = multer({
 });
 
 /**
- * Upload files to Cloudflare R2
+ * Upload files to AWS S3
  */
 const uploadFiles = async (req, res) => {
   try {
@@ -35,11 +34,11 @@ const uploadFiles = async (req, res) => {
     }
 
     const folder = req.body.folder || 'documents';
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     
-    // Use public URL if available, otherwise will generate presigned URLs
-    const usePublicUrl = process.env.CLOUDFLARE_R2_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+    // Use public URL if bucket is configured for public access
+    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
     const uploadPromises = req.files.map(async (file) => {
       // Generate unique filename
@@ -49,7 +48,7 @@ const uploadFiles = async (req, res) => {
       const filename = `${timestamp}-${randomString}${fileExtension}`;
       const key = `${folder}/${filename}`;
 
-      // Upload to R2 with public-read ACL if using public bucket
+      // Upload to S3
       const putCommand = new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
@@ -88,7 +87,7 @@ const uploadFiles = async (req, res) => {
       files: uploadedFiles,
     });
   } catch (error) {
-    console.error('Error uploading files to Cloudflare R2:', error);
+    console.error('Error uploading files to AWS S3:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to upload files',
@@ -110,11 +109,11 @@ const getPresignedUrl = async (req, res) => {
       });
     }
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     
     // Check if using public URL
-    const usePublicUrl = process.env.CLOUDFLARE_R2_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
     
     let fileUrl;
     
@@ -143,7 +142,7 @@ const getPresignedUrl = async (req, res) => {
 };
 
 /**
- * Delete a single file from Cloudflare R2
+ * Delete a single file from AWS S3
  */
 const deleteFile = async (req, res) => {
   try {
@@ -156,7 +155,7 @@ const deleteFile = async (req, res) => {
       });
     }
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     
     const deleteCommand = new DeleteObjectCommand({
       Bucket: bucketName,
@@ -170,7 +169,7 @@ const deleteFile = async (req, res) => {
       message: 'File deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting file from Cloudflare R2:', error);
+    console.error('Error deleting file from AWS S3:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete file',
@@ -179,7 +178,7 @@ const deleteFile = async (req, res) => {
 };
 
 /**
- * Delete multiple files from Cloudflare R2
+ * Delete multiple files from AWS S3
  */
 const deleteFiles = async (req, res) => {
   try {
@@ -192,7 +191,7 @@ const deleteFiles = async (req, res) => {
       });
     }
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
     
     // Delete multiple files in batch (more efficient)
     const deleteCommand = new DeleteObjectsCommand({
@@ -212,7 +211,7 @@ const deleteFiles = async (req, res) => {
       errors: result.Errors || [],
     });
   } catch (error) {
-    console.error('Error deleting files from Cloudflare R2:', error);
+    console.error('Error deleting files from AWS S3:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete files',
