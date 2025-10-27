@@ -174,32 +174,44 @@ const searchParties = async (req, res) => {
 
 const checkDuplicateParty = async (req, res) => {
   try {
-    const { name, phone, excludeId } = req.query;
+    const { name, phone, email, excludeId } = req.query;
     
-    if (!name && !phone) {
+    console.log('Check Duplicate Request:', { name, phone, email, excludeId });
+    
+    if (!name && !phone && !email) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Name or phone is required' 
+        error: 'At least one of name, phone, or email is required' 
       });
     }
     
-    const duplicate = await partiesService.checkDuplicateParty(name, phone, excludeId);
+    const duplicates = await partiesService.checkDuplicateParty(name, phone, email, excludeId);
     
-    if (duplicate) {
+    console.log('Duplicates Found:', duplicates);
+    
+    // Check if any duplicates were found
+    const hasDuplicate = duplicates.name || duplicates.phone || duplicates.email;
+    
+    if (hasDuplicate) {
       return res.json({
         success: true,
         isDuplicate: true,
-        duplicate: {
-          id: duplicate.id,
-          name: duplicate.name,
-          phone: duplicate.phone
+        duplicates: {
+          name: duplicates.name ? { id: duplicates.name.id, name: duplicates.name.name } : null,
+          phone: duplicates.phone ? { id: duplicates.phone.id, phone: duplicates.phone.phone } : null,
+          email: duplicates.email ? { id: duplicates.email.id, email: duplicates.email.email } : null
         }
       });
     }
     
     res.json({
       success: true,
-      isDuplicate: false
+      isDuplicate: false,
+      duplicates: {
+        name: null,
+        phone: null,
+        email: null
+      }
     });
   } catch (error) {
     console.error('Error checking duplicate party:', error);

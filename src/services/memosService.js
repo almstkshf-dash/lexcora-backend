@@ -8,17 +8,20 @@ const addMemo = async (userId,memoData) => {
   const files = memoData.files || [];
 
   try {
-    if (files.length > 0) {
-          for (const file of files) {
-            await memosModel.addMemoDocument(memoData.case_id, file.document_name, file.document_url, userId);
-          }
-      
-    }
     if (!memoData.case_id || !memoData.title || !memoData.submission_date) {
       throw new Error('Missing required fields: case_id, title, and submission_date are required');
     }
 
+    // First, create the memo to get the memoId
     const memoId = await memosModel.addMemo(userId, memoData);
+    
+    // Then, add documents using the correct memoId
+    if (files.length > 0) {
+      for (const file of files) {
+        await memosModel.addMemoDocument(memoId, file.document_name, file.document_url, userId);
+      }
+    }
+    
     return memoId;
   } catch (error) {
     console.error('Error in addMemo service:', error);
