@@ -91,18 +91,21 @@ const getRequestsByEmployeeId = async (req, res) => {
 // Create new employee request
 const createEmployeeRequest = async (req, res) => {
   try {
-    const { employee_id, date, type, from_date, to_date } = req.body;
+    const { employee_id, type, from_date, to_date } = req.body;
     
     // Validate required fields
-    if (!employee_id || !date || !type) {
+    if (!employee_id || !type) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: employee_id, date, type"
+        message: "Missing required fields: employee_id, type"
       });
     }
     
     // Get created_by from authenticated user
     const created_by = req.user.id;
+    
+    // Generate current date automatically
+    const date = new Date().toISOString().split('T')[0];
     
     // Create employee request
     const requestData = {

@@ -16,6 +16,12 @@ router.get('/no-decision', sessionsController.getSessionsWithNoDecision);
 // Get sessions with decision
 router.get('/with-decision', sessionsController.getSessionsWithDecision);
 
+// Get appeals and challenges (استئنافات وطعون)
+router.get('/appeals-challenges', sessionsController.getAppealsAndChallenges);
+
+// Get judicial decisions (الأحكام القضائية الصادرة)
+router.get('/judicial-decisions', sessionsController.getJudicialDecisions);
+
 // Get sessions in this week
 router.get('/this-week', sessionsController.getSessionsInThisWeek);
 

@@ -5,9 +5,33 @@ const sessionsModel = require('../models/sessionsModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
-const getAllSessions = async () => {
+const getAllSessions = async (filters = {}) => {
   try {
-    return await sessionsModel.getAllSessions();
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const offset = (page - 1) * limit;
+    
+    // Build filter object
+    const queryFilters = {
+      branchId: filters.branchId,
+      fromDate: filters.fromDate,
+      toDate: filters.toDate,
+      fileNumber: filters.fileNumber,
+      caseNumber: filters.caseNumber
+    };
+    
+    // Get total count for pagination
+    const total = await sessionsModel.getSessionsCount(queryFilters);
+    
+    // Get paginated sessions
+    const sessions = await sessionsModel.getAllSessions(queryFilters, limit, offset);
+    
+    return {
+      sessions,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    };
   } catch (error) {
     console.error('Error in getAllSessions:', error);
     throw new Error('Error fetching sessions');
@@ -29,6 +53,11 @@ const createSession = async (session, createdBy = null) => {
     const files = session.files || [];
     for (const file of files) {
       await sessionsModel.addSessionDocument(sessionId, file.document_name, file.document_url);
+    }
+    
+    // If has_ruling is true and legal_period_id is provided, insert into appeals_cassations
+    if (session.has_ruling && session.legal_period_id) {
+      await sessionsModel.addAppealCassation(sessionId, session.legal_period_id);
     }
     
     // Log session creation
@@ -55,6 +84,23 @@ const updateSession = async (id, session, updatedBy = null) => {
     const files = session.files || [];
     for (const file of files) {
       await sessionsModel.addSessionDocument(id, file.document_name, file.document_url);
+    }
+    
+    // Handle appeals_cassations based on has_ruling
+    if (session.has_ruling && session.legal_period_id) {
+      // Check if appeals_cassation record exists
+      const existingAppeal = await sessionsModel.getAppealCassationBySessionId(id);
+      
+      if (existingAppeal) {
+        // Update existing record
+        await sessionsModel.updateAppealCassation(id, session.legal_period_id);
+      } else {
+        // Create new record
+        await sessionsModel.addAppealCassation(id, session.legal_period_id);
+      }
+    } else if (!session.has_ruling) {
+      // If has_ruling is false, delete any existing appeals_cassation record
+      await sessionsModel.deleteAppealCassationBySessionId(id);
     }
     
     // Log session update
@@ -172,6 +218,48 @@ const getSessionsByCase = async (caseId) => {
   }
 };
 
+const getAppealsAndChallenges = async () => {
+  try {
+    return await sessionsModel.getAppealsAndChallenges();
+  } catch (error) {
+    console.error('Error in getAppealsAndChallenges:', error);
+    throw new Error('Error fetching appeals and challenges');
+  }
+};
+
+const getJudicialDecisions = async (filters = {}) => {
+  try {
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const offset = (page - 1) * limit;
+    
+    // Build filter object
+    const queryFilters = {
+      branchId: filters.branchId,
+      fromDate: filters.fromDate,
+      toDate: filters.toDate,
+      fileNumber: filters.fileNumber,
+      caseNumber: filters.caseNumber
+    };
+    
+    // Get total count for pagination
+    const total = await sessionsModel.getJudicialDecisionsCount(queryFilters);
+    
+    // Get paginated judicial decisions
+    const sessions = await sessionsModel.getJudicialDecisions(queryFilters, limit, offset);
+    
+    return {
+      sessions,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    };
+  } catch (error) {
+    console.error('Error in getJudicialDecisions:', error);
+    throw new Error('Error fetching judicial decisions');
+  }
+};
+
 module.exports = {
   getAllSessions,
   getSessionById,
@@ -183,5 +271,7 @@ module.exports = {
   getSessionsInThisWeek,
   getSessionDocuments,
   deleteSessionDocument,
-  getSessionsByCase
+  getSessionsByCase,
+  getAppealsAndChallenges,
+  getJudicialDecisions
 };

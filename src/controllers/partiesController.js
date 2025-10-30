@@ -176,8 +176,7 @@ const checkDuplicateParty = async (req, res) => {
   try {
     const { name, phone, email, excludeId } = req.query;
     
-    console.log('Check Duplicate Request:', { name, phone, email, excludeId });
-    
+    // Validate that at least one field is provided for checking
     if (!name && !phone && !email) {
       return res.status(400).json({ 
         success: false, 
@@ -185,32 +184,23 @@ const checkDuplicateParty = async (req, res) => {
       });
     }
     
-    const duplicates = await partiesService.checkDuplicateParty(name, phone, email, excludeId);
-    
-    console.log('Duplicates Found:', duplicates);
+    const duplicates = await partiesService.checkDuplicateParty(
+      name || null, 
+      phone || null, 
+      email || null, 
+      excludeId || null
+    );
     
     // Check if any duplicates were found
-    const hasDuplicate = duplicates.name || duplicates.phone || duplicates.email;
-    
-    if (hasDuplicate) {
-      return res.json({
-        success: true,
-        isDuplicate: true,
-        duplicates: {
-          name: duplicates.name ? { id: duplicates.name.id, name: duplicates.name.name } : null,
-          phone: duplicates.phone ? { id: duplicates.phone.id, phone: duplicates.phone.phone } : null,
-          email: duplicates.email ? { id: duplicates.email.id, email: duplicates.email.email } : null
-        }
-      });
-    }
+    const hasDuplicate = !!(duplicates.name || duplicates.phone || duplicates.email);
     
     res.json({
       success: true,
-      isDuplicate: false,
+      isDuplicate: hasDuplicate,
       duplicates: {
-        name: null,
-        phone: null,
-        email: null
+        name: duplicates.name ? { id: duplicates.name.id, name: duplicates.name.name } : null,
+        phone: duplicates.phone ? { id: duplicates.phone.id, phone: duplicates.phone.phone } : null,
+        email: duplicates.email ? { id: duplicates.email.id, email: duplicates.email.email } : null
       }
     });
   } catch (error) {

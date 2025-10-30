@@ -331,72 +331,63 @@ const getPartyByUsername = async (username) => {
 };
 
 const checkDuplicateParty = async (name, phone, email = null, excludeId = null) => {
-  console.log('Model checkDuplicateParty called with:', { name, phone, email, excludeId });
-  
   const duplicates = {
     name: null,
     phone: null,
     email: null
   };
   
-  // Check for duplicate name
-  if (name) {
-    let nameQuery = 'SELECT id, name FROM parties WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))';
-    const nameParams = [name];
-    
-    if (excludeId) {
-      nameQuery += ' AND id != ?';
-      nameParams.push(excludeId);
-    }
-    
-    nameQuery += ' LIMIT 1';
-    console.log('Name query:', nameQuery, 'Params:', nameParams);
+  // Check for duplicate name (only if name is provided and not empty)
+  if (name && name.trim()) {
+    const nameQuery = `
+      SELECT id, name 
+      FROM parties 
+      WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+      ${excludeId ? 'AND id != ?' : ''}
+      LIMIT 1
+    `;
+    const nameParams = excludeId ? [name, excludeId] : [name];
     const [nameRows] = await db.query(nameQuery, nameParams);
-    console.log('Name query result:', nameRows);
-    if (nameRows[0]) {
+    
+    if (nameRows && nameRows[0]) {
       duplicates.name = nameRows[0];
     }
   }
   
-  // Check for duplicate phone
-  if (phone) {
-    let phoneQuery = 'SELECT id, phone FROM parties WHERE phone = ?';
-    const phoneParams = [phone];
-    
-    if (excludeId) {
-      phoneQuery += ' AND id != ?';
-      phoneParams.push(excludeId);
-    }
-    
-    phoneQuery += ' LIMIT 1';
-    console.log('Phone query:', phoneQuery, 'Params:', phoneParams);
+  // Check for duplicate phone (only if phone is provided and not empty)
+  if (phone && phone.trim()) {
+    const phoneQuery = `
+      SELECT id, phone 
+      FROM parties 
+      WHERE TRIM(phone) = TRIM(?)
+      ${excludeId ? 'AND id != ?' : ''}
+      LIMIT 1
+    `;
+    const phoneParams = excludeId ? [phone, excludeId] : [phone];
     const [phoneRows] = await db.query(phoneQuery, phoneParams);
-    console.log('Phone query result:', phoneRows);
-    if (phoneRows[0]) {
+    
+    if (phoneRows && phoneRows[0]) {
       duplicates.phone = phoneRows[0];
     }
   }
   
-  // Check for duplicate email (optional)
-  if (email) {
-    let emailQuery = 'SELECT id, email FROM parties WHERE email = ?';
-    const emailParams = [email];
-    
-    if (excludeId) {
-      emailQuery += ' AND id != ?';
-      emailParams.push(excludeId);
-    }
-    
-    emailQuery += ' LIMIT 1';
-    console.log('Email query:', emailQuery, 'Params:', emailParams);
+  // Check for duplicate email (only if email is provided and not empty)
+  if (email && email.trim()) {
+    const emailQuery = `
+      SELECT id, email 
+      FROM parties 
+      WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))
+      ${excludeId ? 'AND id != ?' : ''}
+      LIMIT 1
+    `;
+    const emailParams = excludeId ? [email, excludeId] : [email];
     const [emailRows] = await db.query(emailQuery, emailParams);
-    console.log('Email query result:', emailRows);
-    if (emailRows[0]) {
+    
+    if (emailRows && emailRows[0]) {
       duplicates.email = emailRows[0];
     }
   }
   
-  console.log('Final duplicates result:', duplicates);
   return duplicates;
 };
 

@@ -1,5 +1,6 @@
 const eventsModel = require('../models/eventsModel');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
+const { notifyUser } = require('../models/appNotificationsModel');
 
 /**
  * Get all events with attendance information
@@ -34,6 +35,30 @@ const createEvent = async (eventData, createdBy = null) => {
       eventData.title || 'حدث جديد',
       eventId
     );
+  }
+  
+  // Send notifications to all attendees
+  if (eventData.employee_ids && eventData.employee_ids.length > 0) {
+    const eventDate = new Date(eventData.event_date).toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const notificationPromises = eventData.employee_ids.map(employeeId => 
+      notifyUser({
+        recipientId: employeeId,
+        title: 'دعوة إلى حدث جديد',
+        message: `تمت دعوتك للحضور إلى حدث "${eventData.title}" في تاريخ ${eventDate}${eventData.place ? ` في ${eventData.place}` : ''}`,
+        type: 'info',
+        relatedType: 'event',
+        createdBy: createdBy
+      }).catch(err => {
+        console.error(`Failed to send notification to employee ${employeeId}:`, err);
+      })
+    );
+    
+    await Promise.all(notificationPromises);
   }
   
   return eventId;

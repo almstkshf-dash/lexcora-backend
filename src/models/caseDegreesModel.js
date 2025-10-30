@@ -46,13 +46,23 @@ const createCaseDegree = async (caseDegreeData) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status,
+      opponent_status
     } = caseDegreeData;
 
     const [result] = await db.execute(
-      `INSERT INTO case_degrees (case_id, degree, case_number, year, referral_date, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      [case_id, degree, case_number, year, referral_date]
+      `INSERT INTO case_degrees (case_id, degree, case_number, year, referral_date, client_status, opponent_status, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        case_id, 
+        degree, 
+        case_number, 
+        year, 
+        referral_date,
+        client_status || null,
+        opponent_status || null
+      ]
     );
 
     return { id: result.insertId, ...caseDegreeData };
@@ -69,14 +79,25 @@ const updateCaseDegree = async (id, caseDegreeData) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status,
+      opponent_status
     } = caseDegreeData;
 
     const [result] = await db.execute(
       `UPDATE case_degrees 
-       SET case_id = ?, degree = ?, case_number = ?, year = ?, referral_date = ?, updated_at = NOW()
+       SET case_id = ?, degree = ?, case_number = ?, year = ?, referral_date = ?, client_status = ?, opponent_status = ?, updated_at = NOW()
        WHERE id = ?`,
-      [case_id, degree, case_number, year, referral_date, id]
+      [
+        case_id, 
+        degree, 
+        case_number, 
+        year, 
+        referral_date, 
+        client_status || null, 
+        opponent_status || null, 
+        id
+      ]
     );
 
     return result.affectedRows > 0;

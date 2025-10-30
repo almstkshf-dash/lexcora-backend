@@ -543,6 +543,38 @@ const addCasePartyDocument = async (req, res) => {
   }
 };
 
+const updateCaseAdditionalNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { additional_note } = req.body;
+    const updatedBy = req.user ? req.user.id : null;
+
+    if (additional_note === undefined) {
+      return res.status(400).json({ error: 'additional_note is required' });
+    }
+
+    const success = await casesService.updateCaseAdditionalNote(id, additional_note, updatedBy);
+    
+    if (success) {
+      res.json({ 
+        success: true,
+        message: 'Additional note updated successfully' 
+      });
+    } else {
+      res.status(404).json({ 
+        success: false,
+        error: 'Case not found' 
+      });
+    }
+  } catch (error) {
+    console.error('Error updating case additional note:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to update additional note' 
+    });
+  }
+};
+
 module.exports = {
   addCase,
   getAllCases,
@@ -568,4 +600,5 @@ module.exports = {
   getCasePartyDocuments,
   deleteCasePartyDocument,
   addCasePartyDocument,
+  updateCaseAdditionalNote
 };

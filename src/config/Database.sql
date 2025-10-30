@@ -218,6 +218,7 @@ CREATE TABLE `cases` (
   `is_important` tinyint(1) DEFAULT '0',
   `is_secret` tinyint(1) DEFAULT '0',
   `is_archived` tinyint(1) DEFAULT '0',
+  `is_pending` tinyint(1) DEFAULT '0',
   `status` enum('active','inactive','pending') NOT NULL DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -227,11 +228,11 @@ CREATE TABLE `cases` (
 -- إرجاع أو استيراد بيانات الجدول `cases`
 --
 
-INSERT INTO `cases` (`id`, `file_number`, `case_number`, `police_station_id`, `public_prosecution_id`, `court_id`, `lawyer_id`, `secretary_id`, `case_classification_id`, `counter_case_id`, `case_type_id`, `legal_advisor_id`, `legal_researcher_id`, `fees`, `counterclaim_id`, `start_date`, `additional_note`, `topic`, `branch_id`, `is_important`, `is_secret`, `is_archived`, `status`, `created_at`) VALUES
-(139, '20251005192707', 'test123', 3, 3, 2, 80, 92, 2, NULL, 2, 102, 94, '120000.00', NULL, '2025-10-05', 'test', 'مشاجرة', 2, 0, 0, 0, 'active', '2025-10-05 15:27:07'),
-(142, '20251013104136', '8765432', 3, 2, 1, 80, 92, 2, NULL, 2, 95, 94, '1000.00', NULL, '2025-09-29', '', 'شيك مستحق ', 3, 0, 0, 0, 'active', '2025-10-13 10:41:36'),
-(143, '20251015154917', '2025', 25, 2, 1, 103, 104, 2, NULL, 1, 102, 105, '12000.00', NULL, '2025-10-15', 'اعداد لائحة دعوى ', 'مطالبة مدنية 50 ألف', 3, 0, 0, 0, 'active', '2025-10-15 15:49:17'),
-(144, '20251017063654', '370553', 3, 1, 1, 103, 104, 2, NULL, 1, 102, 105, '12000.00', NULL, '2025-10-20', '', 'مطالبة مالية ', 3, 0, 0, 0, 'active', '2025-10-17 06:36:54');
+INSERT INTO `cases` (`id`, `file_number`, `case_number`, `police_station_id`, `public_prosecution_id`, `court_id`, `lawyer_id`, `secretary_id`, `case_classification_id`, `counter_case_id`, `case_type_id`, `legal_advisor_id`, `legal_researcher_id`, `fees`, `counterclaim_id`, `start_date`, `additional_note`, `topic`, `branch_id`, `is_important`, `is_secret`, `is_archived`, `is_pending`, `status`, `created_at`) VALUES
+(139, '20251005192707', 'test123', 3, 3, 2, 80, 92, 2, NULL, 2, 102, 94, '120000.00', NULL, '2025-10-05', 'test', 'مشاجرة', 2, 0, 0, 0, 0, 'active', '2025-10-05 15:27:07'),
+(142, '20251013104136', '8765432', 3, 2, 1, 80, 92, 2, NULL, 2, 95, 94, '1000.00', NULL, '2025-09-29', '', 'شيك مستحق ', 3, 0, 0, 0, 0, 'active', '2025-10-13 10:41:36'),
+(143, '20251015154917', '2025', 25, 2, 1, 103, 104, 2, NULL, 1, 102, 105, '12000.00', NULL, '2025-10-15', 'اعداد لائحة دعوى ', 'مطالبة مدنية 50 ألف', 3, 0, 0, 0, 0, 'active', '2025-10-15 15:49:17'),
+(144, '20251017063654', '370553', 3, 1, 1, 103, 104, 2, NULL, 1, 102, 105, '12000.00', NULL, '2025-10-20', '', 'مطالبة مالية ', 3, 0, 0, 0, 0, 'active', '2025-10-17 06:36:54');
 
 -- --------------------------------------------------------
 
@@ -268,6 +269,8 @@ CREATE TABLE `case_degrees` (
   `case_number` varchar(20) NOT NULL,
   `year` varchar(13) NOT NULL,
   `referral_date` datetime NOT NULL,
+  `client_status` varchar(255) DEFAULT NULL,
+  `opponent_status` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1950,6 +1953,8 @@ CREATE TABLE `sessions` (
   `is_judgment_reserved` tinyint(1) NOT NULL DEFAULT '0',
   `is_judgment_deferred` tinyint(1) NOT NULL DEFAULT '0',
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `ruling` text DEFAULT NULL,
+  `has_ruling` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1976,6 +1981,42 @@ CREATE TABLE `session_documents` (
   `document_name` varchar(1055) NOT NULL,
   `uploaded_by` int DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- بنية الجدول `legal_periods`
+--
+
+CREATE TABLE `legal_periods` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `objection_days` int DEFAULT NULL,
+  `appeal_days` int DEFAULT NULL,
+  `cassation_days` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_by` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- بنية الجدول `appeals_cassations`
+--
+
+CREATE TABLE `appeals_cassations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `session_id` int NOT NULL,
+  `legal_period_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `session_id` (`session_id`),
+  KEY `legal_period_id` (`legal_period_id`),
+  CONSTRAINT `appeals_cassations_ibfk_1` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `appeals_cassations_ibfk_2` FOREIGN KEY (`legal_period_id`) REFERENCES `legal_periods` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------

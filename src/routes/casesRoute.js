@@ -75,6 +75,9 @@ router.delete('/:id/party-documents/:partyId/:documentId', authenticateToken, ca
 // Update a case by ID
 router.put('/:id', authenticateToken, casesController.updateCase);
 
+// Update case additional note only
+router.patch('/:id/additional-note', authenticateToken, casesController.updateCaseAdditionalNote);
+
 // Delete a case by ID
 router.delete('/:id', authenticateToken, casesController.deleteCase);
 

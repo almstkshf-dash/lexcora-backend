@@ -3,7 +3,7 @@ const { sendNotification, sendSystemNotification } = require("../utils/notificat
 
 const addClientRequest = async (clientRequestData, createdBy) => {
   try {
-    const result = await clientRequestsModel.addClientRequest(clientRequestData);
+    const result = await clientRequestsModel.addClientRequest(clientRequestData, createdBy);
     
     // Send notification about new client request
     try {

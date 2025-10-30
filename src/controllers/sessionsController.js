@@ -3,9 +3,28 @@ const sessionsService = require('../services/sessionsService');
 
 const getAllSessions = async (req, res) => {
   try {
-    const sessions = await sessionsService.getAllSessions();
-    res.json({ success: true, data: sessions });
+    const { page, limit, branchId, fromDate, toDate, fileNumber, caseNumber } = req.query;
+    
+    const filters = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 50,
+      branchId,
+      fromDate,
+      toDate,
+      fileNumber,
+      caseNumber
+    };
+    
+    const result = await sessionsService.getAllSessions(filters);
+    res.json({
+      success: true,
+      data: result.sessions,
+      total: result.total,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage
+    });
   } catch (error) {
+    console.error('Error fetching sessions:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch sessions' });
   }
 };
@@ -111,6 +130,43 @@ const deleteSessionDocument = async (req, res) => {
   }
 };
 
+const getAppealsAndChallenges = async (req, res) => {
+  try {
+    const sessions = await sessionsService.getAppealsAndChallenges();
+    res.json({ success: true, data: sessions });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch appeals and challenges' });
+  }
+};
+
+const getJudicialDecisions = async (req, res) => {
+  try {
+    const { page, limit, branchId, fromDate, toDate, fileNumber, caseNumber } = req.query;
+    
+    const filters = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 50,
+      branchId,
+      fromDate,
+      toDate,
+      fileNumber,
+      caseNumber
+    };
+    
+    const result = await sessionsService.getJudicialDecisions(filters);
+    res.json({
+      success: true,
+      data: result.sessions,
+      total: result.total,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage
+    });
+  } catch (error) {
+    console.error('Error fetching judicial decisions:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch judicial decisions' });
+  }
+};
+
 module.exports = {
   getAllSessions,
   getSessionById,
@@ -121,5 +177,7 @@ module.exports = {
   getSessionsWithDecision,
   getSessionsInThisWeek,
   getSessionDocuments,
-  deleteSessionDocument
+  deleteSessionDocument,
+  getAppealsAndChallenges,
+  getJudicialDecisions
 };

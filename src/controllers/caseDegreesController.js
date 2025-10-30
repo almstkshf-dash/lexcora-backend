@@ -60,7 +60,9 @@ const createCaseDegree = async (req, res) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status,
+      opponent_status
     } = req.body;
 
     if (!case_id || !degree) {
@@ -75,7 +77,9 @@ const createCaseDegree = async (req, res) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status: client_status || null,
+      opponent_status: opponent_status || null
     };
 
     const newCaseDegree = await caseDegreesService.createCaseDegree(caseDegreeData);
@@ -101,7 +105,9 @@ const updateCaseDegree = async (req, res) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status,
+      opponent_status
     } = req.body;
 
     const caseDegreeData = {
@@ -109,7 +115,9 @@ const updateCaseDegree = async (req, res) => {
       degree,
       case_number,
       year,
-      referral_date
+      referral_date,
+      client_status: client_status || null,
+      opponent_status: opponent_status || null
     };
 
     const updated = await caseDegreesService.updateCaseDegree(req.params.id, caseDegreeData);

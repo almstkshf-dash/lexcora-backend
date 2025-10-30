@@ -19,14 +19,17 @@ const addCase = async (caseData) => {
       legal_researcher_id,
       counter_case_id = null,
       fees = 0,
-      start_date = null,
       additional_note = null,
       topic = null,
       branch_id,
       isImportant = 0,
       is_secret = 0,
       is_archived = 0,
+      is_pending = 0,
     } = caseData;
+
+    // Automatically set start_date to current date if not provided
+    const start_date = new Date().toISOString().split('T')[0];
 
     const [result] = await db.query(
       `
@@ -35,8 +38,8 @@ const addCase = async (caseData) => {
         public_prosecution_id, court_id, lawyer_id, secretary_id, 
         case_classification_id, case_type_id, legal_advisor_id, 
         legal_researcher_id, counter_case_id, fees, start_date, 
-        additional_note, topic, branch_id, is_important, is_secret, is_archived
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        additional_note, topic, branch_id, is_important, is_secret, is_archived, is_pending
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         fileNumber,
@@ -59,6 +62,7 @@ const addCase = async (caseData) => {
         isImportant,
         is_secret,
         is_archived,
+        is_pending,
       ]
     );
 
@@ -140,6 +144,7 @@ const getAllCases = async (filters = {}) => {
         c.is_important,
         c.is_secret,
         c.is_archived,
+        c.is_pending,
         courts.court_ar,
         courts.court_en,
         ct.name_ar as case_type_ar,
@@ -158,7 +163,7 @@ const getAllCases = async (filters = {}) => {
       LEFT JOIN case_parties cp ON c.id = cp.case_id
       LEFT JOIN parties p ON cp.party_id = p.id
       ${whereClause}
-      GROUP BY c.id, c.case_number, c.file_number, c.topic, c.start_date, c.is_important, c.is_secret, c.is_archived, courts.court_ar, courts.court_en, ct.name_ar, ct.name_en, cc.name_ar, cc.name_en
+      GROUP BY c.id, c.case_number, c.file_number, c.topic, c.start_date, c.is_important, c.is_secret, c.is_archived, c.is_pending, courts.court_ar, courts.court_en, ct.name_ar, ct.name_en, cc.name_ar, cc.name_en
       ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?
     `;
@@ -462,13 +467,13 @@ const updateCase = async (id, caseData) => {
       legal_researcher_id,
       counter_case_id = null,
       fees = 0,
-      start_date = null,
       additional_note = null,
       topic = null,
       branch_id,
       isImportant = 0,
       is_secret = 0,
       is_archived = 0,
+      is_pending = 0,
     } = caseData;
 
     const [result] = await db.query(
@@ -478,8 +483,8 @@ const updateCase = async (id, caseData) => {
         public_prosecution_id = ?, court_id = ?, lawyer_id = ?, 
         secretary_id = ?, case_classification_id = ?, case_type_id = ?, 
         legal_advisor_id = ?, legal_researcher_id = ?, counter_case_id = ?, 
-        fees = ?, start_date = ?, additional_note = ?, topic = ?, branch_id = ?, 
-        is_important = ?, is_secret = ?, is_archived = ?
+        fees = ?, additional_note = ?, topic = ?, branch_id = ?, 
+        is_important = ?, is_secret = ?, is_archived = ?, is_pending = ?
       WHERE id = ?
       `,
       [
@@ -495,13 +500,13 @@ const updateCase = async (id, caseData) => {
         legal_researcher_id,
         counter_case_id,
         fees,
-        start_date,
         additional_note,
         topic,
         branch_id,
         isImportant,
         is_secret,
         is_archived,
+        is_pending,
         id,
       ]
     );
@@ -916,6 +921,17 @@ const getCasePartyDocumentById=async (documentId) => {
   }
 };
 
+const updateCaseAdditionalNote = async (caseId, additionalNote) => {
+  try {
+    const query = `UPDATE cases SET additional_note = ? WHERE id = ?`;
+    const [result] = await db.query(query, [additionalNote, caseId]);
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error("Error updating case additional note:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   addCase,
   getAllCases,
@@ -949,5 +965,6 @@ module.exports = {
   getCaseIdFromFileNumber,
   clearRelatedCases,
   addRelatedCase,
-  getCasePartyDocumentById
+  getCasePartyDocumentById,
+  updateCaseAdditionalNote
 };

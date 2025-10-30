@@ -515,6 +515,28 @@ const addCasePartyDocument = async (caseId, partyId, documentData) => {
   }
 };
 
+const updateCaseAdditionalNote = async (caseId, additionalNote, updatedBy = null) => {
+  try {
+    const success = await casesModel.updateCaseAdditionalNote(caseId, additionalNote);
+    
+    // Log the update
+    if (success && updatedBy) {
+      const caseInfo = await casesModel.getCaseById(caseId);
+      await logUpdate(
+        updatedBy, 
+        'قضية - ملاحظة إضافية', 
+        caseInfo?.file_number || caseInfo?.case_number || `القضية ${caseId}`,
+        caseId
+      );
+    }
+    
+    return success;
+  } catch (error) {
+    console.error('Error in updateCaseAdditionalNote service:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   addCase,
   getAllCases,
@@ -539,4 +561,5 @@ module.exports = {
   getCasePartyDocuments,
   deleteCasePartyDocument,
   addCasePartyDocument,
+  updateCaseAdditionalNote
 };
