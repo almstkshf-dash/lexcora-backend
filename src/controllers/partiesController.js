@@ -151,7 +151,7 @@ const getPotentialClients = async (req, res) => {
 
 const searchParties = async (req, res) => {
   try {
-    const { query } = req.query;
+    const { query, partyType } = req.query;
     
     // Validate minimum query length
     if (!query || query.trim().length < 3) {
@@ -161,7 +161,7 @@ const searchParties = async (req, res) => {
       });
     }
     
-    const result = await partiesService.searchParties(query.trim());
+    const result = await partiesService.searchParties(query.trim(), partyType);
     res.json({
       success: true,
       data: result

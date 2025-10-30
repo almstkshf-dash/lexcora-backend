@@ -92,8 +92,8 @@ const getPotentialClients = async (filters) => {
   return await partiesModel.getPotentialClients(filters);
 };
 
-const searchParties = async (query) => {
-  return await partiesModel.searchParties(query);
+const searchParties = async (query, partyType = null) => {
+  return await partiesModel.searchParties(query, partyType);
 };
 
 const checkDuplicateParty = async (name, phone, email = null, excludeId = null) => {

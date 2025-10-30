@@ -12,18 +12,18 @@ const getAllParties = async (filters = {}) => {
   const conditions = [];
   
   // Always filter to show only 'client' and 'opponent' types
-  conditions.push("(party_type = 'client' OR party_type = 'opponent')");
+  conditions.push("(p.party_type = 'client' OR p.party_type = 'opponent')");
   
   if (name) {
-    conditions.push('name LIKE ?');
+    conditions.push('p.name LIKE ?');
     params.push(`%${name}%`);
   }
   if (phone) {
-    conditions.push('phone LIKE ?');
+    conditions.push('p.phone LIKE ?');
     params.push(`%${phone}%`);
   }
   if (party_type) {
-    conditions.push('party_type = ?');
+    conditions.push('p.party_type = ?');
     params.push(party_type);
   }
 
@@ -32,16 +32,18 @@ const getAllParties = async (filters = {}) => {
   }
 
   // Get total count for pagination
-  const countQuery = `SELECT COUNT(*) as total FROM parties ${whereClause}`;
+  const countQuery = `SELECT COUNT(*) as total FROM parties p ${whereClause}`;
   const [countResult] = await db.query(countQuery, params);
   const total = countResult[0].total;
 
   // Get paginated data
   const dataQuery = `
-    SELECT id, name, phone, category, party_type, status, nationality, e_id, address, consultation_type, passport, source, created_by, is_vip 
-    FROM parties 
+    SELECT p.id, p.name, p.phone, p.category, p.party_type, p.status, p.nationality, p.e_id, p.address, p.consultation_type, p.passport, p.source, p.created_by, p.is_vip,
+           b.name_ar AS branch_name
+    FROM parties p
+    LEFT JOIN branches b ON p.branch_id = b.id
     ${whereClause} 
-    ORDER BY id DESC 
+    ORDER BY p.id DESC 
     LIMIT ? OFFSET ?
   `;
   const [rows] = await db.query(dataQuery, [...params, limit, offset]);
@@ -301,15 +303,25 @@ const getPotentialClients = async (filters = {}) => {
   };
 };
 
-const searchParties = async (query) => {
+const searchParties = async (query, partyType = null) => {
   // Search by name or phone, return maximum 10 results
   const searchPattern = `%${query}%`;
+  
+  // Build the party_type filter
+  let partyTypeCondition = "(party_type = 'client' OR party_type = 'opponent')";
+  const params = [searchPattern, searchPattern];
+  
+  if (partyType === 'client') {
+    partyTypeCondition = "party_type = 'client'";
+  } else if (partyType === 'opponent') {
+    partyTypeCondition = "party_type = 'opponent'";
+  }
   
   const [rows] = await db.query(`
     SELECT id, name, phone, category, party_type, status, nationality, e_id, address, is_vip 
     FROM parties 
     WHERE (name LIKE ? OR phone LIKE ?) 
-      AND (party_type = 'client' OR party_type = 'opponent')
+      AND ${partyTypeCondition}
     ORDER BY 
       CASE 
         WHEN name LIKE ? THEN 1
@@ -318,7 +330,7 @@ const searchParties = async (query) => {
       END,
       name ASC
     LIMIT 10
-  `, [searchPattern, searchPattern, `${query}%`, `${query}%`]);
+  `, [...params, `${query}%`, `${query}%`]);
   
   return rows;
 };
