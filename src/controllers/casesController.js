@@ -2,6 +2,7 @@
 // Controller functions for cases
 
 const casesService = require('../services/casesService');
+const { sendSystemNotification } = require('../utils/notificationHelper');
 
 const addCase = async (req, res) => {
   try {
@@ -121,8 +122,35 @@ const updateCase = async (req, res) => {
 const deleteCase = async (req, res) => {
   try {
     const deletedBy = req.user ? req.user.id : null;
+    const deletedByName = req.user ? (req.user.employeeName || req.user.username || 'مستخدم غير معروف') : 'مستخدم غير معروف';
+    
+    // Get case details before deletion for notification
+    let caseNumber = 'غير معروف';
+    try {
+      const caseDetails = await casesService.getCaseById(req.params.id);
+      if (caseDetails) {
+        caseNumber = caseDetails.case_number || caseDetails.file_number || 'غير معروف';
+      }
+    } catch (error) {
+      console.error('Error getting case details for notification:', error);
+    }
+    
     const success = await casesService.deleteCase(req.params.id, deletedBy);
     if (success) {
+      // Send notification to all employees about case deletion
+      try {
+        await sendSystemNotification({
+          title: 'تم حذف ملف',
+          message: `${deletedByName} قام بحذف الملف: ${caseNumber}`,
+          type: 'warning',
+          relatedType: 'none',
+          createdBy: deletedBy
+        });
+      } catch (notifError) {
+        console.error('Error sending case deletion notification:', notifError);
+        // Don't fail the deletion if notification fails
+      }
+      
       res.json({ message: 'Case deleted successfully' });
     } else {
       res.status(404).json({ error: 'Case not found' });

@@ -2,7 +2,9 @@
 // Service functions for memos
 
 const memosModel = require('../models/memosModel');
+const casesModel = require('../models/casesModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
+const { sendMemoNotifications } = require('../utils/notificationHelper');
 
 const addMemo = async (userId,memoData) => {
   const files = memoData.files || [];
@@ -20,6 +22,23 @@ const addMemo = async (userId,memoData) => {
       for (const file of files) {
         await memosModel.addMemoDocument(memoId, file.document_name, file.document_url, userId);
       }
+    }
+    
+    // Get case data to send notifications to assigned employees
+    try {
+      const caseData = await casesModel.getCaseById(memoData.case_id);
+      if (caseData) {
+        await sendMemoNotifications({
+          caseData,
+          createdBy: userId,
+          memoTitle: memoData.title,
+          action: 'created',
+          caseNumber: caseData.case_number || caseData.file_number || `Case #${memoData.case_id}`
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending memo notifications:', notificationError);
+      // Don't fail memo creation if notification fails
     }
     
     return memoId;
@@ -92,6 +111,24 @@ const updateMemo = async (userId, id, memoData) => {
     }
 
     const result = await memosModel.updateMemo( id, memoData);
+    
+    // Get case data to send notifications to assigned employees
+    try {
+      const caseData = await casesModel.getCaseById(existingMemo.case_id);
+      if (caseData) {
+        await sendMemoNotifications({
+          caseData,
+          createdBy: userId,
+          memoTitle: memoData.title || existingMemo.title,
+          action: 'updated',
+          caseNumber: caseData.case_number || caseData.file_number || `Case #${existingMemo.case_id}`
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending memo update notifications:', notificationError);
+      // Don't fail memo update if notification fails
+    }
+    
     return result;
   } catch (error) {
     console.error('Error in updateMemo service:', error);

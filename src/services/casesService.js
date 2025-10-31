@@ -7,6 +7,7 @@ const courtsModel = require('../models/courtsModel');
 const employeeModel = require('../models/employeeModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
+const { sendCaseNotification } = require('../utils/notificationHelper');
 
 const addCase = async (caseData, createdBy = null) => {
   // return null;
@@ -36,6 +37,22 @@ const addCase = async (caseData, createdBy = null) => {
         caseData.file_number || caseData.case_number || 'قضية جديدة', 
         caseId
       );
+    }
+    
+    // Send system notification for case creation
+    if (createdBy) {
+      try {
+        const employeeData = await employeeModel.getEmployeeById(createdBy);
+        const employeeName = employeeData?.name || 'Employee';
+        await sendCaseNotification({
+          action: 'created',
+          caseNumber: caseData.file_number || caseData.case_number || `Case #${caseId}`,
+          employeeName,
+          createdBy
+        });
+      } catch (notificationError) {
+        console.error('Error sending case creation notification:', notificationError);
+      }
     }
     
     return caseId;
@@ -78,6 +95,20 @@ const updateCase = async (id, caseData, updatedBy = null) => {
         currentCase.file_number || currentCase.case_number || 'قضية', 
         id
       );
+      
+      // Send system notification for case update
+      try {
+        const employeeData = await employeeModel.getEmployeeById(updatedBy);
+        const employeeName = employeeData?.name || 'Employee';
+        await sendCaseNotification({
+          action: 'updated',
+          caseNumber: currentCase.file_number || currentCase.case_number || `Case #${id}`,
+          employeeName,
+          createdBy: updatedBy
+        });
+      } catch (notificationError) {
+        console.error('Error sending case update notification:', notificationError);
+      }
     }
   }
   

@@ -743,7 +743,7 @@ const deleteCaseParty = async (caseId, partyId) => {
 const searchCasesForAddNewCasePage = async (searchTerm) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, case_number, file_number ,topic FROM cases WHERE  file_number LIKE ? LIMIT 10",
+      "SELECT id, case_number, file_number ,topic FROM cases WHERE  file_number LIKE ? or case_number LIKE ? LIMIT 10",
       [`%${searchTerm}%`, `%${searchTerm}%`]
     );
     return rows;

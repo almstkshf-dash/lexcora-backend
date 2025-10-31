@@ -66,6 +66,22 @@ const updateTask = async (id, task, updatedBy) => {
     
     // Send notifications for important changes
     if (currentTask) {
+      // Always notify the task creator when task is updated (unless they are the one updating it)
+      if (currentTask.assigned_by && currentTask.assigned_by !== updatedBy) {
+        try {
+          await sendNotification({
+            recipientId: currentTask.assigned_by,
+            title: "Task Updated",
+            message: `Task "${currentTask.title}" has been updated`,
+            type: "info",
+            relatedType: "task",
+            createdBy: updatedBy
+          });
+        } catch (notifyError) {
+          console.error('Error sending task update notification:', notifyError);
+        }
+      }
+      
       // Notify if task status changed to completed
       if (currentTask.status !== 'completed' && task.status === 'completed') {
         try {

@@ -179,9 +179,89 @@ const sendTemplatedNotification = async (templateName, templateParams, notificat
   });
 };
 
+/**
+ * Send system notification for case creation/update
+ * @param {Object} params - Parameters
+ * @param {string} params.action - 'created' or 'updated'
+ * @param {string} params.caseNumber - Case number for reference
+ * @param {string} params.employeeName - Name of the employee who created/updated the case
+ * @param {number} params.createdBy - ID of the user creating/updating the case
+ * @returns {Promise<void>}
+ */
+async function sendCaseNotification({ action = 'created', caseNumber, employeeName, createdBy }) {
+  const actionText = action === 'created' ? 'تم إنشاء ملف جديد' : 'تم تحديث الملف';
+  const messageText = action === 'created' 
+    ? `${employeeName} أضاف ملف جديد: ${caseNumber}`
+    : `${employeeName} قام بتحديث الملف: ${caseNumber}`;
+
+  try {
+    await sendSystemNotification({
+      title: actionText,
+      message: messageText,
+      type: 'info',
+      relatedType: 'none',
+      createdBy
+    });
+    // console.log(`Case ${action} notification sent to all employees`);
+  } catch (error) {
+    console.error('Error sending case notification:', error);
+    // Don't throw error to avoid failing the case creation/update
+  }
+}
+
 module.exports = {
   sendNotification,
   sendSystemNotification,
   sendTemplatedNotification,
-  NotificationTemplates
+  NotificationTemplates,
+  sendMemoNotifications,
+  sendCaseNotification
 };
+
+/**
+ * Send notifications for memo creation/update to case employees and creator
+ * @param {Object} params - Parameters
+ * @param {Object} params.caseData - Case data with employee IDs
+ * @param {number} params.createdBy - ID of the memo creator
+ * @param {string} params.memoTitle - Title of the memo
+ * @param {string} params.action - 'created' or 'updated'
+ * @param {string} params.caseNumber - Case number for reference
+ * @returns {Promise<void>}
+ */
+async function sendMemoNotifications({ caseData, createdBy, memoTitle, action = 'created', caseNumber }) {
+  const employeeIds = [
+    caseData.secretary_id,
+    caseData.legal_advisor_id,
+    caseData.lawyer_id,
+    caseData.legal_researcher_id,
+    createdBy
+  ].filter(id => id != null); // Remove null/undefined values
+
+  // Remove duplicates (in case the creator is also assigned to the case)
+  const uniqueEmployeeIds = [...new Set(employeeIds)];
+
+  const actionText = action === 'created' ? 'تم إنشاء مذكرة جديدة' : 'تم تحديث المذكرة';
+  const messageText = action === 'created' 
+    ? `تم إنشاء مذكرة جديدة "${memoTitle}" للملف ${caseNumber}`
+    : `تم تحديث المذكرة "${memoTitle}" للملف ${caseNumber}`;
+
+  // Send notification to each unique employee
+  const notificationPromises = uniqueEmployeeIds.map(employeeId => 
+    sendNotification({
+      recipientId: employeeId,
+      title: actionText,
+      message: messageText,
+      type: 'info',
+      relatedType: 'memo',
+      createdBy
+    })
+  );
+
+  try {
+    await Promise.all(notificationPromises);
+    console.log(`Memo notifications sent to ${uniqueEmployeeIds.length} employees`);
+  } catch (error) {
+    console.error('Error sending memo notifications:', error);
+    // Don't throw error to avoid failing the memo creation/update
+  }
+}
