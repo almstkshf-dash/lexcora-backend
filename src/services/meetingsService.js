@@ -1,6 +1,7 @@
 const meetingsModel = require('../models/meetingsModel');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { deleteDocumentFiles } = require('./awsS3Service');
+const { notifyUser } = require('../models/appNotificationsModel');
 
 const getAllMeetings = async (filters) => {
   return await meetingsModel.getAllMeetings(filters);
@@ -27,11 +28,46 @@ const createMeeting = async (data, createdBy = null) => {
     );
   }
   
+  // Send notifications to all employee attendees
+  if (data.employee_ids && data.employee_ids.length > 0) {
+    const meetingDate = data.date ? new Date(data.date).toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : '';
+    
+    const timeInfo = data.start_time ? ` في تمام الساعة ${data.start_time}` : '';
+    const locationInfo = data.address ? ` في ${data.address}` : '';
+    
+    const notificationPromises = data.employee_ids.map(employeeId => 
+      notifyUser({
+        recipientId: employeeId,
+        title: 'دعوة إلى اجتماع جديد',
+        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}`,
+        type: 'info',
+        relatedType: 'meeting',
+        createdBy: createdBy
+      }).catch(err => {
+        console.error(`Failed to send notification to employee ${employeeId}:`, err);
+      })
+    );
+    
+    await Promise.all(notificationPromises);
+  }
+  
   return meetingId;
 };
 
 const updateMeeting = async (id, data, updatedBy = null) => {
   const currentMeeting = await meetingsModel.getMeetingById(id);
+  
+  // Get current attendee IDs (employees only, not clients)
+  const currentAttendeeIds = currentMeeting?.attendees?.map(a => a.employee_id) || [];
+  const newAttendeeIds = data.employee_ids || [];
+  
+  // Find newly added employees (present in new list but not in current list)
+  const addedEmployeeIds = newAttendeeIds.filter(id => !currentAttendeeIds.includes(id));
+  
   const result = await meetingsModel.updateMeeting(id, data);
   
   // Log meeting update
@@ -42,6 +78,33 @@ const updateMeeting = async (id, data, updatedBy = null) => {
       currentMeeting.title || currentMeeting.subject || 'اجتماع',
       id
     );
+  }
+  
+  // Send notifications to newly added employees
+  if (addedEmployeeIds.length > 0) {
+    const meetingDate = data.date ? new Date(data.date).toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : '';
+    
+    const timeInfo = data.start_time ? ` في تمام الساعة ${data.start_time}` : '';
+    const locationInfo = data.address ? ` في ${data.address}` : '';
+    
+    const notificationPromises = addedEmployeeIds.map(employeeId => 
+      notifyUser({
+        recipientId: employeeId,
+        title: 'دعوة إلى اجتماع',
+        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}`,
+        type: 'info',
+        relatedType: 'meeting',
+        createdBy: updatedBy
+      }).catch(err => {
+        console.error(`Failed to send notification to employee ${employeeId}:`, err);
+      })
+    );
+    
+    await Promise.all(notificationPromises);
   }
   
   return result;

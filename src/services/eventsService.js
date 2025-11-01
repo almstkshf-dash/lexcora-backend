@@ -69,6 +69,14 @@ const createEvent = async (eventData, createdBy = null) => {
  */
 const updateEvent = async (id, eventData, updatedBy = null) => {
   const currentEvent = await eventsModel.getEventById(id);
+  
+  // Get current attendee IDs
+  const currentAttendeeIds = currentEvent?.attendees?.map(a => a.employee_id) || [];
+  const newAttendeeIds = eventData.employee_ids || [];
+  
+  // Find newly added employees (present in new list but not in current list)
+  const addedEmployeeIds = newAttendeeIds.filter(id => !currentAttendeeIds.includes(id));
+  
   const result = await eventsModel.updateEvent(id, eventData);
   
   // Log event update
@@ -79,6 +87,30 @@ const updateEvent = async (id, eventData, updatedBy = null) => {
       currentEvent.title || 'حدث',
       id
     );
+  }
+  
+  // Send notifications to newly added employees
+  if (addedEmployeeIds.length > 0) {
+    const eventDate = new Date(eventData.event_date).toLocaleDateString('ar-SA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const notificationPromises = addedEmployeeIds.map(employeeId => 
+      notifyUser({
+        recipientId: employeeId,
+        title: 'دعوة إلى حدث',
+        message: `تمت دعوتك للحضور إلى حدث "${eventData.title}" في تاريخ ${eventDate}${eventData.place ? ` في ${eventData.place}` : ''}`,
+        type: 'info',
+        relatedType: 'event',
+        createdBy: updatedBy
+      }).catch(err => {
+        console.error(`Failed to send notification to employee ${employeeId}:`, err);
+      })
+    );
+    
+    await Promise.all(notificationPromises);
   }
   
   return result;

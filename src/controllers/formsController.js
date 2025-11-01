@@ -1,5 +1,5 @@
 const formsModel = require("../models/formsModel");
-const { deleteFileFromS3 } = require("../services/awsS3Service");
+const { deleteFileFromS3, generatePresignedUrl } = require("../services/awsS3Service");
 
 // Get all forms
 const getForms = async (req, res) => {
@@ -196,7 +196,7 @@ const getFormTypes = async (req, res) => {
   }
 };
 
-// Download form (proxy to actual file)
+// Download form - returns signed URL
 const downloadForm = async (req, res) => {
   try {
     const { id } = req.params;
@@ -209,11 +209,27 @@ const downloadForm = async (req, res) => {
       });
     }
     
-    // For now, just redirect to the document URL
-    // In a production environment, you might want to serve the file through your backend
-    // for security and access control
-    res.redirect(form.document_url);
+    // Generate a signed URL for secure access to the S3 file
+    // Set expiration to 1 hour (3600 seconds)
+    const signedUrl = await generatePresignedUrl(form.document_url, 3600);
+    
+    if (!signedUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate download URL"
+      });
+    }
+    
+    // Return the signed URL so frontend can open it directly
+    res.json({
+      success: true,
+      data: {
+        url: signedUrl,
+        document_for: form.document_for
+      }
+    });
   } catch (err) {
+    console.error('Error in downloadForm:', err);
     res.status(500).json({ 
       success: false,
       message: err.message 
