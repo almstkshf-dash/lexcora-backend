@@ -43,17 +43,20 @@ const createInvoice = async (req, res) => {
       invoice_number,
       amount,
       client_id,
-      referred_by_employee_id,
+      branch_id,
       bank_account_id,
       status,
-      items
+      vat,
+      currency,
+      items,
+      attachments
     } = req.body;
     
     // Validate required fields
-    if (!invoice_date || !bank_account_id) {
+    if (!invoice_date) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invoice date and bank account are required' 
+        error: 'Invoice date is required' 
       });
     }
 
@@ -81,10 +84,13 @@ const createInvoice = async (req, res) => {
       invoice_number,
       amount,
       client_id: client_id || null,
-      referred_by_employee_id: referred_by_employee_id || null,
-      bank_account_id,
-      status: status || 'draft',
+      branch_id: branch_id || null,
+      bank_account_id: bank_account_id || null,
+      status: status || 'pending',
+      vat: vat || 0,
+      currency: currency || 'AED',
       items,
+      attachments: attachments || [],
       created_by 
     }, created_by);
     
@@ -105,10 +111,13 @@ const updateInvoice = async (req, res) => {
       invoice_date,
       amount,
       client_id,
-      referred_by_employee_id,
+      branch_id,
       bank_account_id,
       status,
-      items
+      vat,
+      currency,
+      items,
+      attachments
     } = req.body;
     
     // Get updated_by from authenticated user
@@ -118,10 +127,13 @@ const updateInvoice = async (req, res) => {
       invoice_date,
       amount,
       client_id,
-      referred_by_employee_id,
+      branch_id,
       bank_account_id,
       status,
-      items
+      vat,
+      currency,
+      items,
+      attachments
     }, updated_by);
     
     if (!result.success) {
@@ -153,11 +165,27 @@ const deleteInvoice = async (req, res) => {
   }
 };
 
+const deleteInvoiceAttachment = async (req, res) => {
+  try {
+    const result = await invoicesService.deleteInvoiceAttachment(req.params.attachmentId);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error deleting invoice attachment:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete attachment' });
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
   getInvoicesByClientId,
   createInvoice,
   updateInvoice,
-  deleteInvoice
+  deleteInvoice,
+  deleteInvoiceAttachment
 };

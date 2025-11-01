@@ -19,8 +19,8 @@ const getInvoicesByClientId = async (clientId) => {
 };
 
 const createInvoice = async (invoiceData, createdBy = null) => {
-  const { items, ...invoice } = invoiceData;
-  const result = await invoicesModel.createInvoice(invoice, items || []);
+  const { items, attachments, ...invoice } = invoiceData;
+  const result = await invoicesModel.createInvoice(invoice, items || [], attachments || []);
   
   // Log invoice creation
   if (createdBy && result.success) {
@@ -36,8 +36,8 @@ const createInvoice = async (invoiceData, createdBy = null) => {
 };
 
 const updateInvoice = async (id, invoiceData, updatedBy = null) => {
-  const { items, ...invoice } = invoiceData;
-  const result = await invoicesModel.updateInvoice(id, invoice, items);
+  const { items, attachments, ...invoice } = invoiceData;
+  const result = await invoicesModel.updateInvoice(id, invoice, items, attachments);
   
   // Log invoice update
   if (updatedBy && result.success) {
@@ -81,11 +81,16 @@ const deleteInvoice = async (id, deletedBy = null) => {
   return result;
 };
 
+const deleteInvoiceAttachment = async (attachmentId) => {
+  return await invoicesModel.deleteInvoiceAttachment(attachmentId);
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
   getInvoicesByClientId,
   createInvoice,
   updateInvoice,
-  deleteInvoice
+  deleteInvoice,
+  deleteInvoiceAttachment
 };

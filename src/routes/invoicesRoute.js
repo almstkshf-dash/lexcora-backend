@@ -25,4 +25,7 @@ router.put('/:id', authenticateToken, idValidator, invoicesController.updateInvo
 // Delete invoice
 router.delete('/:id', authenticateToken, idValidator, invoicesController.deleteInvoice);
 
+// Delete invoice attachment
+router.delete('/attachments/:attachmentId', authenticateToken, invoicesController.deleteInvoiceAttachment);
+
 module.exports = router;

@@ -9,20 +9,21 @@ const getAllInvoices = async () => {
         i.invoice_number,
         i.amount,
         i.client_id,
-        i.referred_by_employee_id,
+        i.branch_id,
         i.bank_account_id,
         i.status,
+        i.vat,
+        i.currency,
         i.created_at,
         i.created_by,
         c.name as client_name,
-        e.name as referred_by_employee_name,
-        ba.account_number,
-        ba.account_name,
+        b.name_ar as branch_name,
         ba.bank_name,
+        ba.account_number,
         creator.name as created_by_name
       FROM invoices i
       LEFT JOIN parties c ON i.client_id = c.id
-      LEFT JOIN employees e ON i.referred_by_employee_id = e.id
+      LEFT JOIN branches b ON i.branch_id = b.id
       LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
       LEFT JOIN employees creator ON i.created_by = creator.id
       ORDER BY i.created_at DESC
@@ -49,20 +50,21 @@ const getInvoiceById = async (id) => {
       i.invoice_number,
       i.amount,
       i.client_id,
-      i.referred_by_employee_id,
+      i.branch_id,
       i.bank_account_id,
       i.status,
+      i.vat,
+      i.currency,
       i.created_at,
       i.created_by,
       c.name as client_name,
-      e.name as referred_by_employee_name,
-      ba.account_number,
-      ba.account_name,
+      b.name_ar as branch_name,
       ba.bank_name,
+      ba.account_number,
       creator.name as created_by_name
     FROM invoices i
     LEFT JOIN parties c ON i.client_id = c.id
-    LEFT JOIN employees e ON i.referred_by_employee_id = e.id
+    LEFT JOIN branches b ON i.branch_id = b.id
     LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
     LEFT JOIN employees creator ON i.created_by = creator.id
     WHERE i.id = ?
@@ -80,16 +82,25 @@ const getInvoiceById = async (id) => {
     ORDER BY id
   `, [id]);
 
+  // Get invoice attachments
+  const [attachments] = await db.query(`
+    SELECT id, attachment_url, attachment_name, created_by, created_at
+    FROM invoice_attachments
+    WHERE invoice_id = ?
+    ORDER BY created_at DESC
+  `, [id]);
+
   return { 
     success: true, 
     data: {
       ...rows[0],
-      items: items
+      items: items,
+      attachments: attachments
     }
   };
 };
 
-const createInvoice = async (invoice, items) => {
+const createInvoice = async (invoice, items, attachments = []) => {
   const connection = await db.getConnection();
   
   try {
@@ -111,19 +122,23 @@ const createInvoice = async (invoice, items) => {
         invoice_number, 
         amount,
         client_id, 
-        referred_by_employee_id, 
-        bank_account_id, 
-        status, 
+        branch_id,
+        bank_account_id,
+        status,
+        vat,
+        currency,
         created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoice.invoice_date,
         invoiceNumber,
         invoice.amount,
         invoice.client_id || null,
-        invoice.referred_by_employee_id || null,
-        invoice.bank_account_id,
-        invoice.status || 'draft',
+        invoice.branch_id || null,
+        invoice.bank_account_id || null,
+        invoice.status || 'pending',
+        invoice.vat || 0,
+        invoice.currency || 'AED',
         invoice.created_by
       ]
     );
@@ -144,8 +159,23 @@ const createInvoice = async (invoice, items) => {
       );
     }
 
-    // If invoice is paid, update bank account balance
-    if (invoice.status === 'paid') {
+    // Insert invoice attachments
+    if (attachments && attachments.length > 0) {
+      const attachmentValues = attachments.map(att => [
+        invoiceId,
+        att.attachment_url,
+        att.attachment_name,
+        invoice.created_by
+      ]);
+
+      await connection.query(
+        `INSERT INTO invoice_attachments (invoice_id, attachment_url, attachment_name, created_by) VALUES ?`,
+        [attachmentValues]
+      );
+    }
+
+    // Update bank account balance when invoice is created
+    if (invoice.bank_account_id && invoice.amount) {
       await connection.query(
         `UPDATE bank_accounts 
          SET current_balance = current_balance + ? 
@@ -170,15 +200,15 @@ const createInvoice = async (invoice, items) => {
   }
 };
 
-const updateInvoice = async (id, invoice, items) => {
+const updateInvoice = async (id, invoice, items, attachments = null) => {
   const connection = await db.getConnection();
   
   try {
     await connection.beginTransaction();
 
-    // Get current invoice to check status change
+    // Get current invoice
     const [currentInvoice] = await connection.query(
-      'SELECT status, amount, bank_account_id FROM invoices WHERE id = ?',
+      'SELECT * FROM invoices WHERE id = ?',
       [id]
     );
 
@@ -186,10 +216,6 @@ const updateInvoice = async (id, invoice, items) => {
       await connection.rollback();
       return { success: false, message: 'Invoice not found' };
     }
-
-    const oldStatus = currentInvoice[0].status;
-    const oldAmount = parseFloat(currentInvoice[0].amount);
-    const oldBankAccountId = currentInvoice[0].bank_account_id;
 
     // Update invoice
     const updateFields = [];
@@ -207,17 +233,51 @@ const updateInvoice = async (id, invoice, items) => {
       updateFields.push('client_id = ?');
       updateValues.push(invoice.client_id || null);
     }
-    if (invoice.referred_by_employee_id !== undefined) {
-      updateFields.push('referred_by_employee_id = ?');
-      updateValues.push(invoice.referred_by_employee_id || null);
+    if (invoice.branch_id !== undefined) {
+      updateFields.push('branch_id = ?');
+      updateValues.push(invoice.branch_id || null);
     }
     if (invoice.bank_account_id !== undefined) {
       updateFields.push('bank_account_id = ?');
-      updateValues.push(invoice.bank_account_id);
+      updateValues.push(invoice.bank_account_id || null);
     }
     if (invoice.status !== undefined) {
       updateFields.push('status = ?');
       updateValues.push(invoice.status);
+    }
+    if (invoice.vat !== undefined) {
+      updateFields.push('vat = ?');
+      updateValues.push(invoice.vat);
+    }
+    if (invoice.currency !== undefined) {
+      updateFields.push('currency = ?');
+      updateValues.push(invoice.currency);
+    }
+
+    // Handle bank account balance changes
+    const oldBankAccountId = currentInvoice[0].bank_account_id;
+    const oldAmount = parseFloat(currentInvoice[0].amount);
+    const newBankAccountId = invoice.bank_account_id !== undefined ? invoice.bank_account_id : oldBankAccountId;
+    const newAmount = invoice.amount !== undefined ? parseFloat(invoice.amount) : oldAmount;
+
+    // Reverse old bank account balance if it exists
+    if (oldBankAccountId) {
+      await connection.query(
+        `UPDATE bank_accounts 
+         SET current_balance = current_balance - ? 
+         WHERE id = ?`,
+        [oldAmount, oldBankAccountId]
+      );
+    }
+
+    // Add to new bank account balance if it exists
+    if (newBankAccountId) {
+      await connection.query(
+        `UPDATE bank_accounts 
+         SET current_balance = current_balance + ? 
+         WHERE id = ?`,
+        [newAmount, newBankAccountId]
+      );
     }
 
     if (updateFields.length > 0) {
@@ -248,48 +308,23 @@ const updateInvoice = async (id, invoice, items) => {
       }
     }
 
-    // Handle bank account balance changes
-    const newStatus = invoice.status !== undefined ? invoice.status : oldStatus;
-    const newAmount = invoice.amount !== undefined ? parseFloat(invoice.amount) : oldAmount;
-    const newBankAccountId = invoice.bank_account_id !== undefined ? invoice.bank_account_id : oldBankAccountId;
+    // Update attachments if provided
+    if (attachments !== null && Array.isArray(attachments)) {
+      // Delete old attachments
+      await connection.query('DELETE FROM invoice_attachments WHERE invoice_id = ?', [id]);
 
-    // If status changed from paid to something else, reverse the payment
-    if (oldStatus === 'paid' && newStatus !== 'paid') {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance - ? 
-         WHERE id = ?`,
-        [oldAmount, oldBankAccountId]
-      );
-    }
+      // Insert new attachments
+      if (attachments.length > 0) {
+        const attachmentValues = attachments.map(att => [
+          id,
+          att.attachment_url,
+          att.attachment_name,
+          att.created_by || invoice.created_by || currentInvoice[0].created_by
+        ]);
 
-    // If status changed to paid, add the payment
-    if (oldStatus !== 'paid' && newStatus === 'paid') {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance + ? 
-         WHERE id = ?`,
-        [newAmount, newBankAccountId]
-      );
-    }
-
-    // If already paid but amount or bank account changed
-    if (oldStatus === 'paid' && newStatus === 'paid') {
-      if (oldAmount !== newAmount || oldBankAccountId !== newBankAccountId) {
-        // Reverse old payment
         await connection.query(
-          `UPDATE bank_accounts 
-           SET current_balance = current_balance - ? 
-           WHERE id = ?`,
-          [oldAmount, oldBankAccountId]
-        );
-        
-        // Apply new payment
-        await connection.query(
-          `UPDATE bank_accounts 
-           SET current_balance = current_balance + ? 
-           WHERE id = ?`,
-          [newAmount, newBankAccountId]
+          `INSERT INTO invoice_attachments (invoice_id, attachment_url, attachment_name, created_by) VALUES ?`,
+          [attachmentValues]
         );
       }
     }
@@ -317,7 +352,7 @@ const deleteInvoice = async (id) => {
 
     // Get invoice info before deleting
     const [invoice] = await connection.query(
-      'SELECT status, amount, bank_account_id FROM invoices WHERE id = ?',
+      'SELECT * FROM invoices WHERE id = ?',
       [id]
     );
 
@@ -326,8 +361,8 @@ const deleteInvoice = async (id) => {
       return { success: false, message: 'Invoice not found' };
     }
 
-    // If invoice was paid, reverse the payment
-    if (invoice[0].status === 'paid') {
+    // Reverse bank account balance if invoice had a bank account
+    if (invoice[0].bank_account_id && invoice[0].amount) {
       await connection.query(
         `UPDATE bank_accounts 
          SET current_balance = current_balance - ? 
@@ -335,6 +370,9 @@ const deleteInvoice = async (id) => {
         [invoice[0].amount, invoice[0].bank_account_id]
       );
     }
+
+    // Delete invoice attachments (CASCADE should handle this, but being explicit)
+    await connection.query('DELETE FROM invoice_attachments WHERE invoice_id = ?', [id]);
 
     // Delete invoice items (CASCADE should handle this, but being explicit)
     await connection.query('DELETE FROM invoice_items WHERE invoice_id = ?', [id]);
@@ -365,20 +403,21 @@ const getInvoicesByClientId = async (clientId) => {
       i.invoice_number,
       i.amount,
       i.client_id,
-      i.referred_by_employee_id,
+      i.branch_id,
       i.bank_account_id,
       i.status,
+      i.vat,
+      i.currency,
       i.created_at,
       i.created_by,
       c.name as client_name,
-      e.name as referred_by_employee_name,
-      ba.account_number,
-      ba.account_name,
+      b.name_ar as branch_name,
       ba.bank_name,
+      ba.account_number,
       creator.name as created_by_name
     FROM invoices i
     LEFT JOIN parties c ON i.client_id = c.id
-    LEFT JOIN employees e ON i.referred_by_employee_id = e.id
+    LEFT JOIN branches b ON i.branch_id = b.id
     LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
     LEFT JOIN employees creator ON i.created_by = creator.id
     WHERE i.client_id = ?
@@ -388,11 +427,45 @@ const getInvoicesByClientId = async (clientId) => {
   return { success: true, data: rows };
 };
 
+const deleteInvoiceAttachment = async (attachmentId) => {
+  const connection = await db.getConnection();
+  
+  try {
+    // Get attachment details before deletion (for file system cleanup if needed)
+    const [attachments] = await connection.query(
+      'SELECT * FROM invoice_attachments WHERE id = ?',
+      [attachmentId]
+    );
+    
+    if (attachments.length === 0) {
+      return { success: false, error: 'Attachment not found' };
+    }
+    
+    // Delete attachment from database
+    await connection.query('DELETE FROM invoice_attachments WHERE id = ?', [attachmentId]);
+    
+    // TODO: Delete physical file from filesystem if needed
+    // const fs = require('fs');
+    // const filePath = attachments[0].file_path;
+    // if (fs.existsSync(filePath)) {
+    //   fs.unlinkSync(filePath);
+    // }
+    
+    return { success: true, message: 'Attachment deleted successfully' };
+  } catch (error) {
+    console.error('Error deleting invoice attachment:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
   createInvoice,
   updateInvoice,
   deleteInvoice,
-  getInvoicesByClientId
+  getInvoicesByClientId,
+  deleteInvoiceAttachment
 };
