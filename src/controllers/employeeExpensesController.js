@@ -110,10 +110,42 @@ const deleteExpense = async (req, res) => {
   }
 };
 
+// Add attachments to expense
+const addAttachments = async (req, res) => {
+  try {
+    const { attachments } = req.body;
+    const result = await employeeExpensesService.addAttachments(req.params.id, attachments);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    res.json(result);
+  } catch (error) {
+    console.error('Error adding attachments:', error);
+    res.status(500).json({ success: false, error: 'Failed to add attachments' });
+  }
+};
+
+// Delete attachment
+const deleteAttachment = async (req, res) => {
+  try {
+    const { expenseId, attachmentId } = req.params;
+    const result = await employeeExpensesService.deleteAttachment(expenseId, attachmentId);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (error) {
+    console.error('Error deleting attachment:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete attachment' });
+  }
+};
+
 module.exports = {
   getAllExpenses,
   getExpenseById,
   createExpense,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  addAttachments,
+  deleteAttachment
 };

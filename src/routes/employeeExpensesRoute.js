@@ -18,4 +18,10 @@ router.put('/:id', authenticateToken, employeeExpensesController.updateExpense);
 // Delete expense
 router.delete('/:id', authenticateToken, employeeExpensesController.deleteExpense);
 
+// Add attachments to expense
+router.post('/:id/attachments', authenticateToken, employeeExpensesController.addAttachments);
+
+// Delete attachment
+router.delete('/:expenseId/attachments/:attachmentId', authenticateToken, employeeExpensesController.deleteAttachment);
+
 module.exports = router;

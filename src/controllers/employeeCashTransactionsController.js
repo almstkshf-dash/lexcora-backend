@@ -3,12 +3,15 @@ const employeeCashTransactionsService = require('../services/employeeCashTransac
 // Get all employee cash transactions
 const getAllTransactions = async (req, res) => {
   try {
-    const { page, limit, search, type } = req.query;
+    const { page, limit, search, type, employee_id, date_from, date_to } = req.query;
     const filters = {
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 10,
       search: search || '',
-      type: type || ''
+      type: type || '',
+      employee_id: employee_id || '',
+      date_from: date_from || '',
+      date_to: date_to || ''
     };
     const result = await employeeCashTransactionsService.getAllTransactions(filters);
     res.json(result);
@@ -83,18 +86,33 @@ const updateTransaction = async (req, res) => {
       amount, 
       type, 
       description,
-      bank_account_id,
-      attachments 
+      attachments,
+      status
     } = req.body;
     
     const updated_by = req.user?.id || req.userId || null;
     
+    // If only status is being updated (approve/reject)
+    if (status && !employee_id && !amount && !type) {
+      const result = await employeeCashTransactionsService.updateTransactionStatus(req.params.id, { 
+        status,
+        updated_by 
+      });
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      return res.json(result);
+    }
+    
+    // Otherwise, full transaction update
+    // Note: bank_account_id is NOT included in updates - it's set only at creation
     const result = await employeeCashTransactionsService.updateTransaction(req.params.id, { 
       employee_id, 
       amount, 
       type, 
       description,
-      bank_account_id,
       attachments,
       updated_by 
     });

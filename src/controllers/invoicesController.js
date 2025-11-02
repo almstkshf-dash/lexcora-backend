@@ -180,12 +180,136 @@ const deleteInvoiceAttachment = async (req, res) => {
   }
 };
 
+const updateInvoiceStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    // Validate status
+    if (!status) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Status is required' 
+      });
+    }
+    
+    // Get updated_by from authenticated user
+    const updated_by = req.user?.id || req.userId || null;
+    
+    const result = await invoicesService.updateInvoice(req.params.id, { status }, updated_by);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error updating invoice status:', error);
+    res.status(500).json({ success: false, error: 'Failed to update invoice status' });
+  }
+};
+
+const uploadInvoiceAttachments = async (req, res) => {
+  try {
+    const invoiceId = req.params.id;
+    
+    // Check if files were uploaded
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No files provided',
+      });
+    }
+    
+    // Import required modules for S3 upload
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const path = require('path');
+
+    // Configure AWS S3 client
+    const s3Client = new S3Client({
+      region: process.env.AWS_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+
+    const folder = 'invoices-attachments';
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
+    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
+
+    // Upload all files to S3 first
+    const uploadPromises = req.files.map(async (file) => {
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileExtension = path.extname(file.originalname);
+      const filename = `${timestamp}-${randomString}${fileExtension}`;
+      const key = `${folder}/${filename}`;
+
+      // Upload to S3
+      const putCommand = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      });
+
+      await s3Client.send(putCommand);
+
+      // Generate file URL - prioritize public URL
+      let fileUrl;
+      if (usePublicUrl && publicUrl) {
+        // Use public URL - no expiration
+        fileUrl = `${publicUrl}/${key}`;
+      } else {
+        // Use pre-signed URL - expires in 7 days
+        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+        const { GetObjectCommand } = require('@aws-sdk/client-s3');
+        const getCommand = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        });
+        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+        console.log('Generated pre-signed URL:', fileUrl.substring(0, 100) + '...'); // Log first 100 chars
+      }
+
+      console.log(`File uploaded: ${file.originalname}, URL length: ${fileUrl.length}`);
+
+      return {
+        attachment_name: file.originalname,
+        attachment_url: fileUrl,
+        s3_key: key, // Store key for future URL regeneration if needed
+      };
+    });
+
+    const attachments = await Promise.all(uploadPromises);
+    
+    // Get created_by from authenticated user
+    const created_by = req.user?.id || req.userId || null;
+    
+    // Save attachments to database
+    const result = await invoicesService.uploadInvoiceAttachments(invoiceId, attachments, created_by);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error uploading invoice attachments:', error);
+    res.status(500).json({ success: false, error: 'Failed to upload attachments' });
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
   getInvoicesByClientId,
   createInvoice,
   updateInvoice,
+  updateInvoiceStatus,
   deleteInvoice,
-  deleteInvoiceAttachment
+  deleteInvoiceAttachment,
+  uploadInvoiceAttachments
 };

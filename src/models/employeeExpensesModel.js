@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { generatePresignedUrl } = require("../services/awsS3Service");
 
 const getAllExpenses = async (filters = {}) => {
   const { page = 1, limit = 10, search = '' } = filters;
@@ -39,6 +40,7 @@ const getAllExpenses = async (filters = {}) => {
       ect.employee_id,
       ect.amount,
       ect.description,
+      ect.status,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -74,6 +76,7 @@ const getExpenseById = async (id) => {
       ect.employee_id,
       ect.amount,
       ect.description,
+      ect.status,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -117,6 +120,31 @@ const getExpenseById = async (id) => {
     expense.attachments = [];
   }
   
+  // Generate presigned URLs for attachments
+  if (expense.attachments && expense.attachments.length > 0) {
+    try {
+      expense.attachments = await Promise.all(
+        expense.attachments.map(async (attachment) => {
+          if (attachment.attachment_url) {
+            try {
+              const presignedUrl = await generatePresignedUrl(attachment.attachment_url);
+              return {
+                ...attachment,
+                attachment_url: presignedUrl
+              };
+            } catch (error) {
+              console.error('Error generating presigned URL for attachment:', error);
+              return attachment;
+            }
+          }
+          return attachment;
+        })
+      );
+    } catch (error) {
+      console.error('Error processing attachments:', error);
+    }
+  }
+  
   return { success: true, data: expense };
 };
 
@@ -134,6 +162,31 @@ const createExpense = async (expenseData) => {
   
   try {
     await connection.beginTransaction();
+    
+    // Check employee's current balance
+    const [employees] = await connection.query(`
+      SELECT id, name, COALESCE(balance, 0) as balance 
+      FROM employees 
+      WHERE id = ?
+    `, [employee_id]);
+    
+    if (employees.length === 0) {
+      await connection.rollback();
+      return { success: false, message: 'الموظف غير موجود' };
+    }
+    
+    const employee = employees[0];
+    const currentBalance = parseFloat(employee.balance);
+    const expenseAmount = parseFloat(amount);
+    
+    // Check if employee has sufficient balance
+    if (currentBalance < expenseAmount) {
+      await connection.rollback();
+      return { 
+        success: false, 
+        message: `رصيد الموظف غير كافٍ. الرصيد الحالي: ${currentBalance.toFixed(2)} د.إ، المبلغ المطلوب: ${expenseAmount.toFixed(2)} د.إ` 
+      };
+    }
     
     // Insert as debit transaction (expense)
     const [result] = await connection.query(`
@@ -316,10 +369,55 @@ const deleteExpense = async (id) => {
   }
 };
 
+const addAttachments = async (expenseId, attachments) => {
+  try {
+    if (!attachments || attachments.length === 0) {
+      return { success: false, message: 'No attachments provided' };
+    }
+
+    const attachmentValues = attachments.map(att => [
+      expenseId,
+      att.attachment_url,
+      att.attachment_name
+    ]);
+    
+    await db.query(`
+      INSERT INTO cash_transaction_attachments 
+      (transaction_id, attachment_url, attachment_name) 
+      VALUES ?
+    `, [attachmentValues]);
+    
+    return { success: true, message: 'Attachments added successfully' };
+  } catch (error) {
+    console.error("Error adding attachments:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+const deleteAttachment = async (expenseId, attachmentId) => {
+  try {
+    const [result] = await db.query(
+      "DELETE FROM cash_transaction_attachments WHERE id = ? AND transaction_id = ?", 
+      [attachmentId, expenseId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return { success: false, message: 'Attachment not found' };
+    }
+    
+    return { success: true, message: 'Attachment deleted successfully' };
+  } catch (error) {
+    console.error("Error deleting attachment:", error);
+    return { success: false, message: error.message };
+  }
+};
+
 module.exports = {
   getAllExpenses,
   getExpenseById,
   createExpense,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  addAttachments,
+  deleteAttachment
 };

@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 const getAllTransactions = async (filters = {}) => {
-  const { page = 1, limit = 10, search = '', type = '' } = filters;
+  const { page = 1, limit = 10, search = '', type = '', employee_id = '', date_from = '', date_to = '' } = filters;
   const offset = (page - 1) * limit;
   
   // Build WHERE clause
@@ -22,6 +22,21 @@ const getAllTransactions = async (filters = {}) => {
   if (type) {
     whereConditions.push('ect.type = ?');
     queryParams.push(type);
+  }
+  
+  if (employee_id) {
+    whereConditions.push('ect.employee_id = ?');
+    queryParams.push(employee_id);
+  }
+  
+  if (date_from) {
+    whereConditions.push('DATE(ect.created_at) >= ?');
+    queryParams.push(date_from);
+  }
+  
+  if (date_to) {
+    whereConditions.push('DATE(ect.created_at) <= ?');
+    queryParams.push(date_to);
   }
   
   const whereClause = whereConditions.length > 0 
@@ -47,6 +62,7 @@ const getAllTransactions = async (filters = {}) => {
       ect.amount,
       ect.type,
       ect.description,
+      ect.status,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -83,6 +99,7 @@ const getTransactionById = async (id) => {
       ect.amount,
       ect.type,
       ect.description,
+      ect.status,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -233,9 +250,10 @@ const updateTransaction = async (id, transactionData) => {
     amount, 
     type, 
     description,
-    bank_account_id,
     attachments = []
   } = transactionData;
+  
+  // Note: bank_account_id is NOT included - it's set only at creation and cannot be changed
   
   const connection = await db.getConnection();
   
@@ -244,7 +262,7 @@ const updateTransaction = async (id, transactionData) => {
     
     // Get old transaction data first
     const [oldTransactions] = await connection.query(`
-      SELECT employee_id, amount, type, bank_account_id 
+      SELECT employee_id, amount, type 
       FROM employee_cash_transactions 
       WHERE id = ?
     `, [id]);
@@ -256,81 +274,46 @@ const updateTransaction = async (id, transactionData) => {
     
     const oldTransaction = oldTransactions[0];
     
-    // Reverse the old transaction's effect on employee balance
+    // Reverse the old transaction's effect on employee balance only
+    // Bank accounts are NOT adjusted on edit - they stay as they were at creation
     if (oldTransaction.type === 'credit') {
       await connection.query(`
         UPDATE employees 
         SET balance = COALESCE(balance, 0) - ? 
         WHERE id = ?
       `, [oldTransaction.amount, oldTransaction.employee_id]);
-      
-      // Reverse bank account deduction
-      if (oldTransaction.bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance + ? 
-          WHERE id = ?
-        `, [oldTransaction.amount, oldTransaction.bank_account_id]);
-      }
     } else if (oldTransaction.type === 'debit') {
       await connection.query(`
         UPDATE employees 
         SET balance = COALESCE(balance, 0) + ? 
         WHERE id = ?
       `, [oldTransaction.amount, oldTransaction.employee_id]);
-      
-      // Reverse bank account addition
-      if (oldTransaction.bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance - ? 
-          WHERE id = ?
-        `, [oldTransaction.amount, oldTransaction.bank_account_id]);
-      }
     }
     
-    // Update transaction
+    // Update transaction (don't update bank_account_id on edit - it's set on creation only)
     const [result] = await connection.query(`
       UPDATE employee_cash_transactions 
       SET employee_id = ?, 
           amount = ?, 
           type = ?, 
-          bank_account_id = ?,
           description = ?
       WHERE id = ?
-    `, [employee_id, amount, type, bank_account_id || null, description, id]);
+    `, [employee_id, amount, type, description, id]);
     
-    // Apply the new transaction's effect on employee balance
+    // Apply the new transaction's effect on employee balance only
+    // Bank accounts are NOT adjusted on edit - they stay as they were at creation
     if (type === 'credit') {
       await connection.query(`
         UPDATE employees 
         SET balance = COALESCE(balance, 0) + ? 
         WHERE id = ?
       `, [amount, employee_id]);
-      
-      // Apply new bank account deduction
-      if (bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance - ? 
-          WHERE id = ?
-        `, [amount, bank_account_id]);
-      }
     } else if (type === 'debit') {
       await connection.query(`
         UPDATE employees 
         SET balance = COALESCE(balance, 0) - ? 
         WHERE id = ?
       `, [amount, employee_id]);
-      
-      // Apply new bank account addition
-      if (bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance + ? 
-          WHERE id = ?
-        `, [amount, bank_account_id]);
-      }
     }
     
     // Delete old attachments
@@ -439,11 +422,32 @@ const deleteAttachment = async (transactionId, attachmentId) => {
   }
 };
 
+const updateTransactionStatus = async (id, { status, updated_by }) => {
+  try {
+    const [result] = await db.query(
+      `UPDATE employee_cash_transactions 
+       SET status = ? 
+       WHERE id = ?`,
+      [status, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return { success: false, message: 'Transaction not found' };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating transaction status:", error);
+    return { success: false, message: error.message };
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
   createTransaction,
   updateTransaction,
+  updateTransactionStatus,
   deleteTransaction,
   deleteAttachment
 };

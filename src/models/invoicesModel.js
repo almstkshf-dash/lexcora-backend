@@ -460,6 +460,44 @@ const deleteInvoiceAttachment = async (attachmentId) => {
   }
 };
 
+const uploadInvoiceAttachments = async (invoiceId, attachments, createdBy = null) => {
+  const connection = await db.getConnection();
+  
+  try {
+    // Verify invoice exists
+    const [invoices] = await connection.query(
+      'SELECT id FROM invoices WHERE id = ?',
+      [invoiceId]
+    );
+    
+    if (invoices.length === 0) {
+      return { success: false, error: 'Invoice not found' };
+    }
+    
+    // Insert attachments - store the full S3 URL (public or pre-signed)
+    if (attachments && attachments.length > 0) {
+      const attachmentValues = attachments.map(attachment => [
+        invoiceId,
+        attachment.attachment_url,
+        attachment.attachment_name,
+        createdBy
+      ]);
+      
+      await connection.query(
+        `INSERT INTO invoice_attachments (invoice_id, attachment_url, attachment_name, created_by) VALUES ?`,
+        [attachmentValues]
+      );
+    }
+    
+    return { success: true, message: 'Attachments uploaded successfully' };
+  } catch (error) {
+    console.error('Error uploading invoice attachments:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getAllInvoices,
   getInvoiceById,
@@ -467,5 +505,6 @@ module.exports = {
   updateInvoice,
   deleteInvoice,
   getInvoicesByClientId,
-  deleteInvoiceAttachment
+  deleteInvoiceAttachment,
+  uploadInvoiceAttachments
 };

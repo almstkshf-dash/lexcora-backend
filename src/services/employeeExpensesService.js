@@ -70,10 +70,20 @@ const deleteExpense = async (id, deletedBy = null) => {
   return result;
 };
 
+const addAttachments = async (expenseId, attachments) => {
+  return await employeeExpensesModel.addAttachments(expenseId, attachments);
+};
+
+const deleteAttachment = async (expenseId, attachmentId) => {
+  return await employeeExpensesModel.deleteAttachment(expenseId, attachmentId);
+};
+
 module.exports = {
   getAllExpenses,
   getExpenseById,
   createExpense,
   updateExpense,
-  deleteExpense
+  deleteExpense,
+  addAttachments,
+  deleteAttachment
 };
