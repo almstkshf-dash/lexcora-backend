@@ -7,7 +7,8 @@ const getAllPermissions = async () => {
       id,
       permission_ar,
       permission_en,
-      permission_group_name
+      permission_group_name,
+      permission_parent_name
     FROM permissions
     ORDER BY permission_en ASC
   `);
@@ -21,6 +22,8 @@ const getPermissionById = async (id) => {
       id,
       permission_ar,
       permission_en,
+      permission_group_name,
+      permission_parent_name,
       created_at,
       updated_at
     FROM permissions 
@@ -38,6 +41,8 @@ const getPermissionByName = async (name) => {
       id,
       permission_ar,
       permission_en,
+      permission_group_name,
+      permission_parent_name,
       created_at,
       updated_at
     FROM permissions 
@@ -50,25 +55,41 @@ const getPermissionByName = async (name) => {
 
 // Create new permission
 const createPermission = async (permissionData) => {
-  const { permissionAr, permissionEn } = permissionData;
-  
-  const [result] = await db.query(`
-    INSERT INTO permissions (permission_ar, permission_en)
-    VALUES (?, ?)
-  `, [permissionAr, permissionEn]);
-  
+  const { permissionAr, permissionEn, permissionGroupName = null, permissionParentName = null } = permissionData;
+
+  // Build dynamic insert to keep backward compatibility
+  const columns = ['permission_ar', 'permission_en'];
+  const values = [permissionAr, permissionEn];
+  if (permissionGroupName !== undefined) {
+    columns.push('permission_group_name');
+    values.push(permissionGroupName);
+  }
+  if (permissionParentName !== undefined) {
+    columns.push('permission_parent_name');
+    values.push(permissionParentName);
+  }
+
+  const placeholders = columns.map(() => '?').join(', ');
+  const sql = `INSERT INTO permissions (${columns.join(', ')}) VALUES (${placeholders})`;
+
+  const [result] = await db.query(sql, values);
   return result.insertId;
 };
 
 // Update permission
 const updatePermission = async (id, permissionData) => {
-  const { permissionAr, permissionEn } = permissionData;
-  
+  const { permissionAr, permissionEn, permissionGroupName = undefined, permissionParentName = undefined } = permissionData;
+
+  // Use COALESCE to keep existing values when optional fields are not provided
   const [result] = await db.query(`
     UPDATE permissions 
-    SET permission_ar = ?, permission_en = ?
+    SET 
+      permission_ar = ?, 
+      permission_en = ?,
+      permission_group_name = COALESCE(?, permission_group_name),
+      permission_parent_name = COALESCE(?, permission_parent_name)
     WHERE id = ?
-  `, [permissionAr, permissionEn, id]);
+  `, [permissionAr, permissionEn, permissionGroupName, permissionParentName, id]);
   
   return result.affectedRows > 0;
 };
@@ -91,6 +112,8 @@ const searchPermissions = async (searchTerm) => {
       id,
       permission_ar,
       permission_en,
+      permission_group_name,
+      permission_parent_name,
       created_at,
       updated_at
     FROM permissions 
@@ -126,6 +149,7 @@ const getEmployeePermissions = async (employeeId) => {
       p.permission_ar, 
       p.permission_en,
       p.permission_group_name,
+      p.permission_parent_name,
       CASE 
         WHEN ep.employee_id IS NOT NULL THEN true 
         ELSE false 

@@ -26,7 +26,7 @@ const getPermission = async (id) => {
 // Create new permission
 const addPermission = async (permissionData) => {
   try {
-    const { permissionAr, permissionEn } = permissionData;
+    const { permissionAr, permissionEn, permissionGroupName, permissionParentName } = permissionData;
     
     // Validate required fields
     if (!permissionAr || !permissionEn) {
@@ -51,7 +51,9 @@ const addPermission = async (permissionData) => {
     // Create permission
     const permissionId = await permissionsModel.createPermission({
       permissionAr: permissionAr.trim(),
-      permissionEn: permissionEn.trim()
+      permissionEn: permissionEn.trim(),
+      permissionGroupName: permissionGroupName !== undefined ? (permissionGroupName === null ? null : String(permissionGroupName).trim()) : undefined,
+      permissionParentName: permissionParentName !== undefined ? (permissionParentName === null ? null : String(permissionParentName).trim()) : undefined,
     });
     
     return permissionId;
@@ -63,7 +65,7 @@ const addPermission = async (permissionData) => {
 // Update permission
 const updatePermission = async (id, permissionData) => {
   try {
-    const { permissionAr, permissionEn } = permissionData;
+    const { permissionAr, permissionEn, permissionGroupName, permissionParentName } = permissionData;
     
     // Check if permission exists
     const existingPermission = await permissionsModel.getPermissionById(id);
@@ -95,7 +97,9 @@ const updatePermission = async (id, permissionData) => {
     // Update permission
     const success = await permissionsModel.updatePermission(id, {
       permissionAr: permissionAr.trim(),
-      permissionEn: permissionEn.trim()
+      permissionEn: permissionEn.trim(),
+      permissionGroupName: permissionGroupName !== undefined ? (permissionGroupName === null ? null : String(permissionGroupName).trim()) : undefined,
+      permissionParentName: permissionParentName !== undefined ? (permissionParentName === null ? null : String(permissionParentName).trim()) : undefined,
     });
     
     if (!success) {
@@ -202,6 +206,8 @@ const bulkCreatePermissions = async (permissionsArray) => {
           success: true,
           permission_ar: permissionData.permissionAr,
           permission_en: permissionData.permissionEn,
+          permission_group_name: permissionData.permissionGroupName,
+          permission_parent_name: permissionData.permissionParentName,
           id: permissionId
         });
       } catch (error) {
@@ -209,6 +215,8 @@ const bulkCreatePermissions = async (permissionsArray) => {
           success: false,
           permission_ar: permissionData.permissionAr,
           permission_en: permissionData.permissionEn,
+          permission_group_name: permissionData.permissionGroupName,
+          permission_parent_name: permissionData.permissionParentName,
           error: error.message
         });
       }

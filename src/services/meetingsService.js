@@ -2,6 +2,7 @@ const meetingsModel = require('../models/meetingsModel');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { notifyUser } = require('../models/appNotificationsModel');
+const { getAdminEmployees } = require('./employeeService');
 
 const getAllMeetings = async (filters) => {
   return await meetingsModel.getAllMeetings(filters);
@@ -38,14 +39,16 @@ const createMeeting = async (data, createdBy = null) => {
     
     const timeInfo = data.start_time ? ` في تمام الساعة ${data.start_time}` : '';
     const locationInfo = data.address ? ` في ${data.address}` : '';
+    const linkInfo = data.link && data.meeting_type === 'online' ? ` عبر الرابط: ${data.link}` : '';
     
     const notificationPromises = data.employee_ids.map(employeeId => 
       notifyUser({
         recipientId: employeeId,
         title: 'دعوة إلى اجتماع جديد',
-        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}`,
+        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}${linkInfo}`,
         type: 'info',
         relatedType: 'meeting',
+        relatedId: meetingId,
         createdBy: createdBy
       }).catch(err => {
         console.error(`Failed to send notification to employee ${employeeId}:`, err);
@@ -53,6 +56,40 @@ const createMeeting = async (data, createdBy = null) => {
     );
     
     await Promise.all(notificationPromises);
+  }
+
+  // Send notifications to all admin employees
+  try {
+    const adminEmployees = await getAdminEmployees();
+    if (adminEmployees && adminEmployees.length > 0) {
+      const meetingDate = data.date ? new Date(data.date).toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }) : '';
+      
+      const timeInfo = data.start_time ? ` في تمام الساعة ${data.start_time}` : '';
+      const locationInfo = data.address ? ` في ${data.address}` : '';
+      const linkInfo = data.link && data.meeting_type === 'online' ? ` عبر الرابط: ${data.link}` : '';
+      
+      const adminNotificationPromises = adminEmployees.map(admin => 
+        notifyUser({
+          recipientId: admin.id,
+          title: 'اجتماع جديد تم إنشاؤه',
+          message: `تم إنشاء اجتماع جديد في تاريخ ${meetingDate}${timeInfo}${locationInfo}${linkInfo}`,
+          type: 'info',
+          relatedType: 'meeting',
+          relatedId: meetingId,
+          createdBy: createdBy
+        }).catch(err => {
+          console.error(`Failed to send notification to admin ${admin.id}:`, err);
+        })
+      );
+      
+      await Promise.all(adminNotificationPromises);
+    }
+  } catch (error) {
+    console.error('Failed to send notifications to admins:', error);
   }
   
   return meetingId;
@@ -90,14 +127,16 @@ const updateMeeting = async (id, data, updatedBy = null) => {
     
     const timeInfo = data.start_time ? ` في تمام الساعة ${data.start_time}` : '';
     const locationInfo = data.address ? ` في ${data.address}` : '';
+    const linkInfo = data.link && data.meeting_type === 'online' ? ` عبر الرابط: ${data.link}` : '';
     
     const notificationPromises = addedEmployeeIds.map(employeeId => 
       notifyUser({
         recipientId: employeeId,
         title: 'دعوة إلى اجتماع',
-        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}`,
+        message: `تمت دعوتك لحضور اجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}${linkInfo}`,
         type: 'info',
         relatedType: 'meeting',
+        relatedId: id,
         createdBy: updatedBy
       }).catch(err => {
         console.error(`Failed to send notification to employee ${employeeId}:`, err);
@@ -105,6 +144,30 @@ const updateMeeting = async (id, data, updatedBy = null) => {
     );
     
     await Promise.all(notificationPromises);
+
+    // Also notify admins about the updated meeting with new attendees
+    try {
+      const adminEmployees = await getAdminEmployees();
+      if (adminEmployees && adminEmployees.length > 0) {
+        const adminNotificationPromises = adminEmployees.map(admin => 
+          notifyUser({
+            recipientId: admin.id,
+            title: 'تحديث اجتماع - حضور جديد',
+            message: `تم إضافة حضور جديد لاجتماع في تاريخ ${meetingDate}${timeInfo}${locationInfo}${linkInfo}`,
+            type: 'info',
+            relatedType: 'meeting',
+            relatedId: id,
+            createdBy: updatedBy
+          }).catch(err => {
+            console.error(`Failed to send notification to admin ${admin.id}:`, err);
+          })
+        );
+        
+        await Promise.all(adminNotificationPromises);
+      }
+    } catch (error) {
+      console.error('Failed to send notifications to admins:', error);
+    }
   }
   
   return result;

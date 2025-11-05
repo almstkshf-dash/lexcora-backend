@@ -157,11 +157,41 @@ const deleteAttachment = async (req, res) => {
   }
 };
 
+// Get transaction statistics for charts
+const getTransactionStatistics = async (req, res) => {
+  try {
+    const { 
+      period,        // 'last_month', 'last_3_months', 'last_6_months', 'last_year', 'custom'
+      date_from,     // For custom date range
+      date_to,       // For custom date range
+      type,          // 'credit', 'debit', or 'both' (default)
+      employee_id,   // Filter by specific employee
+      group_by       // 'day', 'week', 'month' (default: day)
+    } = req.query;
+    
+    const filters = {
+      period: period || 'last_month',
+      date_from: date_from || null,
+      date_to: date_to || null,
+      type: type || 'both',
+      employee_id: employee_id || null,
+      group_by: group_by || 'day'
+    };
+    
+    const result = await employeeCashTransactionsService.getTransactionStatistics(filters);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching transaction statistics:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch transaction statistics' });
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  deleteAttachment
+  deleteAttachment,
+  getTransactionStatistics
 };

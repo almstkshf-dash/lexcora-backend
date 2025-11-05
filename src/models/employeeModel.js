@@ -522,6 +522,19 @@ const checkDuplicateEmployee = async (name, phone, email, excludeId = null) => {
   return rows[0] || null;
 };
 
+const getAdminEmployees = async () => {
+  const [rows] = await db.query(`
+    SELECT 
+      e.id,
+      e.name,
+      e.status
+    FROM employees e
+    LEFT JOIN roles r ON e.role_id = r.id
+    WHERE r.role_en = 'admin' AND e.status = 'active'
+  `);
+  return rows;
+};
+
 module.exports = {
   getAllEmployees,
   getEmployeeById,
@@ -537,5 +550,6 @@ module.exports = {
   getCaseEmployeeDocuments,
   deleteCaseEmployeeDocument,
   getEmployeeAccountStatement,
-  checkDuplicateEmployee
+  checkDuplicateEmployee,
+  getAdminEmployees
 };

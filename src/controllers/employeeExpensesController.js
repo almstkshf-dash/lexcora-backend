@@ -39,7 +39,8 @@ const createExpense = async (req, res) => {
       amount, 
       description,
       bank_account_id,
-      attachments
+      attachments,
+      client_id
     } = req.body;
     
     const created_by = req.user?.id || req.userId || null;
@@ -50,6 +51,7 @@ const createExpense = async (req, res) => {
       description,
       bank_account_id,
       attachments,
+      client_id,
       created_by 
     });
     
@@ -71,7 +73,8 @@ const updateExpense = async (req, res) => {
       employee_id, 
       amount, 
       description,
-      attachments
+      attachments,
+      client_id
     } = req.body;
     
     const updated_by = req.user?.id || req.userId || null;
@@ -81,6 +84,7 @@ const updateExpense = async (req, res) => {
       amount, 
       description,
       attachments,
+      client_id,
       updated_by 
     });
     

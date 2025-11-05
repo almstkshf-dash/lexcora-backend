@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 const getAllTransactions = async (filters = {}) => {
-  const { page = 1, limit = 10, search = '', type = '', employee_id = '', date_from = '', date_to = '' } = filters;
+  const { page = 1, limit = 10, search = '', type = '', employee_id = '', client_id = '', date_from = '', date_to = '' } = filters;
   const offset = (page - 1) * limit;
   
   // Build WHERE clause
@@ -27,6 +27,11 @@ const getAllTransactions = async (filters = {}) => {
   if (employee_id) {
     whereConditions.push('ect.employee_id = ?');
     queryParams.push(employee_id);
+  }
+  
+  if (client_id) {
+    whereConditions.push('ect.client_id = ?');
+    queryParams.push(client_id);
   }
   
   if (date_from) {
@@ -59,6 +64,7 @@ const getAllTransactions = async (filters = {}) => {
     SELECT 
       ect.id,
       ect.employee_id,
+      ect.client_id,
       ect.amount,
       ect.type,
       ect.description,
@@ -69,10 +75,13 @@ const getAllTransactions = async (filters = {}) => {
       e.phone as employee_phone,
       e.email as employee_email,
       COALESCE(e.balance, 0) as employee_balance,
-      creator.name as created_by_name
+      creator.name as created_by_name,
+      p.name as client_name,
+      p.phone as client_phone
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
+    LEFT JOIN parties p ON ect.client_id = p.id
     ${whereClause}
     ORDER BY ect.created_at DESC
     LIMIT ? OFFSET ?
@@ -96,6 +105,7 @@ const getTransactionById = async (id) => {
     SELECT 
       ect.id,
       ect.employee_id,
+      ect.client_id,
       ect.amount,
       ect.type,
       ect.description,
@@ -107,6 +117,8 @@ const getTransactionById = async (id) => {
       e.email as employee_email,
       COALESCE(e.balance, 0) as employee_balance,
       creator.name as created_by_name,
+      p.name as client_name,
+      p.phone as client_phone,
       (
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT(
@@ -122,6 +134,7 @@ const getTransactionById = async (id) => {
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
+    LEFT JOIN parties p ON ect.client_id = p.id
     WHERE ect.id = ?
   `, [id]);
   
@@ -153,6 +166,7 @@ const createTransaction = async (transactionData) => {
     amount, 
     type, 
     description,
+    client_id,
     bank_account_id,
     attachments = [],
     created_by 
@@ -166,9 +180,9 @@ const createTransaction = async (transactionData) => {
     // Insert transaction
     const [result] = await connection.query(`
       INSERT INTO employee_cash_transactions 
-      (employee_id, amount, type, description, created_by, created_at) 
-      VALUES (?, ?, ?, ?, ?, NOW())
-    `, [employee_id, amount, type, description, created_by]);
+      (employee_id, amount, type, description, client_id, created_by, created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
+    `, [employee_id, amount, type, description, client_id || null, created_by]);
     
     const transactionId = result.insertId;
     
@@ -442,6 +456,166 @@ const updateTransactionStatus = async (id, { status, updated_by }) => {
   }
 };
 
+const getTransactionStatistics = async (filters) => {
+  try {
+    const { period, date_from, date_to, type, employee_id, group_by } = filters;
+    
+    // Calculate date range based on period
+    let startDate, endDate;
+    const today = new Date();
+    
+    if (period === 'custom' && date_from && date_to) {
+      startDate = date_from;
+      endDate = date_to;
+    } else {
+      endDate = today.toISOString().split('T')[0]; // Today
+      
+      switch (period) {
+        case 'last_month':
+          startDate = new Date(today.setMonth(today.getMonth() - 1)).toISOString().split('T')[0];
+          break;
+        case 'last_3_months':
+          startDate = new Date(today.setMonth(today.getMonth() - 3)).toISOString().split('T')[0];
+          break;
+        case 'last_6_months':
+          startDate = new Date(today.setMonth(today.getMonth() - 6)).toISOString().split('T')[0];
+          break;
+        case 'last_year':
+          startDate = new Date(today.setFullYear(today.getFullYear() - 1)).toISOString().split('T')[0];
+          break;
+        default:
+          startDate = new Date(today.setMonth(today.getMonth() - 1)).toISOString().split('T')[0];
+      }
+    }
+    
+    // Build WHERE clause
+    let whereConditions = ['DATE(ect.created_at) BETWEEN ? AND ?'];
+    let queryParams = [startDate, endDate];
+    
+    if (employee_id) {
+      whereConditions.push('ect.employee_id = ?');
+      queryParams.push(employee_id);
+    }
+    
+    // Determine grouping format
+    let dateFormat, dateGroup;
+    switch (group_by) {
+      case 'week':
+        dateFormat = '%Y-%u'; // Year-Week
+        dateGroup = 'YEARWEEK(ect.created_at, 1)';
+        break;
+      case 'month':
+        dateFormat = '%Y-%m'; // Year-Month
+        dateGroup = 'DATE_FORMAT(ect.created_at, "%Y-%m")';
+        break;
+      case 'day':
+      default:
+        dateFormat = '%Y-%m-%d'; // Year-Month-Day
+        dateGroup = 'DATE(ect.created_at)';
+    }
+    
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Query for transaction statistics
+    let chartData = [];
+    
+    if (type === 'both' || !type) {
+      // Get both credit and debit in separate columns
+      const [rows] = await db.query(`
+        SELECT 
+          ${dateGroup} as date,
+          DATE_FORMAT(ect.created_at, '${dateFormat}') as formatted_date,
+          SUM(CASE WHEN ect.type = 'credit' THEN ect.amount ELSE 0 END) as credit,
+          SUM(CASE WHEN ect.type = 'debit' THEN ect.amount ELSE 0 END) as debit,
+          COUNT(CASE WHEN ect.type = 'credit' THEN 1 END) as credit_count,
+          COUNT(CASE WHEN ect.type = 'debit' THEN 1 END) as debit_count
+        FROM employee_cash_transactions ect
+        WHERE ${whereClause}
+        GROUP BY ${dateGroup}
+        ORDER BY date ASC
+      `, queryParams);
+      
+      chartData = rows.map(row => ({
+        date: row.formatted_date,
+        credit: parseFloat(row.credit) || 0,
+        debit: parseFloat(row.debit) || 0,
+        credit_count: parseInt(row.credit_count) || 0,
+        debit_count: parseInt(row.debit_count) || 0
+      }));
+    } else {
+      // Get only specific type (credit or debit)
+      whereConditions.push('ect.type = ?');
+      queryParams.push(type);
+      const whereClauseWithType = whereConditions.join(' AND ');
+      
+      const [rows] = await db.query(`
+        SELECT 
+          ${dateGroup} as date,
+          DATE_FORMAT(ect.created_at, '${dateFormat}') as formatted_date,
+          SUM(ect.amount) as amount,
+          COUNT(*) as count
+        FROM employee_cash_transactions ect
+        WHERE ${whereClauseWithType}
+        GROUP BY ${dateGroup}
+        ORDER BY date ASC
+      `, queryParams);
+      
+      chartData = rows.map(row => ({
+        date: row.formatted_date,
+        amount: parseFloat(row.amount) || 0,
+        count: parseInt(row.count) || 0
+      }));
+    }
+    
+    // Get summary statistics
+    const summaryParams = [startDate, endDate];
+    if (employee_id) {
+      summaryParams.push(employee_id);
+    }
+    
+    const summaryWhereClause = employee_id 
+      ? 'WHERE DATE(created_at) BETWEEN ? AND ? AND employee_id = ?'
+      : 'WHERE DATE(created_at) BETWEEN ? AND ?';
+    
+    const [summary] = await db.query(`
+      SELECT 
+        SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) as total_credit,
+        SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) as total_debit,
+        COUNT(CASE WHEN type = 'credit' THEN 1 END) as total_credit_count,
+        COUNT(CASE WHEN type = 'debit' THEN 1 END) as total_debit_count,
+        COUNT(*) as total_transactions
+      FROM employee_cash_transactions
+      ${summaryWhereClause}
+    `, summaryParams);
+    
+    return {
+      success: true,
+      data: {
+        chart_data: chartData,
+        summary: {
+          total_credit: parseFloat(summary[0].total_credit) || 0,
+          total_debit: parseFloat(summary[0].total_debit) || 0,
+          total_credit_count: parseInt(summary[0].total_credit_count) || 0,
+          total_debit_count: parseInt(summary[0].total_debit_count) || 0,
+          total_transactions: parseInt(summary[0].total_transactions) || 0,
+          net_amount: (parseFloat(summary[0].total_credit) || 0) - (parseFloat(summary[0].total_debit) || 0)
+        },
+        filters: {
+          period,
+          date_from: startDate,
+          date_to: endDate,
+          type,
+          employee_id,
+          group_by
+        }
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching transaction statistics:", error);
+    return { success: false, message: error.message };
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -449,5 +623,6 @@ module.exports = {
   updateTransaction,
   updateTransactionStatus,
   deleteTransaction,
-  deleteAttachment
+  deleteAttachment,
+  getTransactionStatistics
 };

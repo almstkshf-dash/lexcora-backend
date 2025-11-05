@@ -308,13 +308,17 @@ const searchParties = async (query, partyType = null) => {
   const searchPattern = `%${query}%`;
   
   // Build the party_type filter
-  let partyTypeCondition = "(party_type = 'client' OR party_type = 'opponent')";
+  // Include all party types: clients, opponents, and potential clients (New, Contacted, Unqualified, Qualified)
+  let partyTypeCondition = "(party_type = 'client' OR party_type = 'opponent' OR party_type = 'New' OR party_type = 'Contacted' OR party_type = 'Unqualified' OR party_type = 'Qualified')";
   const params = [searchPattern, searchPattern];
   
   if (partyType === 'client') {
     partyTypeCondition = "party_type = 'client'";
   } else if (partyType === 'opponent') {
     partyTypeCondition = "party_type = 'opponent'";
+  } else if (partyType === 'potential') {
+    // For potential clients, include all non-client and non-opponent types
+    partyTypeCondition = "(party_type = 'New' OR party_type = 'Contacted' OR party_type = 'Unqualified' OR party_type = 'Qualified')";
   }
   
   const [rows] = await db.query(`
@@ -328,6 +332,7 @@ const searchParties = async (query, partyType = null) => {
         WHEN phone LIKE ? THEN 2
         ELSE 3
       END,
+      party_type DESC,
       name ASC
     LIMIT 10
   `, [...params, `${query}%`, `${query}%`]);

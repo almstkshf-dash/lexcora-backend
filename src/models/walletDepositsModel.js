@@ -192,13 +192,8 @@ const createWalletDeposit = async (deposit) => {
       WHERE id = ?
     `, [amount, created_by, wallet_id]);
     
-    // Update bank account balance if bank_account_id is provided
-    if (bank_account_id) {
-      await connection.query(`
-        UPDATE bank_accounts 
-        SET current_balance = current_balance + ?   WHERE id = ?
-      `, [amount, bank_account_id]);
-    }
+    // Bank account balance is no longer updated automatically
+    // The bank account balance should be managed separately
     
     await connection.commit();
     
@@ -277,14 +272,8 @@ const deleteWalletDeposit = async (id) => {
       WHERE id = ?
     `, [amount, wallet_id]);
     
-    // Update bank account balance if bank_account_id exists
-    if (bank_account_id) {
-      await connection.query(`
-        UPDATE bank_accounts 
-        SET current_balance = current_balance - ?
-        WHERE id = ?
-      `, [amount, bank_account_id]);
-    }
+    // Bank account balance is no longer updated automatically
+    // The bank account balance should be managed separately
     
     await connection.commit();
     

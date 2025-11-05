@@ -3,6 +3,9 @@ const router = express.Router();
 const employeeCashTransactionsController = require('../controllers/employeeCashTransactionsController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
 
+// Get transaction statistics (must be before /:id route)
+router.get('/statistics', authenticateToken, employeeCashTransactionsController.getTransactionStatistics);
+
 // Get all transactions
 router.get('/', authenticateToken, employeeCashTransactionsController.getAllTransactions);
 

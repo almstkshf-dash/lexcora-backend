@@ -16,7 +16,7 @@ async function runMigration() {
   try {
     console.log('Connected to database...');
     
-    const migrationFile = path.join(__dirname, 'migrations', '20250102_fix_invoice_attachments_url.sql');
+  const migrationFile = path.join(__dirname, 'migrations', '20251103_add_permission_parent_name_and_hr_permissions.sql');
     const sql = fs.readFileSync(migrationFile, 'utf8');
     
     console.log('Running migration...');

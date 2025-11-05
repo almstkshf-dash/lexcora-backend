@@ -187,6 +187,10 @@ const updateTransactionStatus = async (id, { status, updated_by }) => {
   return await employeeCashTransactionsModel.updateTransactionStatus(id, { status, updated_by });
 };
 
+const getTransactionStatistics = async (filters) => {
+  return await employeeCashTransactionsModel.getTransactionStatistics(filters);
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -194,5 +198,6 @@ module.exports = {
   updateTransaction,
   updateTransactionStatus,
   deleteTransaction,
-  deleteAttachment
+  deleteAttachment,
+  getTransactionStatistics
 };

@@ -5,15 +5,15 @@ const express = require('express');
 const router = express.Router();
 const casesController = require('../controllers/casesController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
-
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 // Get all cases
-router.get('/', casesController.getAllCases);
+router.get('/', authenticateToken, checkPermission('Show Cases'), casesController.getAllCases);
 
 // Search cases for add new case page
-router.get('/search', casesController.searchCasesForAddNewCasePage);
+router.get('/search', authenticateToken, checkPermission('Search Cases'), casesController.searchCasesForAddNewCasePage);
 
 // Get case by ID
-router.get('/:id', casesController.getCaseById);
+router.get('/:id', authenticateToken, checkPermission('View Case'), casesController.getCaseById);
 
 // Get all case details (comprehensive information)
 router.get('/all-details/:id', casesController.getAllCaseDetails);

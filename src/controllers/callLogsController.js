@@ -1,4 +1,5 @@
 const callLogsModel = require('../models/callLogsModel');
+const { sendSystemNotification } = require('../utils/notificationHelper');
 
 /**
  * Get all call logs with pagination and filters
@@ -113,6 +114,22 @@ const createCallLog = async (req, res) => {
       created_by
     });
 
+    // Send notification to all admins
+    try {
+      const callTypeText = call_type === 'incoming' ? 'واردة' : 'صادرة';
+      const topicText = topic ? ` - ${topic}` : '';
+      await sendSystemNotification({
+        title: 'مكالمة جديدة',
+        message: `تم إضافة مكالمة ${callTypeText} من ${caller_name}${topicText}`,
+        type: 'info',
+        relatedType: 'none',
+        createdBy: created_by
+      });
+    } catch (notifError) {
+      console.error('Error sending notification:', notifError);
+      // Don't fail the request if notification fails
+    }
+
     res.status(201).json({
       success: true,
       message: 'تم إضافة المكالمة بنجاح',
@@ -172,6 +189,23 @@ const updateCallLog = async (req, res) => {
       });
     }
 
+    // Send notification to all admins
+    try {
+      const callTypeText = call_type === 'incoming' ? 'واردة' : 'صادرة';
+      const topicText = topic ? ` - ${topic}` : '';
+      const updatedBy = req.user?.id || null;
+      await sendSystemNotification({
+        title: 'تحديث مكالمة',
+        message: `تم تحديث مكالمة ${callTypeText} من ${caller_name}${topicText}`,
+        type: 'info',
+        relatedType: 'none',
+        createdBy: updatedBy
+      });
+    } catch (notifError) {
+      console.error('Error sending notification:', notifError);
+      // Don't fail the request if notification fails
+    }
+
     res.status(200).json({
       success: true,
       message: 'تم تحديث المكالمة بنجاح'
@@ -200,6 +234,16 @@ const deleteCallLog = async (req, res) => {
       });
     }
 
+    // Get call log details before deleting for notification
+    const callLog = await callLogsModel.getCallLogById(id);
+    
+    if (!callLog) {
+      return res.status(404).json({
+        success: false,
+        message: 'المكالمة غير موجودة'
+      });
+    }
+
     const result = await callLogsModel.deleteCallLog(id);
 
     if (!result) {
@@ -207,6 +251,23 @@ const deleteCallLog = async (req, res) => {
         success: false,
         message: 'المكالمة غير موجودة'
       });
+    }
+
+    // Send notification to all admins
+    try {
+      const callTypeText = callLog.call_type === 'incoming' ? 'واردة' : 'صادرة';
+      const topicText = callLog.topic ? ` - ${callLog.topic}` : '';
+      const deletedBy = req.user?.id || null;
+      await sendSystemNotification({
+        title: 'حذف مكالمة',
+        message: `تم حذف مكالمة ${callTypeText} من ${callLog.caller_name}${topicText}`,
+        type: 'warning',
+        relatedType: 'none',
+        createdBy: deletedBy
+      });
+    } catch (notifError) {
+      console.error('Error sending notification:', notifError);
+      // Don't fail the request if notification fails
     }
 
     res.status(200).json({

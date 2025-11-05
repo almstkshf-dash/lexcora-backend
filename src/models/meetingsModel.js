@@ -163,12 +163,13 @@ const createMeeting = async (data) => {
       created_by, 
       meeting_type, 
       address,
+      link,
       employee_ids = []
     } = data;
     
     const query = `
-      INSERT INTO meetings (party_id, note, date, start_time, end_time, meet_result, created_by, meeting_type, address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO meetings (party_id, note, date, start_time, end_time, meet_result, created_by, meeting_type, address, link)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const [result] = await connection.query(query, [
@@ -180,7 +181,8 @@ const createMeeting = async (data) => {
       meet_result || null,
       created_by || null,
       meeting_type || null,
-      address || null
+      address || null,
+      link || null
     ]);
     
     const meetingId = result.insertId;
@@ -220,6 +222,7 @@ const updateMeeting = async (id, data) => {
       meet_result, 
       meeting_type, 
       address,
+      link,
       employee_ids = []
     } = data;
     
@@ -236,7 +239,7 @@ const updateMeeting = async (id, data) => {
 
     const query = `
       UPDATE meetings 
-      SET party_id = ?, note = ?, date = ?, start_time = ?, end_time = ?, meet_result = ?, meeting_type = ?, address = ?
+      SET party_id = ?, note = ?, date = ?, start_time = ?, end_time = ?, meet_result = ?, meeting_type = ?, address = ?, link = ?
       WHERE id = ?
     `;
     
@@ -249,6 +252,7 @@ const updateMeeting = async (id, data) => {
       meet_result || null,
       meeting_type || null,
       address || null,
+      link || null,
       id
     ]);
 

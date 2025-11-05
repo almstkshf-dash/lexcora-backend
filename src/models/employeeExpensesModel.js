@@ -41,15 +41,19 @@ const getAllExpenses = async (filters = {}) => {
       ect.amount,
       ect.description,
       ect.status,
+      ect.client_id,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
       e.phone as employee_phone,
       e.email as employee_email,
       COALESCE(e.balance, 0) as employee_balance,
+      p.name as client_name,
+      p.phone as client_phone,
       creator.name as created_by_name
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
+    LEFT JOIN parties p ON ect.client_id = p.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
     ${whereClause}
     ORDER BY ect.created_at DESC
@@ -77,12 +81,15 @@ const getExpenseById = async (id) => {
       ect.amount,
       ect.description,
       ect.status,
+      ect.client_id,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
       e.phone as employee_phone,
       e.email as employee_email,
       COALESCE(e.balance, 0) as employee_balance,
+      p.name as client_name,
+      p.phone as client_phone,
       creator.name as created_by_name,
       (
         SELECT JSON_ARRAYAGG(
@@ -98,6 +105,7 @@ const getExpenseById = async (id) => {
       ) as attachments
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
+    LEFT JOIN parties p ON ect.client_id = p.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
     WHERE ect.id = ? AND ect.type = 'debit'
   `, [id]);
@@ -155,6 +163,7 @@ const createExpense = async (expenseData) => {
     description,
     bank_account_id,
     attachments = [],
+    client_id,
     created_by 
   } = expenseData;
   
@@ -191,9 +200,9 @@ const createExpense = async (expenseData) => {
     // Insert as debit transaction (expense)
     const [result] = await connection.query(`
       INSERT INTO employee_cash_transactions 
-      (employee_id, amount, type, description, created_by, created_at) 
-      VALUES (?, ?, 'debit', ?, ?, NOW())
-    `, [employee_id, amount, description, created_by]);
+      (employee_id, amount, type, description, client_id, created_by, created_at) 
+      VALUES (?, ?, 'debit', ?, ?, ?, NOW())
+    `, [employee_id, amount, description, client_id, created_by]);
     
     const expenseId = result.insertId;
     
@@ -245,7 +254,8 @@ const updateExpense = async (id, expenseData) => {
     employee_id, 
     amount, 
     description,
-    attachments = []
+    attachments = [],
+    client_id
   } = expenseData;
   
   const connection = await db.getConnection();

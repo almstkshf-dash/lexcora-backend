@@ -58,7 +58,7 @@ const getPermission = async (req, res) => {
 // Create new permission
 const createPermission = async (req, res) => {
   try {
-    const { permissionAr, permissionEn } = req.body;
+    const { permissionAr, permissionEn, permissionGroupName, permissionParentName } = req.body;
     
     if (!permissionAr || !permissionEn) {
       return res.status(400).json({
@@ -69,7 +69,9 @@ const createPermission = async (req, res) => {
 
     const permissionId = await permissionsService.addPermission({
       permissionAr,
-      permissionEn
+      permissionEn,
+      permissionGroupName,
+      permissionParentName,
     });
     
     const newPermission = await permissionsService.getPermission(permissionId);
@@ -92,7 +94,7 @@ const createPermission = async (req, res) => {
 const updatePermission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { permissionAr, permissionEn } = req.body;
+    const { permissionAr, permissionEn, permissionGroupName, permissionParentName } = req.body;
     
     if (!permissionAr || !permissionEn) {
       return res.status(400).json({
@@ -103,7 +105,9 @@ const updatePermission = async (req, res) => {
 
     await permissionsService.updatePermission(id, {
       permissionAr,
-      permissionEn
+      permissionEn,
+      permissionGroupName,
+      permissionParentName,
     });
     
     const updatedPermission = await permissionsService.getPermission(id);
