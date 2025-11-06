@@ -25,14 +25,6 @@ const idValidator = [
 ];
 
 /**
- * Validate walletId parameter (must be positive integer)
- */
-const walletIdValidator = [
-  param('walletId').isInt({ min: 1 }).withMessage('Wallet ID must be a positive integer'),
-  handleValidationErrors
-];
-
-/**
  * Validate clientId parameter (must be positive integer)
  */
 const clientIdValidator = [
@@ -227,7 +219,6 @@ const sortValidator = (allowedColumns) => [
 module.exports = {
   handleValidationErrors,
   idValidator,
-  walletIdValidator,
   clientIdValidator,
   paginationValidator,
   searchValidator,

@@ -4,19 +4,20 @@
 const express = require('express');
 const router = express.Router();
 const caseTypesController = require('../controllers/caseTypesController');
-
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
+const { authenticateToken } = require('../middliewares/authMiddleware');
 
 // Get all case types
-router.get('/', caseTypesController.getAllCaseTypes);
+router.get('/', authenticateToken, caseTypesController.getAllCaseTypes);
 
 // Create a new case type
-router.post('/', caseTypesController.createCaseType);
+router.post('/', authenticateToken, checkPermission('Add Case Type'), caseTypesController.createCaseType);
 
 // Update a case type by ID
-router.put('/:id', caseTypesController.updateCaseType);
+router.put('/:id', authenticateToken, caseTypesController.updateCaseType);
 
 
 // Delete a case type by ID
-router.delete('/:id', caseTypesController.deleteCaseType);
+router.delete('/:id', authenticateToken, checkPermission('Delete Case Type'), caseTypesController.deleteCaseType);
 
 module.exports = router;

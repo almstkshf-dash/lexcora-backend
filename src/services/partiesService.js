@@ -100,6 +100,10 @@ const checkDuplicateParty = async (name, phone, email = null, excludeId = null) 
   return await partiesModel.checkDuplicateParty(name, phone, email, excludeId);
 };
 
+const getClientsForFinance = async (filters) => {
+  return await partiesModel.getClientsForFinance(filters);
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -111,5 +115,6 @@ module.exports = {
   getPartyCases,
   getPotentialClients,
   searchParties,
-  checkDuplicateParty
+  checkDuplicateParty,
+  getClientsForFinance
 };

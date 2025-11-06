@@ -16,6 +16,9 @@ router.get('/search', partiesController.searchParties);
 // Get potential clients (parties that are not client or opponent)
 router.get('/potential-clients', partiesController.getPotentialClients);
 
+// Get finance clients (parties where party_type != 'opponent')
+router.get('/finance-clients', authenticateToken, partiesController.getClientsForFinance);
+
 // Get parties by branch ID
 router.get('/branch/:branchId', partiesController.getPartiesByBranchId);
 

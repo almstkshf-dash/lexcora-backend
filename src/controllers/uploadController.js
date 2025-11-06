@@ -19,6 +19,8 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
+  // Preserve original filename encoding for Arabic characters
+  preservePath: true,
 });
 
 /**
@@ -41,10 +43,23 @@ const uploadFiles = async (req, res) => {
     const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
     const uploadPromises = req.files.map(async (file) => {
+      // Decode the original filename to properly handle Arabic and UTF-8 characters
+      // Multer encodes filenames in Latin1, we need to decode them to UTF-8
+      let originalFilename = file.originalname;
+      try {
+        // Check if the filename needs decoding (contains non-ASCII characters)
+        if (/[^\x00-\x7F]/.test(originalFilename)) {
+          // The filename might be incorrectly encoded as Latin1, convert to UTF-8
+          originalFilename = Buffer.from(originalFilename, 'latin1').toString('utf8');
+        }
+      } catch (error) {
+        console.warn('Failed to decode filename, using as-is:', originalFilename);
+      }
+      
       // Generate unique filename
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
-      const fileExtension = path.extname(file.originalname);
+      const fileExtension = path.extname(originalFilename);
       const filename = `${timestamp}-${randomString}${fileExtension}`;
       const key = `${folder}/${filename}`;
 
@@ -54,6 +69,10 @@ const uploadFiles = async (req, res) => {
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
+        // Add metadata for original filename to preserve Arabic characters
+        Metadata: {
+          'original-filename': encodeURIComponent(originalFilename),
+        },
       });
 
       await s3Client.send(putCommand);
@@ -72,9 +91,9 @@ const uploadFiles = async (req, res) => {
         fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
       }
 
-      // Return formatted result
+      // Return formatted result with properly decoded filename
       return {
-        document_name: file.originalname,
+        document_name: originalFilename,
         document_url: fileUrl,
         key: key, // Store the key for future presigned URL generation
       };

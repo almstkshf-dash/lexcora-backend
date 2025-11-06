@@ -166,8 +166,7 @@ const createTransaction = async (transactionData) => {
     amount, 
     type, 
     description,
-    client_id,
-    bank_account_id,
+    client_id = null,
     attachments = [],
     created_by 
   } = transactionData;
@@ -182,7 +181,7 @@ const createTransaction = async (transactionData) => {
       INSERT INTO employee_cash_transactions 
       (employee_id, amount, type, description, client_id, created_by, created_at) 
       VALUES (?, ?, ?, ?, ?, ?, NOW())
-    `, [employee_id, amount, type, description, client_id || null, created_by]);
+    `, [employee_id, amount, type, description, client_id, created_by]);
     
     const transactionId = result.insertId;
     
@@ -194,15 +193,6 @@ const createTransaction = async (transactionData) => {
         SET balance = COALESCE(balance, 0) + ? 
         WHERE id = ?
       `, [amount, employee_id]);
-      
-      // When giving custody to employee (credit), subtract from bank account
-      if (bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance - ? 
-          WHERE id = ?
-        `, [amount, bank_account_id]);
-      }
     } else if (type === 'debit') {
       // Debit decreases employee balance
       await connection.query(`
@@ -210,22 +200,8 @@ const createTransaction = async (transactionData) => {
         SET balance = COALESCE(balance, 0) - ? 
         WHERE id = ?
       `, [amount, employee_id]);
-      
-      // When taking money from employee (debit), add to bank account
-      if (bank_account_id) {
-        await connection.query(`
-          UPDATE bank_accounts 
-          SET current_balance = current_balance + ? 
-          WHERE id = ?
-        `, [amount, bank_account_id]);
-      }
     }
-    
-    // Insert attachments if any
-    console.log('=== Inserting Attachments ===');
-    console.log('Attachments to insert:', attachments);
-    console.log('Attachments length:', attachments?.length);
-    
+   
     if (attachments && attachments.length > 0) {
       const attachmentValues = attachments.map(att => [
         transactionId,
@@ -233,7 +209,6 @@ const createTransaction = async (transactionData) => {
         att.attachment_name
       ]);
       
-      console.log('Attachment values for SQL:', attachmentValues);
       
       await connection.query(`
         INSERT INTO cash_transaction_attachments 
@@ -241,7 +216,6 @@ const createTransaction = async (transactionData) => {
         VALUES ?
       `, [attachmentValues]);
       
-      console.log('Attachments inserted successfully');
     } else {
       console.log('No attachments to insert');
     }
@@ -616,6 +590,26 @@ const getTransactionStatistics = async (filters) => {
   }
 };
 
+const getExpensesByClientId = async (clientId) => {
+  const query = `
+    SELECT 
+      ect.*,
+      e.name as employee_name,
+      creator.name as created_by_name,
+      p.name as client_name
+    FROM employee_cash_transactions ect
+    LEFT JOIN employees e ON ect.employee_id = e.id
+    LEFT JOIN employees creator ON ect.created_by = creator.id
+    LEFT JOIN parties p ON ect.client_id = p.id
+    WHERE ect.client_id = ? 
+    AND ect.type = 'debit' 
+    ORDER BY ect.created_at DESC
+  `;
+  
+  const [rows] = await db.query(query, [clientId]);
+  return rows;
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -623,6 +617,7 @@ module.exports = {
   updateTransaction,
   updateTransactionStatus,
   deleteTransaction,
+  getExpensesByClientId,
   deleteAttachment,
   getTransactionStatistics
 };

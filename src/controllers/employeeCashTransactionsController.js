@@ -43,23 +43,23 @@ const createTransaction = async (req, res) => {
       amount, 
       type, 
       description,
+      client_id,
       bank_account_id,
       attachments 
     } = req.body;
     
-    console.log('=== Create Transaction Request ===');
-    console.log('Request Body:', req.body);
-    console.log('Attachments received:', attachments);
-    console.log('Attachments type:', typeof attachments);
-    console.log('Attachments length:', attachments?.length);
-    
     const created_by = req.user?.id || req.userId || null;
+    
+    console.log('=== Create Transaction ===');
+    console.log('Client ID:', client_id);
+    console.log('Employee ID:', employee_id);
     
     const result = await employeeCashTransactionsService.createTransaction({ 
       employee_id, 
       amount, 
       type, 
       description,
+      client_id,
       bank_account_id,
       attachments,
       created_by 
@@ -186,6 +186,24 @@ const getTransactionStatistics = async (req, res) => {
   }
 };
 
+const getExpensesByClientId = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const expenses = await employeeCashTransactionsService.getExpensesByClientId(clientId);
+    
+    res.status(200).json({
+      success: true,
+      data: expenses
+    });
+  } catch (error) {
+    console.error("Error fetching expenses:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch expenses"
+    });
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -193,5 +211,6 @@ module.exports = {
   updateTransaction,
   deleteTransaction,
   deleteAttachment,
-  getTransactionStatistics
+  getTransactionStatistics,
+  getExpensesByClientId
 };

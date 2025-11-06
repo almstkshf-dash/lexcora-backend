@@ -209,6 +209,35 @@ const checkDuplicateParty = async (req, res) => {
   }
 };
 
+const getClientsForFinance = async (req, res) => {
+  try {
+    const { page, limit, search } = req.query;
+    const filters = {
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+      search
+    };
+    
+    const result = await partiesService.getClientsForFinance(filters);
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching finance clients:", error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch finance clients' 
+    });
+  }
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -219,5 +248,6 @@ module.exports = {
   getPartyCases,
   getPotentialClients,
   searchParties,
-  checkDuplicateParty
+  checkDuplicateParty,
+  getClientsForFinance
 };

@@ -16,7 +16,7 @@ router.get('/search', authenticateToken, checkPermission('Search Cases'), casesC
 router.get('/:id', authenticateToken, checkPermission('View Case'), casesController.getCaseById);
 
 // Get all case details (comprehensive information)
-router.get('/all-details/:id', casesController.getAllCaseDetails);
+router.get('/all-details/:id',  casesController.getAllCaseDetails);
 
 // Get cases by branch
 router.get('/branch/:branchId', casesController.getCasesByBranch);

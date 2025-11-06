@@ -86,6 +86,62 @@ const getTransactionById = async (id) => {
 };
 
 const createTransaction = async (transactionData) => {
+  // If this is a debit (expense) and there's a client_id, check client balance
+  if (transactionData.type === 'debit' && transactionData.client_id) {
+    try {
+      const [clientRows] = await db.query(
+        'SELECT balance FROM parties WHERE id = ?',
+        [transactionData.client_id]
+      );
+      
+      if (clientRows.length > 0) {
+        const clientBalance = clientRows[0].balance || 0;
+        const expenseAmount = parseFloat(transactionData.amount);
+        
+        if (expenseAmount > clientBalance) {
+          return {
+            success: false,
+            message: `رصيد العميل غير كافٍ. الرصيد الحالي: ${clientBalance} درهم، المبلغ المطلوب: ${expenseAmount} درهم`
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error checking client balance:', error);
+      return {
+        success: false,
+        message: 'حدث خطأ في التحقق من رصيد العميل'
+      };
+    }
+  }
+
+  // Check employee balance for debit transactions
+  if (transactionData.type === 'debit' && transactionData.employee_id) {
+    try {
+      const [employeeRows] = await db.query(
+        'SELECT balance FROM employees WHERE id = ?',
+        [transactionData.employee_id]
+      );
+      
+      if (employeeRows.length > 0) {
+        const employeeBalance = employeeRows[0].balance || 0;
+        const expenseAmount = parseFloat(transactionData.amount);
+        
+        if (expenseAmount > employeeBalance) {
+          return {
+            success: false,
+            message: `رصيد الموظف غير كافٍ. الرصيد الحالي: ${employeeBalance} درهم، المبلغ المطلوب: ${expenseAmount} درهم`
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error checking employee balance:', error);
+      return {
+        success: false,
+        message: 'حدث خطأ في التحقق من رصيد الموظف'
+      };
+    }
+  }
+  
   const result = await employeeCashTransactionsModel.createTransaction(transactionData);
   
   // Log transaction creation
@@ -191,6 +247,10 @@ const getTransactionStatistics = async (filters) => {
   return await employeeCashTransactionsModel.getTransactionStatistics(filters);
 };
 
+const getExpensesByClientId = async (clientId) => {
+  return await employeeCashTransactionsModel.getExpensesByClientId(clientId);
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -199,5 +259,6 @@ module.exports = {
   updateTransactionStatus,
   deleteTransaction,
   deleteAttachment,
-  getTransactionStatistics
+  getTransactionStatistics,
+  getExpensesByClientId
 };

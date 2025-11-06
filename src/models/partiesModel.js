@@ -408,6 +408,54 @@ const checkDuplicateParty = async (name, phone, email = null, excludeId = null) 
   return duplicates;
 };
 
+const getClientsForFinance = async (filters = {}) => {
+  const { page = 1, limit = 20, search } = filters;
+  const offset = (page - 1) * limit;
+
+  let whereClause = "WHERE p.party_type != 'opponent'";
+  const params = [];
+  const searchParam = search ? `%${search}%` : null;
+
+  if (search) {
+    whereClause += " AND (p.name LIKE ? OR p.phone LIKE ? OR p.nationality LIKE ?)";
+    params.push(searchParam, searchParam, searchParam);
+  }
+
+  const query = `
+    SELECT 
+      p.id,
+      p.name,
+      p.phone,
+      p.nationality,
+      p.balance
+    FROM parties p
+    ${whereClause}
+    ORDER BY p.id DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  params.push(limit, offset);
+
+  const [rows] = await db.query(query, params);
+
+  // Get total count
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM parties p
+    ${whereClause}
+  `;
+  const countParams = search ? [searchParam, searchParam, searchParam] : [];
+  const [countResult] = await db.query(countQuery, countParams);
+
+  return {
+    data: rows,
+    total: countResult[0].total,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    totalPages: Math.ceil(countResult[0].total / limit)
+  };
+};
+
 module.exports = {
   getAllParties,
   getPartiesByBranchId,
@@ -420,5 +468,6 @@ module.exports = {
   getPotentialClients,
   searchParties,
   getPartyByUsername,
-  checkDuplicateParty
+  checkDuplicateParty,
+  getClientsForFinance
 };

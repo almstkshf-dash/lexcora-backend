@@ -6,6 +6,9 @@ const { authenticateToken } = require('../middliewares/authMiddleware');
 // Get transaction statistics (must be before /:id route)
 router.get('/statistics', authenticateToken, employeeCashTransactionsController.getTransactionStatistics);
 
+// Get expenses by client ID (must be before /:id route)
+router.get('/client/:clientId/expenses', authenticateToken, employeeCashTransactionsController.getExpensesByClientId);
+
 // Get all transactions
 router.get('/', authenticateToken, employeeCashTransactionsController.getAllTransactions);
 

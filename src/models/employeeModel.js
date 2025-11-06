@@ -415,28 +415,6 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
       params.push(toDate);
     }
     
-    // Get wallet expenses where employee is related
-    const expensesQuery = `
-      SELECT 
-        we.id,
-        we.amount,
-        we.invoice_date as transaction_date,
-        we.created_at,
-        we.created_by,
-        'expense' as type,
-        GROUP_CONCAT(wei.description SEPARATOR ', ') as description,
-        we.invoice_number as reference,
-        c.case_number,
-        c.file_number,
-        creator.name as created_by_name
-      FROM wallet_expenses we
-      LEFT JOIN wallet_expenses_items wei ON we.id = wei.wallet_expense_id
-      LEFT JOIN cases c ON we.case_id = c.id
-      LEFT JOIN employees creator ON we.created_by = creator.id
-      WHERE we.employee_relat_id = ? ${dateFilter.replace(/created_at/g, 'we.created_at')}
-      GROUP BY we.id
-    `;
-    
     // Get invoices where employee referred the client
     const invoicesQuery = `
       SELECT 
@@ -478,7 +456,6 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
     `;
     
     // Execute queries
-    const [expensesRows] = await db.query(expensesQuery, params);
     const [invoicesRows] = await db.query(invoicesQuery, params);
     
     // Try to get salaries (table might not exist)
@@ -491,7 +468,7 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
     }
     
     // Combine all transactions
-    const transactions = [...expensesRows, ...invoicesRows, ...salariesRows].sort((a, b) => {
+    const transactions = [...invoicesRows, ...salariesRows].sort((a, b) => {
       return new Date(b.transaction_date || b.created_at) - new Date(a.transaction_date || a.created_at);
     });
     
