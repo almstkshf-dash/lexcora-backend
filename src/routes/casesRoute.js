@@ -47,7 +47,7 @@ router.delete('/:caseId/party/:partyId', authenticateToken, checkPermission('Del
 router.get('/:caseId/sessions', casesController.getCaseSessions);
 
 // Get case parties
-router.get('/:caseId/parties', checkPermission('View Case Parties'), casesController.getCaseParties);
+router.get('/:caseId/parties', authenticateToken, checkPermission('View Case Parties'), casesController.getCaseParties);
 
 // Get employees case documents
 router.get('/:id/employees-documents', casesController.getEmployeesCaseDocuments);
