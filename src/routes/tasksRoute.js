@@ -5,36 +5,38 @@ const express = require('express');
 const router = express.Router();
 const tasksController = require('../controllers/tasksController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { check } = require('express-validator');
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 // Get all tasks
-router.get('/',   tasksController.getAllTasks);
+router.get('/', authenticateToken, tasksController.getAllTasks);
 
 // Get task by ID
-router.get('/:id',   tasksController.getTaskById);
+router.get('/:id', authenticateToken, tasksController.getTaskById);
 
 // Get tasks by employee ID
-router.get('/employee/:employeeId',   tasksController.getTasksByEmployeeId);
+router.get('/employee/:employeeId', authenticateToken, tasksController.getTasksByEmployeeId);
 
 // Get tasks assigned to an employee
-router.get('/assigned-to/:employeeId',   tasksController.getAssignedToTasks);
+router.get('/assigned-to/:employeeId', authenticateToken, tasksController.getAssignedToTasks);
 
 // Get tasks by case ID
-router.get('/case/:caseId',   tasksController.getTasksByCaseId);
+router.get('/case/:caseId', authenticateToken, tasksController.getTasksByCaseId);
 
 // Get case tasks with employee details
-router.get('/case-tasks/:caseId',   tasksController.getCaseTasks);
+router.get('/case-tasks/:caseId', authenticateToken, tasksController.getCaseTasks);
 
 // Get tasks created by an employee (filtered by status)
-router.get('/creator/:employeeId',   tasksController.getCreatorTasks);
+router.get('/creator/:employeeId', authenticateToken, tasksController.getCreatorTasks);
 
 // Create a new task
-router.post('/', authenticateToken, tasksController.createTask);
+router.post('/', authenticateToken, checkPermission('Add Task'), tasksController.createTask);
 
 // Update a task by ID
-router.put('/:id', authenticateToken, tasksController.updateTask);
+router.put('/:id', authenticateToken, checkPermission('Edit Task'), tasksController.updateTask);
 
 // Delete a task by ID
-router.delete('/:id', authenticateToken, tasksController.deleteTask);
+router.delete('/:id', authenticateToken, checkPermission('Delete Task'), tasksController.deleteTask);
 
 // Delete a task document by ID
 router.delete('/documents/:id', authenticateToken, tasksController.deleteTaskDocument);

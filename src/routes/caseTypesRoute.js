@@ -12,7 +12,7 @@ router.get('/', authenticateToken, caseTypesController.getAllCaseTypes);
 
 // Create a new case type
 router.post('/', authenticateToken, checkPermission('Add Case Type'), caseTypesController.createCaseType);
-
+    
 // Update a case type by ID
 router.put('/:id', authenticateToken, caseTypesController.updateCaseType);
 

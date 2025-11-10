@@ -152,9 +152,67 @@ const deleteDeposit = async (depositId) => {
   }
 };
 
+const getAccountStatement = async (partyId, dateFrom, dateTo) => {
+  // Build WHERE clause for date filtering with proper table aliases
+  let dateConditionDeposits = '';
+  let dateConditionTransactions = '';
+  let queryParams = [partyId];
+  
+  if (dateFrom && dateTo) {
+    dateConditionDeposits = 'AND DATE(cd.created_at) BETWEEN ? AND ?';
+    dateConditionTransactions = 'AND DATE(ect.created_at) BETWEEN ? AND ?';
+    queryParams.push(dateFrom, dateTo);
+  } else if (dateFrom) {
+    dateConditionDeposits = 'AND DATE(cd.created_at) >= ?';
+    dateConditionTransactions = 'AND DATE(ect.created_at) >= ?';
+    queryParams.push(dateFrom);
+  } else if (dateTo) {
+    dateConditionDeposits = 'AND DATE(cd.created_at) <= ?';
+    dateConditionTransactions = 'AND DATE(ect.created_at) <= ?';
+    queryParams.push(dateTo);
+  }
+
+  const query = `
+    SELECT 
+      'deposit' as source,
+      cd.id,
+      cd.created_at as date,
+      'credit' as type,
+      cd.amount,
+      cd.description,
+      e.name as created_by_name
+    FROM clients_deposits cd
+    LEFT JOIN employees e ON cd.created_by = e.id
+    WHERE cd.party_id = ? ${dateConditionDeposits}
+    
+    UNION ALL
+    
+    SELECT 
+      'transaction' as source,
+      ect.id,
+      ect.created_at as date,
+      'debit' as type,
+      ect.amount,
+      ect.description,
+      e.name as created_by_name
+    FROM employee_cash_transactions ect
+    LEFT JOIN employees e ON ect.created_by = e.id
+    WHERE ect.client_id = ? ${dateConditionTransactions}
+    
+    ORDER BY date DESC
+  `;
+  
+  // Duplicate partyId for the second part of UNION
+  queryParams = [...queryParams.slice(0, 1), ...queryParams.slice(1), partyId, ...queryParams.slice(1)];
+  
+  const [rows] = await db.query(query, queryParams);
+  return rows;
+};
+
 module.exports = {
   getDepositsByPartyId,
   createDeposit,
   updateDeposit,
-  deleteDeposit
+  deleteDeposit,
+  getAccountStatement
 };

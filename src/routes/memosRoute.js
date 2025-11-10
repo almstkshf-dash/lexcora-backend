@@ -5,12 +5,13 @@ const express = require('express');
 const router = express.Router();
 const memosController = require('../controllers/memosController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 // Get all memos
-router.get('/', memosController.getAllMemos);
+router.get('/', authenticateToken, memosController.getAllMemos);
 
 // Get memos by status
-router.get('/status/:status', memosController.getMemosByStatus);
+router.get('/status/:status', authenticateToken, memosController.getMemosByStatus);
 
 // Get memos pending approval
 router.get('/pending-approval', authenticateToken, memosController.getMemosPendingApproval);
@@ -31,10 +32,10 @@ router.get('/case/:caseId', memosController.getMemosByCaseId);
 router.get('/:id/approval-status', memosController.getMemoApprovalStatus);
 
 // Create a new memo
-router.post('/', authenticateToken, memosController.addMemo);
+router.post('/', authenticateToken, checkPermission('Add Memo'), memosController.addMemo);
 
 // Update memo
-router.put('/:id', authenticateToken, memosController.updateMemo);
+router.put('/:id', authenticateToken, checkPermission('Edit Memo'), memosController.updateMemo);
 
 // Submit memo for approval (change status from Draft to Pending Approval)
 router.patch('/:id/submit-for-approval', authenticateToken, memosController.submitMemoForApproval);
@@ -52,6 +53,6 @@ router.patch('/:id/status', authenticateToken, memosController.updateMemoStatus)
 router.patch('/:id/employee-status', authenticateToken, memosController.updateEmployeeMemoStatus);
 
 // Delete memo
-router.delete('/:id', authenticateToken, memosController.deleteMemo);
+router.delete('/:id', authenticateToken, checkPermission('Delete Memo'), memosController.deleteMemo);
 
 module.exports = router;

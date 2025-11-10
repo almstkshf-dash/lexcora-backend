@@ -100,9 +100,34 @@ const deleteDeposit = async (req, res) => {
   }
 };
 
+const getAccountStatement = async (req, res) => {
+  try {
+    const { partyId } = req.params;
+    const { date_from, date_to } = req.query;
+
+    const statement = await clientsDepositsService.getAccountStatement(
+      partyId, 
+      date_from, 
+      date_to
+    );
+
+    res.status(200).json({
+      success: true,
+      data: statement
+    });
+  } catch (error) {
+    console.error("Error fetching account statement:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch account statement"
+    });
+  }
+};
+
 module.exports = {
   getDepositsByPartyId,
   createDeposit,
   updateDeposit,
-  deleteDeposit
+  deleteDeposit,
+  getAccountStatement
 };

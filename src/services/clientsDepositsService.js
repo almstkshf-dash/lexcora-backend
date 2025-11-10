@@ -16,9 +16,14 @@ const deleteDeposit = async (depositId) => {
   return await clientsDepositsModel.deleteDeposit(depositId);
 };
 
+const getAccountStatement = async (partyId, dateFrom, dateTo) => {
+  return await clientsDepositsModel.getAccountStatement(partyId, dateFrom, dateTo);
+};
+
 module.exports = {
   getDepositsByPartyId,
   createDeposit,
   updateDeposit,
-  deleteDeposit
+  deleteDeposit,
+  getAccountStatement
 };

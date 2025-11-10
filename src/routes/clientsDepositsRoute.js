@@ -6,6 +6,9 @@ const { authenticateToken } = require("../middliewares/authMiddleware");
 // Get deposits by party ID
 router.get("/party/:partyId", authenticateToken, clientsDepositsController.getDepositsByPartyId);
 
+// Get account statement (كشف الحساب) by party ID with date filtering
+router.get("/account-statement/:partyId", authenticateToken, clientsDepositsController.getAccountStatement);
+
 // Create new deposit
 router.post("/", authenticateToken, clientsDepositsController.createDeposit);
 
