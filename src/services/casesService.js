@@ -8,6 +8,7 @@ const employeeModel = require('../models/employeeModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { sendCaseNotification } = require('../utils/notificationHelper');
+const db = require('../config/db');
 
 const addCase = async (caseData, createdBy = null) => {
   // return null;
@@ -568,6 +569,262 @@ const updateCaseAdditionalNote = async (caseId, additionalNote, updatedBy = null
   }
 };
 
+const createCaseWithRelations = async (data, createdBy = null) => {
+  const connection = await db.getConnection();
+  
+  try {
+    // Start transaction
+    await connection.beginTransaction();
+
+    // 1. Create the case
+    const caseData = data.caseData;
+    
+    // Generate file_number automatically
+    const fileNumberResult = await connection.query(
+      'SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(file_number, "-", -1) AS UNSIGNED)), 0) + 1 as next_number FROM cases'
+    );
+    const nextNumber = fileNumberResult[0][0].next_number;
+    const currentYear = new Date().getFullYear();
+    const fileNumber = `${currentYear}-${nextNumber}`;
+    const start_date = new Date().toISOString().split('T')[0];
+    
+    const [caseResult] = await connection.query(
+      `INSERT INTO cases (
+        file_number, case_number, police_station_id, public_prosecution_id, court_id,
+        lawyer_id, secretary_id, case_classification_id, case_type_id,
+        legal_advisor_id, legal_researcher_id, counter_case_id, fees, start_date,
+        additional_note, topic, branch_id, is_important, is_secret,
+        is_archived, is_pending
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        fileNumber, caseData.case_number, caseData.police_station_id, caseData.public_prosecution_id,
+        caseData.court_id, caseData.lawyer_id, caseData.secretary_id,
+        caseData.case_classification_id, caseData.case_type_id, caseData.legal_advisor_id,
+        caseData.legal_researcher_id, caseData.counter_case_id, caseData.fees, start_date,
+        caseData.additional_note, caseData.topic, caseData.branch_id,
+        caseData.is_important, caseData.is_secret, caseData.is_archived,
+        caseData.is_pending
+      ]
+    );
+
+    const caseId = caseResult.insertId;
+
+    // 2. Add case documents
+    const files = caseData.files || [];
+    for (const file of files) {
+      await connection.query(
+        'INSERT INTO case_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
+        [caseId, file.document_name, file.document_url, createdBy]
+      );
+    }
+
+    // 3. Add court documents
+    const courtFiles = caseData.courtFiles || [];
+    for (const file of courtFiles) {
+      await connection.query(
+        'INSERT INTO court_case_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
+        [caseId, file.document_name, file.document_url, createdBy]
+      );
+    }
+
+    // 4. Add employee documents
+    const employeesFiles = caseData.employeesFiles || [];
+    for (const file of employeesFiles) {
+      await connection.query(
+        'INSERT INTO case_employees_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
+        [caseId, file.document_name, file.document_url, createdBy]
+      );
+    }
+
+    // 5. Add related cases
+    const relatedCases = caseData.related_cases || [];
+    for (const relatedCaseId of relatedCases) {
+      await connection.query(
+        'INSERT INTO case_relations (case_id, related_case_id) VALUES (?, ?)',
+        [caseId, relatedCaseId]
+      );
+    }
+
+    // 6. Add parties
+    const parties = data.parties || [];
+    for (const party of parties) {
+      await connection.query(
+        'INSERT INTO case_parties (case_id, party_id, type, employee_id) VALUES (?, ?, ?, ?)',
+        [caseId, party.id, party.party_type, createdBy]
+      );
+
+      // Add party documents
+      const partyFiles = party.files || [];
+      for (const file of partyFiles) {
+        await connection.query(
+          'INSERT INTO case_parties_documents (case_id, party_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?, ?)',
+          [caseId, party.id, file.document_name, file.document_url, createdBy]
+        );
+      }
+    }
+
+    // 7. Add case degrees
+    const caseDegrees = data.caseDegrees || [];
+    for (const degree of caseDegrees) {
+      await connection.query(
+        `INSERT INTO case_degrees (case_id, degree, case_number, year, referral_date, client_status, opponent_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [caseId, degree.degree, degree.case_number, degree.year, degree.referral_date, 
+         degree.client_status, degree.opponent_status]
+      );
+    }
+
+    // 8. Add petitions
+    const petitions = data.petitions || [];
+    for (const petition of petitions) {
+      const [petitionResult] = await connection.query(
+        'INSERT INTO case_petitions (case_id, date, decision, type, appeal_date) VALUES (?, ?, ?, ?, ?)',
+        [caseId, petition.submissionDate, petition.judgeDecision, petition.orderType, petition.appealDate]
+      );
+
+      const petitionId = petitionResult.insertId;
+      const petitionFiles = petition.files || [];
+      for (const file of petitionFiles) {
+        await connection.query(
+          'INSERT INTO case_petition_documents (petition_id, document_name, document_url) VALUES (?, ?, ?)',
+          [petitionId, file.document_name, file.document_url]
+        );
+      }
+    }
+
+    // 9. Add sessions
+    const sessions = data.sessions || [];
+    for (const session of sessions) {
+      const [sessionResult] = await connection.query(
+        `INSERT INTO sessions (case_id, session_date, link, is_expert_session, note, decision)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [caseId, session.date, session.link, session.isExpertSession, session.note, session.decision]
+      );
+
+      const sessionId = sessionResult.insertId;
+      const sessionFiles = session.files || [];
+      for (const file of sessionFiles) {
+        await connection.query(
+          'INSERT INTO session_documents (session_id, document_name, document_url) VALUES (?, ?, ?)',
+          [sessionId, file.document_name, file.document_url]
+        );
+      }
+    }
+
+    // 10. Add executions
+    const executions = data.executions || [];
+    for (const execution of executions) {
+      const [executionResult] = await connection.query(
+        'INSERT INTO executions (case_id, date, type, status, amount, employee_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [caseId, execution.date, execution.type, execution.status, execution.amount, createdBy]
+      );
+
+      const executionId = executionResult.insertId;
+      const executionFiles = execution.attachedFiles || [];
+      for (const file of executionFiles) {
+        await connection.query(
+          'INSERT INTO executions_documents (execution_id, document_name, document_url) VALUES (?, ?, ?)',
+          [executionId, file.document_name, file.document_url]
+        );
+      }
+    }
+
+    // 11. Add judicial notices
+    const judicialNotices = data.judicialNotices || [];
+    for (const notice of judicialNotices) {
+      const [noticeResult] = await connection.query(
+        `INSERT INTO judicial_orders (case_id, date, notification_period_days, case_filed, service_completed)
+         VALUES (?, ?, ?, ?, ?)`,
+        [caseId, notice.certificationDate, notice.noticePeriod, notice.lawsuitFiled, notice.noticeCompleted]
+      );
+
+      const noticeId = noticeResult.insertId;
+      const noticeFiles = notice.files || [];
+      for (const file of noticeFiles) {
+        await connection.query(
+          'INSERT INTO judicial_orders_documents (judicial_order_id, document_name, document_url) VALUES (?, ?, ?)',
+          [noticeId, file.document_name, file.document_url]
+        );
+      }
+    }
+
+    // 12. Add tasks
+    const tasks = data.tasks || [];
+    for (const task of tasks) {
+      const [taskResult] = await connection.query(
+        'INSERT INTO tasks (case_id, title, description, assigned_to, assigned_by, due_date, priority) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [caseId, task.title, task.description, task.assignedTo, createdBy, task.dueDate, task.priority]
+      );
+
+      const taskId = taskResult.insertId;
+      const taskFiles = task.files || [];
+      for (const file of taskFiles) {
+        await connection.query(
+          'INSERT INTO task_documents (task_id, document_name, document_url) VALUES (?, ?, ?)',
+          [taskId, file.document_name, file.document_url]
+        );
+      }
+    }
+
+    // 13. Add memos
+    const memos = data.memos || [];
+    for (const memo of memos) {
+      const [memoResult] = await connection.query(
+        `INSERT INTO memos (case_id, title, submission_date, description, status, admin_note, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [caseId, memo.title, memo.submission_date, memo.description, memo.status, memo.admin_note, createdBy]
+      );
+
+      const memoId = memoResult.insertId;
+      const memoFiles = memo.files || [];
+      for (const file of memoFiles) {
+        await connection.query(
+          'INSERT INTO memo_documents (memo_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
+          [memoId, file.document_name, file.document_url, createdBy]
+        );
+      }
+    }
+
+    // Commit transaction
+    await connection.commit();
+
+    // Log case creation
+    if (createdBy) {
+      await logAdd(
+        createdBy,
+        'قضية',
+        caseData.file_number || caseData.case_number || 'قضية جديدة',
+        caseId
+      );
+    }
+
+    // Send notification
+    if (createdBy) {
+      try {
+        const employeeData = await employeeModel.getEmployeeById(createdBy);
+        const employeeName = employeeData?.name || 'Employee';
+        await sendCaseNotification({
+          action: 'created',
+          caseNumber: caseData.file_number || caseData.case_number || `Case #${caseId}`,
+          employeeName,
+          createdBy
+        });
+      } catch (notificationError) {
+        console.error('Error sending case creation notification:', notificationError);
+      }
+    }
+
+    return { caseId };
+  } catch (error) {
+    // Rollback transaction on error
+    await connection.rollback();
+    console.error('Error in createCaseWithRelations service:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   addCase,
   getAllCases,
@@ -592,5 +849,6 @@ module.exports = {
   getCasePartyDocuments,
   deleteCasePartyDocument,
   addCasePartyDocument,
-  updateCaseAdditionalNote
+  updateCaseAdditionalNote,
+  createCaseWithRelations
 };

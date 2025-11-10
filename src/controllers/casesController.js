@@ -603,6 +603,56 @@ const updateCaseAdditionalNote = async (req, res) => {
   }
 };
 
+const createCaseWithRelations = async (req, res) => {
+  try {
+    const createdBy = req.user ? req.user.id : null;
+    const { 
+      caseData, 
+      parties, 
+      caseDegrees, 
+      petitions, 
+      sessions, 
+      executions, 
+      judicialNotices, 
+      tasks, 
+      memos 
+    } = req.body;
+
+    // Validate required case data
+    if (!caseData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Case data is required'
+      });
+    }
+
+    const result = await casesService.createCaseWithRelations({
+      caseData,
+      parties: parties || [],
+      caseDegrees: caseDegrees || [],
+      petitions: petitions || [],
+      sessions: sessions || [],
+      executions: executions || [],
+      judicialNotices: judicialNotices || [],
+      tasks: tasks || [],
+      memos: memos || []
+    }, createdBy);
+
+    res.status(201).json({
+      success: true,
+      message: 'Case and all relations created successfully',
+      caseId: result.caseId
+    });
+  } catch (error) {
+    console.error('Error creating case with relations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create case with relations',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   addCase,
   getAllCases,
@@ -628,5 +678,6 @@ module.exports = {
   getCasePartyDocuments,
   deleteCasePartyDocument,
   addCasePartyDocument,
+  createCaseWithRelations,
   updateCaseAdditionalNote
 };

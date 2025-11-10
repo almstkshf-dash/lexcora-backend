@@ -3,14 +3,15 @@ const express = require('express');
 const router = express.Router();
 const branchesController = require('../controllers/branchesController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 
-router.get('/', branchesController.getAllBranches);
+router.get('/', authenticateToken, branchesController.getAllBranches);
 
-router.post('/', authenticateToken, branchesController.createBranch);
+router.post('/', authenticateToken, checkPermission('Add Branch'), branchesController.createBranch);
 
-router.put('/:id', authenticateToken, branchesController.updateBranch);
+router.put('/:id', authenticateToken, checkPermission('Update Branch'), branchesController.updateBranch);
 
-router.delete('/:id', authenticateToken, branchesController.deleteBranch);
+router.delete('/:id', authenticateToken, checkPermission('Delete Branch'), branchesController.deleteBranch);
 
 module.exports = router;

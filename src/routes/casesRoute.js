@@ -6,6 +6,7 @@ const router = express.Router();
 const casesController = require('../controllers/casesController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
+const { check } = require('express-validator');
 // Get all cases
 router.get('/', authenticateToken, checkPermission('Show Cases'), casesController.getAllCases);
 
@@ -31,19 +32,22 @@ router.get('/legal-advisor/:legalAdvisorId', casesController.getCasesByLegalAdvi
 router.get('/legal-researcher/:legalResearcherId', casesController.getCasesByLegalResearcher);
 
 // Create a new case
-router.post('/', authenticateToken, casesController.addCase);
+router.post('/', authenticateToken, checkPermission('Add Case'), casesController.addCase);
+
+// Create a new case with all relations (batch endpoint)
+router.post('/batch', authenticateToken, checkPermission('Add Case'), casesController.createCaseWithRelations);
 
 // Add party to case
-router.post('/:caseId/add-party', authenticateToken, casesController.addPartyToCase);
+router.post('/:caseId/add-party', authenticateToken, checkPermission('Add Case Parties'), casesController.addPartyToCase);
 
 // Delete party from case
-router.delete('/:caseId/party/:partyId', authenticateToken, casesController.deletePartyFromCase);
+router.delete('/:caseId/party/:partyId', authenticateToken, checkPermission('Delete Case Parties'), casesController.deletePartyFromCase);
 
 // Get case sessions
 router.get('/:caseId/sessions', casesController.getCaseSessions);
 
 // Get case parties
-router.get('/:caseId/parties', casesController.getCaseParties);
+router.get('/:caseId/parties', checkPermission('View Case Parties'), casesController.getCaseParties);
 
 // Get employees case documents
 router.get('/:id/employees-documents', casesController.getEmployeesCaseDocuments);

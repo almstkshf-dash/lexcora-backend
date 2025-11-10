@@ -139,7 +139,6 @@ const getAllCases = async (filters = {}) => {
         c.case_number,
         c.file_number,
         c.topic,
-        c.status,
         c.start_date,
         c.is_important,
         c.is_secret,
@@ -151,8 +150,6 @@ const getAllCases = async (filters = {}) => {
         ct.name_en as case_type_en,
         cc.name_ar as case_classification_ar,
         cc.name_en as case_classification_en,
-        COUNT(DISTINCT s.id) as session_count,
-        MAX(s.session_date) as last_session_date,
         GROUP_CONCAT(DISTINCT CASE WHEN cp.type = 'client' THEN p.name END ORDER BY p.name SEPARATOR ', ') as client_parties,
         GROUP_CONCAT(DISTINCT CASE WHEN cp.type = 'opponent' THEN p.name END ORDER BY p.name SEPARATOR ', ') as opponent_parties
       FROM cases c
@@ -800,7 +797,6 @@ const getPartyCases = async (partyId) => {
         c.case_number,
         c.file_number,
         c.topic,
-        c.status,
         c.start_date,
         c.is_important,
         c.is_secret,
@@ -812,8 +808,6 @@ const getPartyCases = async (partyId) => {
         ct.name_en as case_type_en,
         cc.name_ar as case_classification_ar,
         cc.name_en as case_classification_en,
-        COUNT(DISTINCT s.id) as session_count,
-        MAX(s.session_date) as last_session_date,
         GROUP_CONCAT(DISTINCT CASE WHEN cp2.type = 'client' THEN p2.name END ORDER BY p2.name SEPARATOR ', ') as client_parties,
         GROUP_CONCAT(DISTINCT CASE WHEN cp2.type = 'opponent' THEN p2.name END ORDER BY p2.name SEPARATOR ', ') as opponent_parties
       FROM cases c
@@ -825,7 +819,7 @@ const getPartyCases = async (partyId) => {
       LEFT JOIN case_parties cp2 ON c.id = cp2.case_id
       LEFT JOIN parties p2 ON cp2.party_id = p2.id
       WHERE cp.party_id = ?
-      GROUP BY c.id, c.case_number, c.file_number, c.topic, c.status, c.start_date, c.is_important, c.is_secret, c.is_archived, courts.court_ar, courts.court_en, ct.name_ar, ct.name_en, cc.name_ar, cc.name_en
+      GROUP BY c.id, c.case_number, c.file_number, c.topic, c.start_date, c.is_important, c.is_secret, c.is_archived, courts.court_ar, courts.court_en, ct.name_ar, ct.name_en, cc.name_ar, cc.name_en
       ORDER BY c.created_at DESC
     `, [partyId]);
     
