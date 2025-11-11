@@ -65,6 +65,7 @@ const getAllTransactions = async (filters = {}) => {
       ect.id,
       ect.employee_id,
       ect.client_id,
+      ect.bank_account_id,
       ect.amount,
       ect.type,
       ect.description,
@@ -77,11 +78,15 @@ const getAllTransactions = async (filters = {}) => {
       COALESCE(e.balance, 0) as employee_balance,
       creator.name as created_by_name,
       p.name as client_name,
-      p.phone as client_phone
+      p.phone as client_phone,
+      ba.bank_name,
+      ba.account_name,
+      ba.account_number
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
     LEFT JOIN parties p ON ect.client_id = p.id
+    LEFT JOIN bank_accounts ba ON ect.bank_account_id = ba.id
     ${whereClause}
     ORDER BY ect.created_at DESC
     LIMIT ? OFFSET ?
@@ -106,6 +111,7 @@ const getTransactionById = async (id) => {
       ect.id,
       ect.employee_id,
       ect.client_id,
+      ect.bank_account_id,
       ect.amount,
       ect.type,
       ect.description,
@@ -119,6 +125,9 @@ const getTransactionById = async (id) => {
       creator.name as created_by_name,
       p.name as client_name,
       p.phone as client_phone,
+      ba.bank_name,
+      ba.account_name,
+      ba.account_number,
       (
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT(
@@ -135,6 +144,7 @@ const getTransactionById = async (id) => {
     LEFT JOIN employees e ON ect.employee_id = e.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
     LEFT JOIN parties p ON ect.client_id = p.id
+    LEFT JOIN bank_accounts ba ON ect.bank_account_id = ba.id
     WHERE ect.id = ?
   `, [id]);
   
@@ -167,6 +177,7 @@ const createTransaction = async (transactionData) => {
     type, 
     description,
     client_id = null,
+    bank_account_id = null,
     attachments = [],
     created_by 
   } = transactionData;
@@ -176,12 +187,33 @@ const createTransaction = async (transactionData) => {
   try {
     await connection.beginTransaction();
     
+    // Check bank account balance if bank_account_id is provided and type is credit
+    if (bank_account_id && type === 'credit') {
+      const [bankAccountRows] = await connection.query(
+        'SELECT current_balance FROM bank_accounts WHERE id = ?',
+        [bank_account_id]
+      );
+      
+      if (bankAccountRows.length === 0) {
+        await connection.rollback();
+        throw new Error('الحساب البنكي غير موجود');
+      }
+      
+      const bankBalance = bankAccountRows[0].current_balance || 0;
+      const creditAmount = parseFloat(amount);
+      
+      if (creditAmount > bankBalance) {
+        await connection.rollback();
+        throw new Error(`رصيد الحساب البنكي غير كافٍ. الرصيد الحالي: ${bankBalance} درهم، المبلغ المطلوب: ${creditAmount} درهم`);
+      }
+    }
+    
     // Insert transaction
     const [result] = await connection.query(`
       INSERT INTO employee_cash_transactions 
-      (employee_id, amount, type, description, client_id, created_by, created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, NOW())
-    `, [employee_id, amount, type, description, client_id, created_by]);
+      (employee_id, amount, type, description, client_id, bank_account_id, created_by, created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+    `, [employee_id, amount, type, description, client_id, bank_account_id, created_by]);
     
     const transactionId = result.insertId;
     
@@ -193,6 +225,15 @@ const createTransaction = async (transactionData) => {
         SET balance = COALESCE(balance, 0) + ? 
         WHERE id = ?
       `, [amount, employee_id]);
+      
+      // Deduct from bank account if bank_account_id is provided
+      if (bank_account_id) {
+        await connection.query(`
+          UPDATE bank_accounts 
+          SET current_balance = COALESCE(current_balance, 0) - ? 
+          WHERE id = ?
+        `, [amount, bank_account_id]);
+      }
     } else if (type === 'debit') {
       // Debit decreases employee balance
       await connection.query(`
@@ -241,16 +282,14 @@ const updateTransaction = async (id, transactionData) => {
     attachments = []
   } = transactionData;
   
-  // Note: bank_account_id is NOT included - it's set only at creation and cannot be changed
-  
   const connection = await db.getConnection();
   
   try {
     await connection.beginTransaction();
     
-    // Get old transaction data first
+    // Get old transaction data first (including bank_account_id)
     const [oldTransactions] = await connection.query(`
-      SELECT employee_id, amount, type 
+      SELECT employee_id, amount, type, bank_account_id 
       FROM employee_cash_transactions 
       WHERE id = ?
     `, [id]);
@@ -262,8 +301,31 @@ const updateTransaction = async (id, transactionData) => {
     
     const oldTransaction = oldTransactions[0];
     
-    // Reverse the old transaction's effect on employee balance only
-    // Bank accounts are NOT adjusted on edit - they stay as they were at creation
+    // If updating a credit transaction with a bank account, check if new amount is valid
+    if (type === 'credit' && oldTransaction.bank_account_id) {
+      const [bankAccountRows] = await connection.query(
+        'SELECT current_balance FROM bank_accounts WHERE id = ?',
+        [oldTransaction.bank_account_id]
+      );
+      
+      if (bankAccountRows.length > 0) {
+        // Calculate what the bank balance would be after reversing old transaction and applying new one
+        const currentBankBalance = bankAccountRows[0].current_balance || 0;
+        const oldAmount = parseFloat(oldTransaction.amount);
+        const newAmount = parseFloat(amount);
+        
+        // Bank balance after reversing old deduction: current + old amount
+        // Bank balance after new deduction: (current + old amount) - new amount
+        const projectedBalance = currentBankBalance + oldAmount - newAmount;
+        
+        if (projectedBalance < 0) {
+          await connection.rollback();
+          throw new Error(`رصيد الحساب البنكي غير كافٍ. الرصيد الحالي: ${currentBankBalance} درهم، المبلغ القديم: ${oldAmount} درهم، المبلغ الجديد: ${newAmount} درهم`);
+        }
+      }
+    }
+    
+    // Reverse the old transaction's effect on employee balance
     if (oldTransaction.type === 'credit') {
       await connection.query(`
         UPDATE employees 
@@ -278,7 +340,16 @@ const updateTransaction = async (id, transactionData) => {
       `, [oldTransaction.amount, oldTransaction.employee_id]);
     }
     
-    // Update transaction (don't update bank_account_id on edit - it's set on creation only)
+    // Reverse the old transaction's effect on bank account (if it was a credit transaction)
+    if (oldTransaction.type === 'credit' && oldTransaction.bank_account_id) {
+      await connection.query(`
+        UPDATE bank_accounts 
+        SET current_balance = COALESCE(current_balance, 0) + ? 
+        WHERE id = ?
+      `, [oldTransaction.amount, oldTransaction.bank_account_id]);
+    }
+    
+    // Update transaction record
     const [result] = await connection.query(`
       UPDATE employee_cash_transactions 
       SET employee_id = ?, 
@@ -288,8 +359,7 @@ const updateTransaction = async (id, transactionData) => {
       WHERE id = ?
     `, [employee_id, amount, type, description, id]);
     
-    // Apply the new transaction's effect on employee balance only
-    // Bank accounts are NOT adjusted on edit - they stay as they were at creation
+    // Apply the new transaction's effect on employee balance
     if (type === 'credit') {
       await connection.query(`
         UPDATE employees 
@@ -302,6 +372,15 @@ const updateTransaction = async (id, transactionData) => {
         SET balance = COALESCE(balance, 0) - ? 
         WHERE id = ?
       `, [amount, employee_id]);
+    }
+    
+    // Apply the new transaction's effect on bank account (if it's a credit transaction)
+    if (type === 'credit' && oldTransaction.bank_account_id) {
+      await connection.query(`
+        UPDATE bank_accounts 
+        SET current_balance = COALESCE(current_balance, 0) - ? 
+        WHERE id = ?
+      `, [amount, oldTransaction.bank_account_id]);
     }
     
     // Delete old attachments
@@ -343,9 +422,9 @@ const deleteTransaction = async (id) => {
   try {
     await connection.beginTransaction();
     
-    // Get transaction data before deleting
+    // Get transaction data before deleting (including bank_account_id)
     const [transactions] = await connection.query(`
-      SELECT employee_id, amount, type 
+      SELECT employee_id, amount, type, bank_account_id 
       FROM employee_cash_transactions 
       WHERE id = ?
     `, [id]);
@@ -372,6 +451,16 @@ const deleteTransaction = async (id) => {
         SET balance = COALESCE(balance, 0) + ? 
         WHERE id = ?
       `, [transaction.amount, transaction.employee_id]);
+    }
+    
+    // Reverse the transaction's effect on bank account (if it was a credit transaction)
+    if (transaction.type === 'credit' && transaction.bank_account_id) {
+      // Restore the bank account balance (add back the amount that was deducted)
+      await connection.query(`
+        UPDATE bank_accounts 
+        SET current_balance = COALESCE(current_balance, 0) + ? 
+        WHERE id = ?
+      `, [transaction.amount, transaction.bank_account_id]);
     }
     
     // Attachments will be deleted automatically due to ON DELETE CASCADE

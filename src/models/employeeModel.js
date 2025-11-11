@@ -9,6 +9,7 @@ const getAllEmployees = async () => {
       e.status,
       e.username,
       e.id,
+      e.balance,
       d.name_ar as department_ar,
       d.name_en as department_en,
       m.name as managerName,
