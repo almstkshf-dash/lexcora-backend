@@ -20,7 +20,7 @@ const getDepositsByPartyId = async (req, res) => {
 
 const createDeposit = async (req, res) => {
   try {
-    const { party_id, amount, description } = req.body;
+    const { party_id, amount, description, type, check_number, bank_name, check_date } = req.body;
     const created_by = req.user.id;
 
     if (!party_id || !amount) {
@@ -30,10 +30,41 @@ const createDeposit = async (req, res) => {
       });
     }
 
+    // Validate payment type
+    const validTypes = ['cash', 'card', 'check'];
+    const paymentType = type || 'cash';
+    
+    if (!validTypes.includes(paymentType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment type. Must be: cash, card, or check"
+      });
+    }
+
+    // Validate check fields if type is check
+    if (paymentType === 'check') {
+      if (!check_number) {
+        return res.status(400).json({
+          success: false,
+          message: "Check number is required for check payments"
+        });
+      }
+      if (!check_date) {
+        return res.status(400).json({
+          success: false,
+          message: "Check date is required for check payments"
+        });
+      }
+    }
+
     const result = await clientsDepositsService.createDeposit({
       party_id,
       amount,
       description: description || null,
+      type: paymentType,
+      check_number: paymentType === 'check' ? check_number : null,
+      bank_name: paymentType === 'check' ? (bank_name || null) : null,
+      check_date: paymentType === 'check' ? check_date : null,
       created_by
     });
 
@@ -54,7 +85,7 @@ const createDeposit = async (req, res) => {
 const updateDeposit = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amount, description } = req.body;
+    const { amount, description, type, check_number, bank_name, check_date } = req.body;
 
     if (!amount) {
       return res.status(400).json({
@@ -63,9 +94,40 @@ const updateDeposit = async (req, res) => {
       });
     }
 
+    // Validate payment type
+    const validTypes = ['cash', 'card', 'check'];
+    const paymentType = type || 'cash';
+    
+    if (!validTypes.includes(paymentType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment type. Must be: cash, card, or check"
+      });
+    }
+
+    // Validate check fields if type is check
+    if (paymentType === 'check') {
+      if (!check_number) {
+        return res.status(400).json({
+          success: false,
+          message: "Check number is required for check payments"
+        });
+      }
+      if (!check_date) {
+        return res.status(400).json({
+          success: false,
+          message: "Check date is required for check payments"
+        });
+      }
+    }
+
     await clientsDepositsService.updateDeposit(id, {
       amount,
-      description: description || null
+      description: description || null,
+      type: paymentType,
+      check_number: paymentType === 'check' ? check_number : null,
+      bank_name: paymentType === 'check' ? (bank_name || null) : null,
+      check_date: paymentType === 'check' ? check_date : null
     });
 
     res.status(200).json({

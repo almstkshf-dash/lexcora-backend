@@ -74,11 +74,83 @@ const updateAccountBalance = async (id, amount, operation) => {
   return await bankAccountsModel.updateAccountBalance(id, amount, operation);
 };
 
+const getBankAccountLogs = async (bankAccountId) => {
+  return await bankAccountsModel.getBankAccountLogs(bankAccountId);
+};
+
+const createBankAccountLog = async (logData) => {
+  const result = await bankAccountsModel.createBankAccountLog(logData);
+  
+  // Log the bank account log creation
+  if (logData.created_by && result.success) {
+    const logType = logData.type === 'deposit' ? 'إيداع' : 'سحب';
+    await logAdd(
+      logData.created_by,
+      'سجل حساب بنكي',
+      `${logType} - ${logData.amount} درهم`,
+      result.data?.id
+    );
+  }
+  
+  return result;
+};
+
+const updateBankAccountLog = async (logId, updateData) => {
+  const result = await bankAccountsModel.updateBankAccountLog(logId, updateData);
+  
+  // Log the bank account log update
+  if (updateData.updated_by && result.success) {
+    const logType = updateData.type === 'deposit' ? 'إيداع' : 'سحب';
+    await logUpdate(
+      updateData.updated_by,
+      'سجل حساب بنكي',
+      `${logType} - ${updateData.amount} درهم`,
+      logId
+    );
+  }
+  
+  return result;
+};
+
+const deleteBankAccountLog = async (logId, deletedBy = null) => {
+  // Get log details before deletion
+  let logDetails = null;
+  if (deletedBy) {
+    try {
+      const logsResult = await bankAccountsModel.getBankAccountLogs(null);
+      if (logsResult.success) {
+        logDetails = logsResult.data.find(log => log.id === parseInt(logId));
+      }
+    } catch (error) {
+      console.error('Error getting log details:', error);
+    }
+  }
+  
+  const result = await bankAccountsModel.deleteBankAccountLog(logId);
+  
+  // Log the bank account log deletion
+  if (deletedBy && result.success && logDetails) {
+    const logType = logDetails.type === 'deposit' ? 'إيداع' : 'سحب';
+    await logDelete(
+      deletedBy,
+      'سجل حساب بنكي',
+      `${logType} - ${logDetails.amount} درهم`,
+      logId
+    );
+  }
+  
+  return result;
+};
+
 module.exports = {
   getAllBankAccounts,
   getBankAccountById,
   createBankAccount,
   updateBankAccount,
   deleteBankAccount,
-  updateAccountBalance
+  updateAccountBalance,
+  getBankAccountLogs,
+  createBankAccountLog,
+  updateBankAccountLog,
+  deleteBankAccountLog
 };

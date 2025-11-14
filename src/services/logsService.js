@@ -15,8 +15,8 @@ const db = require("../config/db");
 const createLog = async (employeeId, action, description) => {
   try {
     const [result] = await db.query(
-      `INSERT INTO logs (employee_id, action, description, created_at)
-       VALUES (?, ?, ?, NOW())`,
+      `INSERT INTO logs (employee_id, action, description)
+       VALUES (?, ?, ?)`,
       [employeeId, action, description]
     );
     return result.insertId;
@@ -80,11 +80,11 @@ const createBulkLogs = async (logs) => {
     if (!logs || logs.length === 0) return;
     
     const values = logs.map(log => [log.employeeId, log.action, log.description]);
-    const placeholders = logs.map(() => '(?, ?, ?, NOW())').join(', ');
+    const placeholders = logs.map(() => '(?, ?, ?)').join(', ');
     const flatValues = values.flat();
     
     await db.query(
-      `INSERT INTO logs (employee_id, action, description, created_at) VALUES ${placeholders}`,
+      `INSERT INTO logs (employee_id, action, description) VALUES ${placeholders}`,
       flatValues
     );
   } catch (error) {

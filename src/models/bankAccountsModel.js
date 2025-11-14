@@ -154,11 +154,228 @@ const updateAccountBalance = async (id, amount, operation = 'add') => {
   }
 };
 
+const getBankAccountLogs = async (bankAccountId) => {
+  try {
+    const [logs] = await db.query(`
+      SELECT 
+        bal.id,
+        bal.bank_account_id,
+        bal.type,
+        bal.amount,
+        bal.description,
+        bal.created_by,
+        bal.created_at,
+        e.name as employee_name
+      FROM bank_account_logs bal
+      LEFT JOIN employees e ON bal.created_by = e.id
+      WHERE bal.bank_account_id = ?
+      ORDER BY bal.created_at DESC
+    `, [bankAccountId]);
+    
+    // Get attachments for each log
+    for (let log of logs) {
+      const [attachments] = await db.query(`
+        SELECT 
+          id,
+          log_id,
+          document_name,
+          document_url,
+          uploaded_at
+        FROM bank_account_log_attachments
+        WHERE log_id = ?
+        ORDER BY uploaded_at ASC
+      `, [log.id]);
+      
+      log.attachments = attachments;
+    }
+    
+    return { success: true, data: logs };
+  } catch (error) {
+    console.error("Error fetching bank account logs:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+const createBankAccountLog = async (logData) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const { bank_account_id, type, amount, description, created_by, attachments = [] } = logData;
+    
+    // Insert the log
+    const [logResult] = await connection.query(`
+      INSERT INTO bank_account_logs 
+      (bank_account_id, type, amount, description, created_by, created_at) 
+      VALUES (?, ?, ?, ?, ?, NOW())
+    `, [bank_account_id, type, amount, description, created_by]);
+    
+    const logId = logResult.insertId;
+    
+    // Update bank account balance
+    const operator = type === 'deposit' ? '+' : '-';
+    await connection.query(`
+      UPDATE bank_accounts 
+      SET current_balance = current_balance ${operator} ?
+      WHERE id = ?
+    `, [amount, bank_account_id]);
+    
+    // Insert attachments if any
+    if (attachments && attachments.length > 0) {
+      for (const file of attachments) {
+        await connection.query(`
+          INSERT INTO bank_account_log_attachments 
+          (log_id, document_name, document_url, uploaded_at) 
+          VALUES (?, ?, ?, NOW())
+        `, [logId, file.originalname, file.location || file.path]);
+      }
+    }
+    
+    await connection.commit();
+    
+    return { success: true, data: { id: logId } };
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error creating bank account log:", error);
+    return { success: false, message: error.message };
+  } finally {
+    connection.release();
+  }
+};
+
+const updateBankAccountLog = async (logId, updateData) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    // Get the old log data to calculate balance difference
+    const [oldLogData] = await connection.query(
+      'SELECT bank_account_id, type, amount FROM bank_account_logs WHERE id = ?',
+      [logId]
+    );
+    
+    if (oldLogData.length === 0) {
+      await connection.rollback();
+      return { success: false, message: 'Log not found' };
+    }
+    
+    const oldLog = oldLogData[0];
+    const { type, amount, description, new_attachments = [], delete_attachments = [] } = updateData;
+    
+    // Update the log
+    await connection.query(`
+      UPDATE bank_account_logs 
+      SET type = ?, amount = ?, description = ?
+      WHERE id = ?
+    `, [type, amount, description, logId]);
+    
+    // Calculate balance adjustment
+    // First, reverse the old transaction
+    const oldOperator = oldLog.type === 'deposit' ? '-' : '+';
+    await connection.query(`
+      UPDATE bank_accounts 
+      SET current_balance = current_balance ${oldOperator} ?
+      WHERE id = ?
+    `, [oldLog.amount, oldLog.bank_account_id]);
+    
+    // Then apply the new transaction
+    const newOperator = type === 'deposit' ? '+' : '-';
+    await connection.query(`
+      UPDATE bank_accounts 
+      SET current_balance = current_balance ${newOperator} ?
+      WHERE id = ?
+    `, [amount, oldLog.bank_account_id]);
+    
+    // Delete specified attachments
+    if (delete_attachments.length > 0) {
+      await connection.query(
+        'DELETE FROM bank_account_log_attachments WHERE id IN (?)',
+        [delete_attachments]
+      );
+    }
+    
+    // Add new attachments
+    if (new_attachments.length > 0) {
+      for (const file of new_attachments) {
+        await connection.query(`
+          INSERT INTO bank_account_log_attachments 
+          (log_id, document_name, document_url, uploaded_at) 
+          VALUES (?, ?, ?, NOW())
+        `, [logId, file.originalname, file.location]);
+      }
+    }
+    
+    await connection.commit();
+    
+    return { success: true };
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error updating bank account log:", error);
+    return { success: false, message: error.message };
+  } finally {
+    connection.release();
+  }
+};
+
+const deleteBankAccountLog = async (logId) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    // Get log data to reverse the balance change
+    const [logData] = await connection.query(
+      'SELECT bank_account_id, type, amount FROM bank_account_logs WHERE id = ?',
+      [logId]
+    );
+    
+    if (logData.length === 0) {
+      await connection.rollback();
+      return { success: false, message: 'Log not found' };
+    }
+    
+    const log = logData[0];
+    
+    // Reverse the balance change
+    const operator = log.type === 'deposit' ? '-' : '+';
+    await connection.query(`
+      UPDATE bank_accounts 
+      SET current_balance = current_balance ${operator} ?
+      WHERE id = ?
+    `, [log.amount, log.bank_account_id]);
+    
+    // Delete attachments (will cascade but we can also explicitly delete)
+    await connection.query(
+      'DELETE FROM bank_account_log_attachments WHERE log_id = ?',
+      [logId]
+    );
+    
+    // Delete the log
+    await connection.query('DELETE FROM bank_account_logs WHERE id = ?', [logId]);
+    
+    await connection.commit();
+    
+    return { success: true };
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error deleting bank account log:", error);
+    return { success: false, message: error.message };
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getAllBankAccounts,
   getBankAccountById,
   createBankAccount,
   updateBankAccount,
   deleteBankAccount,
-  updateAccountBalance
+  updateAccountBalance,
+  getBankAccountLogs,
+  createBankAccountLog,
+  updateBankAccountLog,
+  deleteBankAccountLog
 };

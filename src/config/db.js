@@ -15,14 +15,8 @@ const createPool = () => {
       connectionLimit: 10,
       queueLimit: 0,
       dateStrings: true,
-      timezone: '+00:00',
-      // Ensure proper UTF-8 encoding for Arabic and special characters
       charset: 'utf8mb4',
       collation: 'utf8mb4_unicode_ci'
-      // Removed all potentially invalid options to eliminate warnings:
-      // - acquireTimeout, timeout, reconnect (causing warnings)
-      // - maxIdle, idleTimeout, enableKeepAlive (may not be supported)
-      // Using only basic, well-documented MySQL2 pool options
     });
   }
   return pool;

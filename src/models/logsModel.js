@@ -106,8 +106,8 @@ const createLog = async (logData) => {
   const { employee_id, action, description } = logData;
   
   const [result] = await db.query(`
-    INSERT INTO logs (employee_id, action, description, created_at)
-    VALUES (?, ?, ?, NOW())
+    INSERT INTO logs (employee_id, action, description)
+    VALUES (?, ?, ?)
   `, [employee_id, action, description]);
   
   return result.insertId;

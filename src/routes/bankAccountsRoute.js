@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bankAccountsController = require('../controllers/bankAccountsController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { upload } = require('../controllers/uploadController');
 const { 
   idValidator, 
   paginationValidator,
@@ -31,5 +32,17 @@ router.delete('/:id', authenticateToken, idValidator, bankAccountsController.del
 // Update account balance
 // Now validates id, amount (must be positive number), and operation (must be 'add' or 'subtract')
 router.patch('/:id/balance', authenticateToken, bankAccountValidators.updateBalance, bankAccountsController.updateAccountBalance);
+
+// Get all logs for a bank account
+router.get('/:id/logs', authenticateToken, idValidator, bankAccountsController.getBankAccountLogs);
+
+// Create new bank account log with attachments
+router.post('/logs', authenticateToken, upload.array('attachments', 10), bankAccountsController.createBankAccountLog);
+
+// Update bank account log
+router.put('/logs/:id', authenticateToken, idValidator, upload.array('attachments', 10), bankAccountsController.updateBankAccountLog);
+
+// Delete bank account log
+router.delete('/logs/:id', authenticateToken, idValidator, bankAccountsController.deleteBankAccountLog);
 
 module.exports = router;

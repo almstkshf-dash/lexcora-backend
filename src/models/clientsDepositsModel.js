@@ -23,14 +23,28 @@ const createDeposit = async (depositData) => {
 
     // Insert deposit
     const insertQuery = `
-      INSERT INTO clients_deposits (party_id, amount, description, created_by, created_at)
-      VALUES (?, ?, ?, ?, NOW())
+      INSERT INTO clients_deposits (
+        party_id, 
+        amount, 
+        description, 
+        type, 
+        check_number, 
+        bank_name, 
+        check_date, 
+        created_by, 
+        created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
     
     const [result] = await connection.query(insertQuery, [
       depositData.party_id,
       depositData.amount,
       depositData.description,
+      depositData.type || 'cash',
+      depositData.check_number || null,
+      depositData.bank_name || null,
+      depositData.check_date || null,
       depositData.created_by
     ]);
 
@@ -79,13 +93,23 @@ const updateDeposit = async (depositId, depositData) => {
     // Update deposit
     const updateQuery = `
       UPDATE clients_deposits 
-      SET amount = ?, description = ?
+      SET 
+        amount = ?, 
+        description = ?, 
+        type = ?, 
+        check_number = ?, 
+        bank_name = ?, 
+        check_date = ?
       WHERE id = ?
     `;
     
     await connection.query(updateQuery, [
       depositData.amount,
       depositData.description,
+      depositData.type || 'cash',
+      depositData.check_number || null,
+      depositData.bank_name || null,
+      depositData.check_date || null,
       depositId
     ]);
 
