@@ -47,7 +47,7 @@ const addCase = async (caseData, createdBy = null) => {
         const employeeName = employeeData?.name || 'Employee';
         await sendCaseNotification({
           action: 'created',
-          caseNumber: caseData.file_number || caseData.case_number || `Case #${caseId}`,
+          caseNumber: caseData.file_number || caseData.case_number || `File ${caseData.file_number}`,
           employeeName,
           createdBy
         });

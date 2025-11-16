@@ -174,16 +174,6 @@ const createInvoice = async (invoice, items, attachments = []) => {
       );
     }
 
-    // Update bank account balance when invoice is created
-    if (invoice.bank_account_id && invoice.amount) {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance + ? 
-         WHERE id = ?`,
-        [invoice.amount, invoice.bank_account_id]
-      );
-    }
-
     await connection.commit();
 
     return { 
@@ -252,32 +242,6 @@ const updateInvoice = async (id, invoice, items, attachments = null) => {
     if (invoice.currency !== undefined) {
       updateFields.push('currency = ?');
       updateValues.push(invoice.currency);
-    }
-
-    // Handle bank account balance changes
-    const oldBankAccountId = currentInvoice[0].bank_account_id;
-    const oldAmount = parseFloat(currentInvoice[0].amount);
-    const newBankAccountId = invoice.bank_account_id !== undefined ? invoice.bank_account_id : oldBankAccountId;
-    const newAmount = invoice.amount !== undefined ? parseFloat(invoice.amount) : oldAmount;
-
-    // Reverse old bank account balance if it exists
-    if (oldBankAccountId) {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance - ? 
-         WHERE id = ?`,
-        [oldAmount, oldBankAccountId]
-      );
-    }
-
-    // Add to new bank account balance if it exists
-    if (newBankAccountId) {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance + ? 
-         WHERE id = ?`,
-        [newAmount, newBankAccountId]
-      );
     }
 
     if (updateFields.length > 0) {
@@ -359,16 +323,6 @@ const deleteInvoice = async (id) => {
     if (invoice.length === 0) {
       await connection.rollback();
       return { success: false, message: 'Invoice not found' };
-    }
-
-    // Reverse bank account balance if invoice had a bank account
-    if (invoice[0].bank_account_id && invoice[0].amount) {
-      await connection.query(
-        `UPDATE bank_accounts 
-         SET current_balance = current_balance - ? 
-         WHERE id = ?`,
-        [invoice[0].amount, invoice[0].bank_account_id]
-      );
     }
 
     // Delete invoice attachments (CASCADE should handle this, but being explicit)
