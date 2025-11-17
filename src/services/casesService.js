@@ -8,6 +8,7 @@ const employeeModel = require('../models/employeeModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { sendCaseNotification } = require('../utils/notificationHelper');
+const { generateFileNumber } = require('../utils/generateFileNumber');
 const db = require('../config/db');
 
 const addCase = async (caseData, createdBy = null) => {
@@ -47,7 +48,7 @@ const addCase = async (caseData, createdBy = null) => {
         const employeeName = employeeData?.name || 'Employee';
         await sendCaseNotification({
           action: 'created',
-          caseNumber: caseData.file_number || caseData.case_number || `File ${caseData.file_number}`,
+          caseNumber: caseData.file_number || caseData.case_number || `File #${caseData.file_number}`,
           employeeName,
           createdBy
         });
@@ -579,13 +580,8 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     // 1. Create the case
     const caseData = data.caseData;
     
-    // Generate file_number automatically
-    const fileNumberResult = await connection.query(
-      'SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(file_number, "-", -1) AS UNSIGNED)), 0) + 1 as next_number FROM cases'
-    );
-    const nextNumber = fileNumberResult[0][0].next_number;
-    const currentYear = new Date().getFullYear();
-    const fileNumber = `${currentYear}-${nextNumber}`;
+    // Generate file_number automatically using the utility function
+    const fileNumber = generateFileNumber();
     const start_date = new Date().toISOString().split('T')[0];
     
     const [caseResult] = await connection.query(
@@ -610,7 +606,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     const caseId = caseResult.insertId;
 
     // 2. Add case documents
-    const files = caseData.files || [];
+    const files = Array.isArray(caseData.files) ? caseData.files : [];
     for (const file of files) {
       await connection.query(
         'INSERT INTO case_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
@@ -619,7 +615,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 3. Add court documents
-    const courtFiles = caseData.courtFiles || [];
+    const courtFiles = Array.isArray(caseData.courtFiles) ? caseData.courtFiles : [];
     for (const file of courtFiles) {
       await connection.query(
         'INSERT INTO court_case_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
@@ -628,7 +624,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 4. Add employee documents
-    const employeesFiles = caseData.employeesFiles || [];
+    const employeesFiles = Array.isArray(caseData.employeesFiles) ? caseData.employeesFiles : [];
     for (const file of employeesFiles) {
       await connection.query(
         'INSERT INTO case_employees_documents (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
@@ -637,7 +633,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 5. Add related cases
-    const relatedCases = caseData.related_cases || [];
+    const relatedCases = Array.isArray(caseData.related_cases) ? caseData.related_cases : [];
     for (const relatedCaseId of relatedCases) {
       await connection.query(
         'INSERT INTO case_relations (case_id, related_case_id) VALUES (?, ?)',
@@ -646,15 +642,15 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 6. Add parties
-    const parties = data.parties || [];
+    const parties = Array.isArray(data.parties) ? data.parties : [];
     for (const party of parties) {
       await connection.query(
         'INSERT INTO case_parties (case_id, party_id, type, employee_id) VALUES (?, ?, ?, ?)',
-        [caseId, party.id, party.party_type, createdBy]
+        [caseId, party.id, party.type, createdBy]
       );
 
       // Add party documents
-      const partyFiles = party.files || [];
+      const partyFiles = Array.isArray(party.files) ? party.files : [];
       for (const file of partyFiles) {
         await connection.query(
           'INSERT INTO case_parties_documents (case_id, party_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?, ?)',
@@ -664,7 +660,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 7. Add case degrees
-    const caseDegrees = data.caseDegrees || [];
+    const caseDegrees = Array.isArray(data.caseDegrees) ? data.caseDegrees : [];
     for (const degree of caseDegrees) {
       await connection.query(
         `INSERT INTO case_degrees (case_id, degree, case_number, year, referral_date, client_status, opponent_status)
@@ -675,7 +671,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 8. Add petitions
-    const petitions = data.petitions || [];
+    const petitions = Array.isArray(data.petitions) ? data.petitions : [];
     for (const petition of petitions) {
       const [petitionResult] = await connection.query(
         'INSERT INTO case_petitions (case_id, date, decision, type, appeal_date) VALUES (?, ?, ?, ?, ?)',
@@ -683,7 +679,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const petitionId = petitionResult.insertId;
-      const petitionFiles = petition.files || [];
+      const petitionFiles = Array.isArray(petition.files) ? petition.files : [];
       for (const file of petitionFiles) {
         await connection.query(
           'INSERT INTO case_petition_documents (petition_id, document_name, document_url) VALUES (?, ?, ?)',
@@ -693,7 +689,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 9. Add sessions
-    const sessions = data.sessions || [];
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
     for (const session of sessions) {
       const [sessionResult] = await connection.query(
         `INSERT INTO sessions (case_id, session_date, link, is_expert_session, note, decision)
@@ -702,7 +698,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const sessionId = sessionResult.insertId;
-      const sessionFiles = session.files || [];
+      const sessionFiles = Array.isArray(session.files) ? session.files : [];
       for (const file of sessionFiles) {
         await connection.query(
           'INSERT INTO session_documents (session_id, document_name, document_url) VALUES (?, ?, ?)',
@@ -712,7 +708,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 10. Add executions
-    const executions = data.executions || [];
+    const executions = Array.isArray(data.executions) ? data.executions : [];
     for (const execution of executions) {
       const [executionResult] = await connection.query(
         'INSERT INTO executions (case_id, date, type, status, amount, employee_id) VALUES (?, ?, ?, ?, ?, ?)',
@@ -720,7 +716,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const executionId = executionResult.insertId;
-      const executionFiles = execution.attachedFiles || [];
+      const executionFiles = Array.isArray(execution.attachedFiles) ? execution.attachedFiles : [];
       for (const file of executionFiles) {
         await connection.query(
           'INSERT INTO executions_documents (execution_id, document_name, document_url) VALUES (?, ?, ?)',
@@ -730,7 +726,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 11. Add judicial notices
-    const judicialNotices = data.judicialNotices || [];
+    const judicialNotices = Array.isArray(data.judicialNotices) ? data.judicialNotices : [];
     for (const notice of judicialNotices) {
       const [noticeResult] = await connection.query(
         `INSERT INTO judicial_orders (case_id, date, notification_period_days, case_filed, service_completed)
@@ -739,7 +735,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const noticeId = noticeResult.insertId;
-      const noticeFiles = notice.files || [];
+      const noticeFiles = Array.isArray(notice.files) ? notice.files : [];
       for (const file of noticeFiles) {
         await connection.query(
           'INSERT INTO judicial_orders_documents (judicial_order_id, document_name, document_url) VALUES (?, ?, ?)',
@@ -749,7 +745,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 12. Add tasks
-    const tasks = data.tasks || [];
+    const tasks = Array.isArray(data.tasks) ? data.tasks : [];
     for (const task of tasks) {
       const [taskResult] = await connection.query(
         'INSERT INTO tasks (case_id, title, description, assigned_to, assigned_by, due_date, priority) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -757,7 +753,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const taskId = taskResult.insertId;
-      const taskFiles = task.files || [];
+      const taskFiles = Array.isArray(task.files) ? task.files : [];
       for (const file of taskFiles) {
         await connection.query(
           'INSERT INTO task_documents (task_id, document_name, document_url) VALUES (?, ?, ?)',
@@ -767,7 +763,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 13. Add memos
-    const memos = data.memos || [];
+    const memos = Array.isArray(data.memos) ? data.memos : [];
     for (const memo of memos) {
       const [memoResult] = await connection.query(
         `INSERT INTO memos (case_id, title, submission_date, description, status, admin_note, created_by)
@@ -776,7 +772,7 @@ const createCaseWithRelations = async (data, createdBy = null) => {
       );
 
       const memoId = memoResult.insertId;
-      const memoFiles = memo.files || [];
+      const memoFiles = Array.isArray(memo.files) ? memo.files : [];
       for (const file of memoFiles) {
         await connection.query(
           'INSERT INTO memo_documents (memo_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
