@@ -67,6 +67,7 @@ const invoicesRoute = require("./routes/invoicesRoute");
 const performanceRoute = require("./routes/performanceRoute");
 const legalPeriodsRoute = require("./routes/legalPeriodsRoutes");
 const employeeCashTransactionsRoute = require("./routes/employeeCashTransactionsRoute");
+const legalAssistantRoute = require("./routes/legalAssistantRoute");
 
 const app = express();
 
@@ -146,6 +147,7 @@ app.use("/api/invoices", invoicesRoute);
 app.use("/api/performance", performanceRoute);
 app.use("/api/legal-periods", legalPeriodsRoute);
 app.use("/api/employee-cash-transactions", employeeCashTransactionsRoute);
+app.use("/api/legal-assistant", legalAssistantRoute);
 
 app.get("/health", async (req, res) => {
   try {

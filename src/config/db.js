@@ -15,8 +15,7 @@ const createPool = () => {
       connectionLimit: 10,
       queueLimit: 0,
       dateStrings: true,
-      charset: 'utf8mb4',
-      collation: 'utf8mb4_unicode_ci'
+      charset: 'utf8mb4'
     });
   }
   return pool;
