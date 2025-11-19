@@ -7,7 +7,7 @@ const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 
 // Get all parties
-router.get('/', authenticateToken, checkPermission('View Parties'), partiesController.getAllParties);
+router.get('/', authenticateToken, partiesController.getAllParties);
 
 // Check for duplicate party (before creating)
 router.get('/check-duplicate', authenticateToken, partiesController.checkDuplicateParty);

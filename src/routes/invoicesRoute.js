@@ -7,9 +7,10 @@ const {
   idValidator,
   clientIdValidator
 } = require('../middlewares/validators');
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 // Get all invoices
-router.get('/', authenticateToken, invoicesController.getAllInvoices);
+router.get('/', authenticateToken, checkPermission('view_invoices') , invoicesController.getAllInvoices);
 
 // Get invoice by id
 router.get('/:id', authenticateToken, idValidator, invoicesController.getInvoiceById);
@@ -18,16 +19,16 @@ router.get('/:id', authenticateToken, idValidator, invoicesController.getInvoice
 router.get('/client/:clientId', authenticateToken, clientIdValidator, invoicesController.getInvoicesByClientId);
 
 // Create new invoice
-router.post('/', authenticateToken, invoicesController.createInvoice);
+router.post('/', authenticateToken, checkPermission('invoice_add'), invoicesController.createInvoice);
 
 // Update invoice
-router.put('/:id', authenticateToken, idValidator, invoicesController.updateInvoice);
+router.put('/:id', authenticateToken, checkPermission('invoice_edit'), idValidator, invoicesController.updateInvoice);
 
 // Update invoice status
 router.patch('/:id/status', authenticateToken, idValidator, invoicesController.updateInvoiceStatus);
 
 // Delete invoice
-router.delete('/:id', authenticateToken, idValidator, invoicesController.deleteInvoice);
+router.delete('/:id', authenticateToken, checkPermission('invoice_delete'), idValidator, invoicesController.deleteInvoice);
 
 // Upload invoice attachments
 router.post('/:id/attachments', authenticateToken, idValidator, upload.array('files', 10), invoicesController.uploadInvoiceAttachments);
