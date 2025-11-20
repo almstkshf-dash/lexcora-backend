@@ -1,4 +1,4 @@
-const { S3Client, DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 // Configure AWS S3 client
@@ -211,6 +211,50 @@ const getAccessibleUrl = async (keyOrUrl, expiresIn = 604800) => {
   }
 };
 
+/**
+ * List keys in the bucket (optionally filtered by prefix)
+ */
+const listBucketKeys = async (prefix = '') => {
+  const bucketName = process.env.AWS_S3_BUCKET_NAME;
+  const keys = [];
+  let continuationToken;
+  try {
+    do {
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: prefix,
+        ContinuationToken: continuationToken
+      });
+      const resp = await s3Client.send(command);
+      resp.Contents?.forEach(obj => keys.push(obj.Key));
+      continuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined;
+    } while (continuationToken);
+  } catch (err) {
+    console.error('Error listing bucket keys:', err);
+  }
+  return keys;
+};
+
+/**
+ * Cleanup orphaned files in S3 given a set of known keys.
+ * Only keys not present in knownKeys will be deleted.
+ */
+const cleanupOrphanedFiles = async ({ knownKeys = [], prefix = '' }) => {
+  try {
+    const bucketKeys = await listBucketKeys(prefix);
+    const known = new Set(knownKeys);
+    const orphaned = bucketKeys.filter(k => !known.has(k));
+    if (orphaned.length === 0) {
+      return { deleted: 0, skipped: bucketKeys.length };
+    }
+    const result = await deleteFilesFromS3(orphaned);
+    return { deleted: result.success, failed: result.failed };
+  } catch (error) {
+    console.error('Error cleaning up orphaned files:', error);
+    return { deleted: 0, failed: 0, error: error.message };
+  }
+};
+
 module.exports = {
   deleteFileFromS3,
   deleteFilesFromS3,
@@ -218,4 +262,6 @@ module.exports = {
   extractKeyFromUrl,
   generatePresignedUrl,
   getAccessibleUrl,
+  listBucketKeys,
+  cleanupOrphanedFiles,
 };

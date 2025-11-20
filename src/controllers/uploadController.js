@@ -2,6 +2,7 @@ const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, Delet
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const multer = require('multer');
 const path = require('path');
+const { validateFiles, DEFAULT_ALLOWED_MIME, DEFAULT_MAX_SIZE } = require('../utils/fileValidation');
 
 // Configure AWS S3 client
 const s3Client = new S3Client({
@@ -19,8 +20,6 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
-  // Preserve original filename encoding for Arabic characters
-  preservePath: true,
 });
 
 /**
@@ -35,6 +34,20 @@ const uploadFiles = async (req, res) => {
       });
     }
 
+    // Validate files (MIME + size)
+    const { valid, errors } = validateFiles(req.files, {
+      maxSize: DEFAULT_MAX_SIZE,
+      allowedMime: DEFAULT_ALLOWED_MIME
+    });
+
+    if (valid.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid files provided',
+        details: errors
+      });
+    }
+
     const folder = req.body.folder || 'documents';
     const bucketName = process.env.AWS_S3_BUCKET_NAME;
     
@@ -42,7 +55,7 @@ const uploadFiles = async (req, res) => {
     const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
     const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
-    const uploadPromises = req.files.map(async (file) => {
+    const uploadPromises = valid.map(async (file) => {
       // Decode the original filename to properly handle Arabic and UTF-8 characters
       // Multer encodes filenames in Latin1, we need to decode them to UTF-8
       let originalFilename = file.originalname;
@@ -92,10 +105,15 @@ const uploadFiles = async (req, res) => {
       }
 
       // Return formatted result with properly decoded filename
+      const nowIso = new Date().toISOString();
       return {
         document_name: originalFilename,
         document_url: fileUrl,
         key: key, // Store the key for future presigned URL generation
+        mimetype: file.mimetype,
+        size: file.size,
+        uploaded_by: req.user?.id || null,
+        created_at: nowIso
       };
     });
 
@@ -104,6 +122,7 @@ const uploadFiles = async (req, res) => {
     return res.status(200).json({
       success: true,
       files: uploadedFiles,
+      errors,
     });
   } catch (error) {
     console.error('Error uploading files to AWS S3:', error);
