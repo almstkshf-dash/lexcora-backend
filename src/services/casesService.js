@@ -8,6 +8,7 @@ const employeeModel = require('../models/employeeModel');
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { sendCaseNotification } = require('../utils/notificationHelper');
+const { sendSystemNotification } = require('../utils/notificationHelper');
 const { generateFileNumber } = require('../utils/generateFileNumber');
 const db = require('../config/db');
 
@@ -407,6 +408,40 @@ const getCaseParties = async (caseId) => {
     console.error('Error in getCaseParties service:', error);
     throw error;
   }
+};
+
+/**
+ * Delete case and send system notification (controller-thin helper)
+ */
+const deleteCaseWithNotification = async (id, deletedBy = null, deletedByName = 'User') => {
+  // Attempt to fetch for notification; ignore failures
+  let caseNumber = `Case #${id}`;
+  try {
+    const existing = await casesModel.getCaseById(id);
+    if (existing) {
+      caseNumber = existing.case_number || existing.file_number || caseNumber;
+    }
+  } catch (err) {
+    console.warn('Could not fetch case before delete for notification:', err.message);
+  }
+
+  const result = await deleteCase(id, deletedBy);
+
+  if (result && deletedBy) {
+    try {
+      await sendSystemNotification({
+        title: '?? ??? ???',
+        message: `${deletedByName} ??? ???? ?????: ${caseNumber}`,
+        type: 'warning',
+        relatedType: 'none',
+        createdBy: deletedBy
+      });
+    } catch (notifError) {
+      console.error('Error sending case deletion notification:', notifError);
+    }
+  }
+
+  return result;
 };
 
 const getEmployeesCaseDocuments = async (caseId) => {
@@ -828,6 +863,7 @@ module.exports = {
   getAllCaseDetails,
   updateCase,
   deleteCase,
+  deleteCaseWithNotification,
   getCasesByBranch,
   getCasesByLawyer,
   getCasesByLegalAdvisor,

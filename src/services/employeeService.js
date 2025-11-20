@@ -23,6 +23,16 @@ const getEmployee = async (id) => {
   return employee;
 };
 
+/**
+ * Convenience helper that masks password when requested.
+ */
+const getEmployeeSanitized = async (id, { maskPassword = true } = {}) => {
+  const employee = await getEmployee(id);
+  if (!maskPassword) return employee;
+  const { password, ...rest } = employee;
+  return { ...rest, password: '********' };
+};
+
 const addEmployee = async (data, createdBy = null) => {
 try {  
     // Validate status field (if provided)
@@ -54,6 +64,11 @@ try {
     throw new Error("Failed to add employee");
   }
 
+};
+
+const addEmployeeWithFetch = async (data, createdBy = null) => {
+  const userId = await addEmployee(data, createdBy);
+  return await getEmployee(userId);
 };
 
 const updateEmployee = async (id, data, updatedBy = null) => {
@@ -180,7 +195,9 @@ const getAdminEmployees = async () => {
 module.exports = {
   listEmployees,
   getEmployee,
+  getEmployeeSanitized,
   addEmployee,
+  addEmployeeWithFetch,
   updateEmployee,
   removeEmployee,
   getEmployeeAccountStatement,

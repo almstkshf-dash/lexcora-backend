@@ -21,18 +21,9 @@ const getEmployees = async (req, res) => {
 const getEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const employee = await employeeService.getEmployee(id);
-    
-    // Check if user is admin
     const isAdmin = req.user && (req.user.role_en === 'admin');
-    
-    // Mask password for non-admin users
-    const employeeData = {
-      ...employee,
-      password: isAdmin ? employee.password : '********'
-    };
-    
-    res.success(employeeData, req.t('generic.ok'));
+    const employee = await employeeService.getEmployeeSanitized(id, { maskPassword: !isAdmin });
+    res.success(employee, req.t('generic.ok'));
   } catch (err) {
     const statusCode = err.message === "Employee not found" ? 404 : 500;
     res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_GET_ERROR');
@@ -43,8 +34,7 @@ const getEmployee = async (req, res) => {
 const createEmployee = async (req, res) => {
   try {
     const createdBy = req.user?.id || null;
-    const employeeId = await employeeService.addEmployee(req.body, createdBy);
-    const newEmployee = await employeeService.getEmployee(employeeId);
+    const newEmployee = await employeeService.addEmployeeWithFetch(req.body, createdBy);
     res.created(newEmployee, req.t('generic.created'));
   } catch (err) {
     res.fail(err.message, 400, 'EMPLOYEE_CREATE_ERROR');
