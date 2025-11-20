@@ -1,6 +1,6 @@
 const db = require("../config/db");
 
-const getAllSessions = async (filters = {}, limit = 50, offset = 0) => {
+const getAllSessions = async (filters = {}, limit = 50, offset = 0, sortBy = 'session_date', sortOrder = 'DESC') => {
   let query = `
     SELECT 
       s.id,
@@ -61,10 +61,13 @@ const getAllSessions = async (filters = {}, limit = 50, offset = 0) => {
   if (conditions.length > 0) {
     query += ' WHERE ' + conditions.join(' AND ');
   }
-  
+  const allowedSort = ['session_date', 'created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'session_date';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
   query += `
     GROUP BY s.id, s.case_id, s.session_date, s.link, s.is_expert_session, s.note, s.created_at, s.updated_at, c.case_number, c.file_number, c.topic, c.branch_id, courts.court_ar, courts.court_en
-    ORDER BY s.session_date DESC
+    ORDER BY s.${orderBy} ${orderDir}
     LIMIT ? OFFSET ?
   `;
   
@@ -73,13 +76,16 @@ const getAllSessions = async (filters = {}, limit = 50, offset = 0) => {
   const [rows] = await db.query(query, params);
   
   // Convert comma-separated strings to arrays and handle null values
-  return rows.map(row => ({
+  const data = rows.map(row => ({
     ...row,
     clientParties: row.client_parties ? row.client_parties.split(', ') : [],
     opponentParties: row.opponent_parties ? row.opponent_parties.split(', ') : [],
     client_parties: undefined, // Remove the original field
     opponent_parties: undefined // Remove the original field
   }));
+
+  const { total } = await getSessionsCount(filters);
+  return { rows: data, total };
 };
 
 const getSessionsCount = async (filters = {}) => {

@@ -1,18 +1,13 @@
 const caseDocumentsService = require("../services/caseDocumentsService");
+const { normalizePagination } = require("../utils/pagination");
 
 const getAllCaseDocuments = async (req, res) => {
   try {
-    const caseDocuments = await caseDocumentsService.getAllCaseDocuments();
-    res.status(200).json({
-      success: true,
-      data: caseDocuments,
-      message: "Case documents retrieved successfully"
-    });
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id']);
+    const result = await caseDocumentsService.getAllCaseDocuments({ page, limit, sortBy, sortOrder });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.fail(error.message, 500, 'CASE_DOCS_LIST_ERROR');
   }
 };
 

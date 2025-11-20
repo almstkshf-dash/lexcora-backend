@@ -2,11 +2,18 @@ const express = require("express");
 const partiesDocumentsController = require("../controllers/partiesDocumentsController");
 const { upload } = require("../controllers/uploadController");
 const { authenticateToken } = require("../middliewares/authMiddleware");
+const { paginationValidator, sortValidator } = require("../middlewares/validators");
 
 const router = express.Router();
 
 // Get all parties documents
-router.get("/", authenticateToken, partiesDocumentsController.getAllPartiesDocuments);
+router.get(
+  "/",
+  authenticateToken,
+  paginationValidator,
+  sortValidator(['created_at', 'id']),
+  partiesDocumentsController.getAllPartiesDocuments
+);
 
 // Search parties documents
 router.get("/search", authenticateToken, partiesDocumentsController.searchPartiesDocuments);

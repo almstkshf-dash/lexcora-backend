@@ -1,18 +1,13 @@
 const partiesDocumentsService = require("../services/partiesDocumentsService");
+const { normalizePagination } = require("../utils/pagination");
 
 const getAllPartiesDocuments = async (req, res) => {
   try {
-    const documents = await partiesDocumentsService.listPartiesDocuments();
-    res.status(200).json({
-      success: true,
-      data: documents
-    });
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id']);
+    const result = await partiesDocumentsService.listPartiesDocuments({ page, limit, sortBy, sortOrder });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching parties documents",
-      error: error.message
-    });
+    res.fail("Error fetching parties documents", 500, "PARTIES_DOCS_LIST_ERROR");
   }
 };
 

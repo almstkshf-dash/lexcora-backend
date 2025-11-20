@@ -1,7 +1,32 @@
 const db = require("../config/db");
 
-const getAllOtherLeaves = async (employeeId = null) => {
-  let query = `
+const getAllOtherLeaves = async (employeeId = null, { page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['date', 'created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'date';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  let baseQuery = `
+    FROM other_leaves ol
+    LEFT JOIN employees e ON ol.employee_id = e.id
+    LEFT JOIN employees cb ON ol.created_by = cb.id
+  `;
+  
+  const params = [];
+  const conditions = [];
+  
+  if (employeeId) {
+    conditions.push(`ol.employee_id = ?`);
+    params.push(employeeId);
+  }
+  
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  const [countRows] = await db.query(`SELECT COUNT(*) as total ${baseQuery} ${whereClause}`, params);
+  const total = countRows[0]?.total || 0;
+  
+  const [rows] = await db.query(
+    `
     SELECT 
       ol.id,
       ol.employee_id,
@@ -16,22 +41,14 @@ const getAllOtherLeaves = async (employeeId = null) => {
       ol.created_at,
       e.name as employee_name,
       cb.name as created_by_name
-    FROM other_leaves ol
-    LEFT JOIN employees e ON ol.employee_id = e.id
-    LEFT JOIN employees cb ON ol.created_by = cb.id
-  `;
-  
-  const params = [];
-  
-  if (employeeId) {
-    query += ` WHERE ol.employee_id = ?`;
-    params.push(employeeId);
-  }
-  
-  query += ` ORDER BY ol.date DESC, ol.created_at DESC`;
-  
-  const [rows] = await db.query(query, params);
-  return rows;
+    ${baseQuery}
+    ${whereClause}
+    ORDER BY ol.${orderBy} ${orderDir}, ol.created_at ${orderDir}
+    LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset]
+  );
+  return { rows, total };
 };
 
 const getOtherLeaveById = async (id) => {

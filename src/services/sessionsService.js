@@ -20,17 +20,17 @@ const getAllSessions = async (filters = {}) => {
       caseNumber: filters.caseNumber
     };
     
-    // Get total count for pagination
-    const total = await sessionsModel.getSessionsCount(queryFilters);
-    
-    // Get paginated sessions
-    const sessions = await sessionsModel.getAllSessions(queryFilters, limit, offset);
+    // Get paginated sessions with total
+    const { rows, total } = await sessionsModel.getAllSessions(queryFilters, limit, offset, filters.sortBy, filters.sortOrder);
     
     return {
-      sessions,
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page
+      sessions: rows,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
     };
   } catch (error) {
     console.error('Error in getAllSessions:', error);

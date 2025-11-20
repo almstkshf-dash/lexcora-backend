@@ -6,10 +6,18 @@ const router = express.Router();
 const sessionsController = require('../controllers/sessionsController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
+const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
 
 // Get all sessions
-router.get('/', authenticateToken, checkPermission('View Sessions'), sessionsController.getAllSessions);
+router.get(
+  '/',
+  authenticateToken,
+  checkPermission('View Sessions'),
+  paginationValidator,
+  sortValidator(['session_date', 'created_at', 'id']),
+  sessionsController.getAllSessions
+);
 
 // Get sessions with no decision
 router.get('/no-decision', authenticateToken, sessionsController.getSessionsWithNoDecision);

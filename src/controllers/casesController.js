@@ -3,6 +3,7 @@
 
 const casesService = require('../services/casesService');
 const { sendSystemNotification } = require('../utils/notificationHelper');
+const { normalizePagination } = require('../utils/pagination');
 
 const addCase = async (req, res) => {
   try {
@@ -33,27 +34,30 @@ const addCase = async (req, res) => {
 
 const getAllCases = async (req, res) => {
   try {
-    const { page, limit, branchId, fromDate, toDate, fileNumber, caseNumber } = req.query;
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['start_date', 'id', 'case_number', 'file_number', 'created_at']);
+    const { branchId, fileNumber, caseNumber } = req.query;
+
+    // Normalize dates (ensure ISO strings)
+    const fromDate = req.query.fromDate ? new Date(req.query.fromDate).toISOString().split('T')[0] : undefined;
+    const toDate = req.query.toDate ? new Date(req.query.toDate).toISOString().split('T')[0] : undefined;
     
     const filters = {
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 10,
+      page,
+      limit,
       branchId,
       fromDate,
       toDate,
       fileNumber,
-      caseNumber
+      caseNumber,
+      sortBy,
+      sortOrder
     };
     
     const result = await casesService.getAllCases(filters);
-    res.json({
-      success: true, 
-      data: result.cases,
-      pagination: result.pagination
-    });
+    res.success(result.cases, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
     console.error('Error fetching cases:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch cases' });
+    res.fail('Failed to fetch cases', 500, 'CASES_LIST_ERROR');
   }
 };
 

@@ -2,8 +2,22 @@ const e = require("express");
 const db = require("../config/db");
 const { generateCredentials } = require("../utils/generateCredentials");
 
-const getAllEmployees = async () => {
-  const [rows] = await db.query(`
+const getAllEmployees = async ({ page, limit, sortBy, sortOrder, search }) => {
+  const offset = (page - 1) * limit;
+
+  // Whitelist sort columns to prevent SQL injection
+  const sortColumn = ['name', 'status', 'username', 'id', 'balance'].includes(sortBy) ? sortBy : 'id';
+  const order = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  let whereClause = 'WHERE r.role_en != ? OR r.role_en IS NULL';
+  const params = ['admin'];
+
+  if (search) {
+    whereClause += ' AND (e.name LIKE ? OR e.username LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  const listQuery = `
     SELECT 
       e.name,
       e.status,
@@ -17,12 +31,25 @@ const getAllEmployees = async () => {
       r.role_en
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.id
-    
     LEFT JOIN employees m ON e.direct_manager_id = m.id
     LEFT JOIN roles r ON e.role_id = r.id
-    WHERE r.role_en != 'admin' OR r.role_en IS NULL
-  `);
-return rows;
+    ${whereClause}
+    ORDER BY e.${sortColumn} ${order}
+    LIMIT ? OFFSET ?
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM employees e
+    LEFT JOIN roles r ON e.role_id = r.id
+    ${whereClause}
+  `;
+
+  const [rows] = await db.query(listQuery, [...params, limit, offset]);
+  const [countResult] = await db.query(countQuery, params);
+  const total = countResult[0]?.total || 0;
+
+  return { rows, total };
 };
 
 const getEmployeeById = async (id) => {

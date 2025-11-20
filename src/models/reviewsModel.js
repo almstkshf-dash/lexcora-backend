@@ -1,8 +1,31 @@
 const db = require("../config/db");
 
 // Get all reviews or by employee_id
-const getAllReviews = async (employeeId = null) => {
-  let query = `
+const getAllReviews = async (employeeId = null, { page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['date', 'created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'date';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  let baseQuery = `
+    FROM reviews r
+    LEFT JOIN employees e ON r.employee_id = e.id
+    LEFT JOIN employees cb ON r.created_by = cb.id
+  `;
+
+  const params = [];
+  const conditions = [];
+  if (employeeId) {
+    conditions.push(`r.employee_id = ?`);
+    params.push(employeeId);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [countRows] = await db.query(`SELECT COUNT(*) as total ${baseQuery} ${whereClause}`, params);
+  const total = countRows[0]?.total || 0;
+
+  const [rows] = await db.query(
+    `
     SELECT 
       r.id,
       r.employee_id,
@@ -12,22 +35,15 @@ const getAllReviews = async (employeeId = null) => {
       r.created_at,
       e.name as employee_name,
       cb.name as created_by_name
-    FROM reviews r
-    LEFT JOIN employees e ON r.employee_id = e.id
-    LEFT JOIN employees cb ON r.created_by = cb.id
-  `;
-  
-  const params = [];
-  
-  if (employeeId) {
-    query += ` WHERE r.employee_id = ?`;
-    params.push(employeeId);
-  }
-  
-  query += ` ORDER BY r.date DESC, r.created_at DESC`;
-  
-  const [rows] = await db.query(query, params);
-  return rows;
+    ${baseQuery}
+    ${whereClause}
+    ORDER BY r.${orderBy} ${orderDir}, r.created_at ${orderDir}
+    LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset]
+  );
+
+  return { rows, total };
 };
 
 // Get review by ID

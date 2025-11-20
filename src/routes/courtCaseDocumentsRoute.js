@@ -1,9 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const courtCaseDocumentsController = require("../controllers/courtCaseDocumentsController");
+const { paginationValidator, sortValidator } = require("../middlewares/validators");
 
 // GET /api/court-case-documents - Get all court case documents
-router.get("/", courtCaseDocumentsController.getAllCourtCaseDocuments);
+router.get(
+  "/",
+  paginationValidator,
+  sortValidator(['created_at', 'id']),
+  courtCaseDocumentsController.getAllCourtCaseDocuments
+);
 
 // POST /api/court-case-documents - Create a new court case document relationship
 router.post("/", courtCaseDocumentsController.createCourtCaseDocument);

@@ -47,8 +47,26 @@ const addMemo = async (userId,  memoData) => {
   }
 };
 
-const getAllMemos = async () => {
+const getAllMemos = async ({ page, limit, sortBy, sortOrder, status }) => {
   try {
+    const offset = (page - 1) * limit;
+    const allowedSort = ['created_at', 'submission_date', 'id'];
+    const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+    const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+    const conditions = [];
+    const params = [];
+
+    if (status) {
+      conditions.push('m.status = ?');
+      params.push(status);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [countRows] = await db.query(`SELECT COUNT(*) as total FROM memos m ${whereClause}`, params);
+    const total = countRows[0]?.total || 0;
+
     const [rows] = await db.query(`
       SELECT 
         m.*,
@@ -57,9 +75,11 @@ const getAllMemos = async () => {
         c.topic as case_topic
       FROM memos m
       LEFT JOIN cases c ON m.case_id = c.id
-      ORDER BY m.created_at DESC LIMIT 30
-    `);
-    return rows;
+      ${whereClause}
+      ORDER BY m.${orderBy} ${orderDir}
+      LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
+    return { rows, total };
   } catch (error) {
     console.error('Error in getAllMemos:', error);
     throw error;

@@ -6,9 +6,16 @@ const router = express.Router();
 const memosController = require('../controllers/memosController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
+const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
 // Get all memos
-router.get('/', authenticateToken, memosController.getAllMemos);
+router.get(
+  '/',
+  authenticateToken,
+  paginationValidator,
+  sortValidator(['created_at', 'submission_date', 'id']),
+  memosController.getAllMemos
+);
 
 // Get memos by status
 router.get('/status/:status', authenticateToken, memosController.getMemosByStatus);

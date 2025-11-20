@@ -1,8 +1,33 @@
 const db = require("../config/db");
 
 // Get all trainings or by employee_id
-const getAllTrainings = async (employeeId = null) => {
-  let query = `
+const getAllTrainings = async (employeeId = null, { page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['training_date', 'created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'training_date';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  let baseQuery = `
+    FROM trainings t
+    LEFT JOIN employees e ON t.employee_id = e.id
+    LEFT JOIN employees cb ON t.created_by = cb.id
+  `;
+  
+  const params = [];
+  const conditions = [];
+  
+  if (employeeId) {
+    conditions.push(`t.employee_id = ?`);
+    params.push(employeeId);
+  }
+  
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  const [countRows] = await db.query(`SELECT COUNT(*) as total ${baseQuery} ${whereClause}`, params);
+  const total = countRows[0]?.total || 0;
+  
+  const [rows] = await db.query(
+    `
     SELECT 
       t.id,
       t.employee_id,
@@ -12,22 +37,14 @@ const getAllTrainings = async (employeeId = null) => {
       t.created_at,
       e.name as employee_name,
       cb.name as created_by_name
-    FROM trainings t
-    LEFT JOIN employees e ON t.employee_id = e.id
-    LEFT JOIN employees cb ON t.created_by = cb.id
-  `;
-  
-  const params = [];
-  
-  if (employeeId) {
-    query += ` WHERE t.employee_id = ?`;
-    params.push(employeeId);
-  }
-  
-  query += ` ORDER BY t.training_date DESC, t.created_at DESC`;
-  
-  const [rows] = await db.query(query, params);
-  return rows;
+    ${baseQuery}
+    ${whereClause}
+    ORDER BY t.${orderBy} ${orderDir}, t.created_at ${orderDir}
+    LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset]
+  );
+  return { rows, total };
 };
 
 // Get training by ID

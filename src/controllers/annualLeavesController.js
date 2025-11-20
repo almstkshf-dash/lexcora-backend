@@ -1,21 +1,16 @@
 const annualLeavesModel = require("../models/annualLeavesModel");
+const { normalizePagination } = require("../utils/pagination");
 
 // Get all annual leaves or by employee_id
 const getAnnualLeaves = async (req, res) => {
   try {
     const { employee_id } = req.query;
-    const annualLeaves = await annualLeavesModel.getAllAnnualLeaves(employee_id || null);
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id', 'date']);
+    const result = await annualLeavesModel.getAllAnnualLeaves(employee_id || null, { page, limit, sortBy, sortOrder });
     
-    res.json({
-      success: true,
-      data: annualLeaves,
-      count: annualLeaves.length
-    });
+    res.success(result.rows || result.data || result, req.t('generic.ok'), 200, result.pagination || undefined);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'ANNUAL_LEAVES_LIST_ERROR');
   }
 };
 

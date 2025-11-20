@@ -1,6 +1,6 @@
 const db = require("../config/db");
 
-const getDepositsByPartyId = async (partyId) => {
+const getDepositsByPartyId = async (partyId, { page, limit, sortBy, sortOrder }) => {
   const query = `
     SELECT 
       cd.*,
@@ -8,11 +8,17 @@ const getDepositsByPartyId = async (partyId) => {
     FROM clients_deposits cd
     LEFT JOIN employees e ON cd.created_by = e.id
     WHERE cd.party_id = ?
-    ORDER BY cd.created_at DESC
+    ORDER BY ${sortBy === 'amount' ? 'cd.amount' : 'cd.created_at'} ${sortOrder === 'ASC' ? 'ASC' : 'DESC'}
+    LIMIT ? OFFSET ?
   `;
   
-  const [rows] = await db.query(query, [partyId]);
-  return rows;
+  const [rows] = await db.query(query, [partyId, limit, (page - 1) * limit]);
+
+  const [countResult] = await db.query(
+    'SELECT COUNT(*) as total FROM clients_deposits WHERE party_id = ?',
+    [partyId]
+  );
+  return { rows, total: countResult[0]?.total || 0 };
 };
 
 const createDeposit = async (depositData) => {

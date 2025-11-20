@@ -2,9 +2,18 @@ const caseDocumentsModel = require("../models/caseDocumentsModel");
 const { deleteDocumentFiles } = require('./awsS3Service');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
-const getAllCaseDocuments = async () => {
+const getAllCaseDocuments = async (options) => {
   try {
-    return await caseDocumentsModel.getAllCaseDocuments();
+    const { rows, total } = await caseDocumentsModel.getAllCaseDocuments(options);
+    return {
+      data: rows,
+      pagination: {
+        total,
+        page: options.page,
+        limit: options.limit,
+        totalPages: Math.ceil(total / options.limit)
+      }
+    };
   } catch (error) {
     throw new Error(`Error fetching case documents: ${error.message}`);
   }

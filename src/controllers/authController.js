@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const { AppError } = require('../utils/errors');
 
 /**
  * Login Controller
@@ -6,6 +7,10 @@ const authService = require('../services/authService');
 const loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    if (!username || !password) {
+      throw new AppError(req.t('auth.credentialsRequired'), 400, 'VALIDATION_ERROR');
+    }
 
     // Attempt login using service
     const result = await authService.loginUser(username, password);
@@ -22,16 +27,12 @@ const loginUser = async (req, res) => {
     res.cookie('authToken', result.token, cookieOptions);
 
     // Send token in response body for localStorage AND in cookie for httpOnly
-    res.status(200).json({
-      ...result,
-      message: 'Login successful'
-    });
+    return res.success(result, req.t('auth.loginSuccess'));
   } catch (error) {
-    console.error('Login error:', error.message);
-    res.status(401).json({
-      success: false,
-      message: error.message
-    });
+    const mappedError = error instanceof AppError
+      ? error
+      : new AppError(error.message || 'Login failed', error.message?.includes('Invalid') ? 401 : 500, 'AUTH_ERROR');
+    return res.fail(mappedError.message, mappedError.statusCode, mappedError.errorCode);
   }
 };
 
@@ -45,28 +46,12 @@ const registerUser = async (req, res) => {
     // Register user using service
     const result = await authService.registerUser(userData);
 
-    res.status(201).json(result);
+    return res.created(result, req.t('auth.registrationSuccess'));
   } catch (error) {
     console.error('Registration error:', error.message);
-    
-    if (error.message.includes('already exists')) {
-      return res.status(409).json({
-        success: false,
-        message: error.message
-      });
-    }
-    
-    if (error.message.includes('required')) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error during registration'
-    });
+    const status = error.message.includes('already exists') ? 409 : error.message.includes('required') ? 400 : 500;
+    const code = status === 409 ? 'USER_EXISTS' : status === 400 ? 'VALIDATION_ERROR' : 'INTERNAL_ERROR';
+    return res.fail(error.message || 'Registration failed', status, code);
   }
 };
 
@@ -89,16 +74,10 @@ const logoutUser = async (req, res) => {
       path: '/'
     });
 
-    res.status(200).json({
-      ...result,
-      message: 'Logged out successfully - cookie cleared'
-    });
+    return res.success(result, req.t('auth.logoutSuccess'));
   } catch (error) {
     console.error('Logout error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Error during logout'
-    });
+    return res.fail('Error during logout', 500, 'LOGOUT_ERROR');
   }
 };
 
@@ -110,13 +89,10 @@ const getCurrentUser = async (req, res) => {
     // Get user profile with permissions from service
     const result = await authService.getUserProfile(req.user.id);
     
-    res.status(200).json(result);
+    return res.success(result, req.t('auth.profileFetched'));
   } catch (error) {
     console.error('Get current user error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching user profile'
-    });
+    return res.fail('Error fetching user profile', 500, 'PROFILE_ERROR');
   }
 };
 
@@ -129,30 +105,21 @@ const changePassword = async (req, res) => {
     const userId = req.user.id;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password and new password are required'
-      });
+      return res.fail(req.t('auth.currentPasswordRequired'), 400, 'VALIDATION_ERROR');
     }
 
     // Change password using service
     const result = await authService.changePassword(userId, currentPassword, newPassword);
 
-    res.status(200).json(result);
+    return res.success(result, req.t('auth.passwordChanged'));
   } catch (error) {
     console.error('Change password error:', error.message);
     
     if (error.message.includes('incorrect')) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
+      return res.fail(error.message, 400, 'VALIDATION_ERROR');
     }
 
-    res.status(500).json({
-      success: false,
-      message: 'Error changing password'
-    });
+    return res.fail('Error changing password', 500, 'PASSWORD_CHANGE_ERROR');
   }
 };
 

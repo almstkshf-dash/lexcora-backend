@@ -1,8 +1,19 @@
 const db = require("../config/db");
 
-const getAllCourtCaseDocuments = async () => {
-  const [rows] = await db.query(`SELECT * FROM court_case_documents`);
-  return rows;
+const getAllCourtCaseDocuments = async ({ page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  const [countRows] = await db.query('SELECT COUNT(*) as total FROM court_case_documents');
+  const total = countRows[0]?.total || 0;
+
+  const [rows] = await db.query(
+    `SELECT * FROM court_case_documents ORDER BY ${orderBy} ${orderDir} LIMIT ? OFFSET ?`,
+    [limit, offset]
+  );
+  return { rows, total };
 };
 
 const createCourtCaseDocument = async (courtCaseDocument) => {

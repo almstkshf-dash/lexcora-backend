@@ -1,4 +1,5 @@
 const OpenAI = require('openai');
+const { AppError } = require('../utils/errors');
 
 const SYSTEM_PROMPT = `
 You are a helpful legal assistant specializing in UAE legislation.
@@ -57,20 +58,12 @@ const chat = async (req, res) => {
 
     // Validate request
     if (!message || typeof message !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid message format',
-      });
+      throw new AppError(req.t('generic.validationError'), 400, 'VALIDATION_ERROR');
     }
 
     // Check if OpenAI is configured
     if (!openai) {
-      return res.status(503).json({
-        success: false,
-        error: 'OpenAI service is not configured',
-        answer: 'عذراً، الخدمة غير متاحة حالياً.',
-        sources: '',
-      });
+      throw new AppError(req.t('ai.genericError'), 503, 'SERVICE_UNAVAILABLE');
     }
 
     // Build conversation history for context
@@ -125,39 +118,30 @@ const chat = async (req, res) => {
 
     // Log the conversation (optional)
 
-    return res.status(200).json({
-      success: true,
-      answer,
-      sources,
-      usage: completion.usage,
-    });
+    return res.success({ answer, sources, usage: completion.usage }, req.t('ai.reply'));
   } catch (error) {
     console.error('Error in legal assistant controller:', error);
 
     // Handle specific OpenAI errors
     if (error.code === 'insufficient_quota') {
-      return res.status(429).json({
-        success: false,
-        error: 'OpenAI API quota exceeded',
-        answer: 'عذراً، تم تجاوز حد استخدام الخدمة. يرجى المحاولة لاحقاً.',
+      return res.fail(req.t('ai.quotaExceeded'), 429, 'AI_QUOTA_EXCEEDED', {
+        answer: req.t('ai.insufficientInfo'),
         sources: '',
       });
     }
 
     if (error.code === 'invalid_api_key') {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid OpenAI API key',
-        answer: 'عذراً، هناك مشكلة في إعدادات الخدمة.',
+      return res.fail(req.t('ai.invalidKey'), 401, 'AI_AUTH_ERROR', {
+        answer: req.t('ai.insufficientInfo'),
         sources: '',
       });
     }
 
     // Generic error
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      answer: 'عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.',
+    const status = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof AppError ? error.message : req.t('ai.genericError');
+    return res.fail(message, status, 'AI_GENERIC_ERROR', {
+      answer: req.t('ai.insufficientInfo'),
       sources: '',
     });
   }
@@ -166,3 +150,4 @@ const chat = async (req, res) => {
 module.exports = {
   chat,
 };
+

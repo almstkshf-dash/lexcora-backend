@@ -1,7 +1,16 @@
 const clientsDepositsModel = require("../models/clientsDepositsModel");
 
-const getDepositsByPartyId = async (partyId) => {
-  return await clientsDepositsModel.getDepositsByPartyId(partyId);
+const getDepositsByPartyId = async (partyId, options) => {
+  const { rows, total } = await clientsDepositsModel.getDepositsByPartyId(partyId, options);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: options.page,
+      limit: options.limit,
+      totalPages: Math.ceil(total / options.limit)
+    }
+  };
 };
 
 const createDeposit = async (depositData) => {

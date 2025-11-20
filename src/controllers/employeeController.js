@@ -1,19 +1,19 @@
 const employeeService = require("../services/employeeService");
+const { normalizePagination } = require("../utils/pagination");
 
 // Get all employees
 const getEmployees = async (req, res) => {
   try {
-    const employees = await employeeService.listEmployees();
-    res.json({
-      success: true,
-      data: employees,
-      count: employees.length
-    });
+    const { page, limit, sortBy, sortOrder } = normalizePagination(
+      req.query,
+      ['name', 'status', 'username', 'id', 'balance']
+    );
+    const search = req.query.search ? String(req.query.search).trim() : null;
+
+    const result = await employeeService.listEmployees({ page, limit, sortBy, sortOrder, search });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'EMPLOYEE_LIST_ERROR');
   }
 };
 
@@ -32,16 +32,10 @@ const getEmployee = async (req, res) => {
       password: isAdmin ? employee.password : '********'
     };
     
-    res.json({
-      success: true,
-      data: employeeData
-    });
+    res.success(employeeData, req.t('generic.ok'));
   } catch (err) {
     const statusCode = err.message === "Employee not found" ? 404 : 500;
-    res.status(statusCode).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_GET_ERROR');
   }
 };
 
@@ -51,16 +45,9 @@ const createEmployee = async (req, res) => {
     const createdBy = req.user?.id || null;
     const employeeId = await employeeService.addEmployee(req.body, createdBy);
     const newEmployee = await employeeService.getEmployee(employeeId);
-    res.status(201).json({ 
-      success: true,
-      message: "Employee created successfully",
-      data: newEmployee
-    });
+    res.created(newEmployee, req.t('generic.created'));
   } catch (err) {
-    res.status(400).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 400, 'EMPLOYEE_CREATE_ERROR');
   }
 };
 
@@ -70,17 +57,10 @@ const updateEmployee = async (req, res) => {
     const { id } = req.params;
     const updatedBy = req.user?.id || null;
     const updatedEmployee = await employeeService.updateEmployee(id, req.body, updatedBy);
-    res.json({
-      success: true,
-      message: "Employee updated successfully",
-      data: updatedEmployee
-    });
+    res.success(updatedEmployee, req.t('generic.ok'));
   } catch (err) {
     const statusCode = err.message === "Employee not found" ? 404 : 400;
-    res.status(statusCode).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_UPDATE_ERROR');
   }
 };
 
@@ -90,16 +70,10 @@ const deleteEmployee = async (req, res) => {
     const { id } = req.params;
     const deletedBy = req.user?.id || null;
     const result = await employeeService.removeEmployee(id, deletedBy);
-    res.json({
-      success: true,
-      message: result.message
-    });
+    res.success(null, result.message);
   } catch (err) {
     const statusCode = err.message === "Employee not found" ? 404 : 500;
-    res.status(statusCode).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_DELETE_ERROR');
   }
 };
 

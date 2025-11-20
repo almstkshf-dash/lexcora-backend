@@ -2,6 +2,7 @@
 // Controller functions for memos
 
 const memosService = require('../services/memosService');
+const { normalizePagination } = require('../utils/pagination');
 
 const addMemo = async (req, res) => {
   try {
@@ -26,11 +27,13 @@ const addMemo = async (req, res) => {
 
 const getAllMemos = async (req, res) => {
   try {
-    const memos = await memosService.getAllMemos();
-    res.json({success: true, data: memos});
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'submission_date', 'id']);
+    const { status } = req.query;
+    const result = await memosService.getAllMemos({ page, limit, sortBy, sortOrder, status });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
     console.error('Error fetching memos:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch memos' });
+    res.fail('Failed to fetch memos', 500, 'MEMOS_LIST_ERROR');
   }
 };
 

@@ -1,11 +1,20 @@
 const trainingsModel = require("../models/trainingsModel");
 const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { normalizePagination } = require("../utils/pagination");
 
 // Get all trainings or by employee_id
 const getTrainings = async (req, res) => {
   try {
     const { employee_id } = req.query;
-    const trainings = await trainingsModel.getAllTrainings(employee_id || null);
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id', 'date']);
+    const trainingsResult = await trainingsModel.getAllTrainings(employee_id || null, { page, limit, sortBy, sortOrder });
+    const trainings = trainingsResult.rows || trainingsResult.data || trainingsResult;
+    const pagination = trainingsResult.pagination || (trainingsResult.total ? {
+      total: trainingsResult.total,
+      page,
+      limit,
+      totalPages: Math.ceil(trainingsResult.total / limit)
+    } : undefined);
     
     // Get documents count for each training
     const trainingsWithDocs = await Promise.all(
@@ -18,16 +27,9 @@ const getTrainings = async (req, res) => {
       })
     );
     
-    res.json({
-      success: true,
-      data: trainingsWithDocs,
-      count: trainingsWithDocs.length
-    });
+    res.success(trainingsWithDocs, req.t('generic.ok'), 200, pagination);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'TRAININGS_LIST_ERROR');
   }
 };
 

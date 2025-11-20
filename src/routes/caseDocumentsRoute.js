@@ -2,9 +2,15 @@ const express = require("express");
 const router = express.Router();
 const caseDocumentsController = require("../controllers/caseDocumentsController");
 const { authenticateToken } = require("../middliewares/authMiddleware");
+const { paginationValidator, sortValidator } = require("../middlewares/validators");
 
 // GET /api/case-documents - Get all case documents
-router.get("/", caseDocumentsController.getAllCaseDocuments);
+router.get(
+  "/",
+  paginationValidator,
+  sortValidator(['created_at', 'id']),
+  caseDocumentsController.getAllCaseDocuments
+);
 
 // POST /api/case-documents - Create a new case document
 router.post("/", authenticateToken, caseDocumentsController.createCaseDocument);

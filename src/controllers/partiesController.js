@@ -1,25 +1,23 @@
 
 const partiesService = require('../services/partiesService');
+const { normalizePagination } = require('../utils/pagination');
 
 const getAllParties = async (req, res) => {
   try {
-    const { page, limit, name, phone, party_type } = req.query;
+    const { page, limit } = normalizePagination(req.query, ['id', 'name', 'phone', 'created_at']);
+    const { name, phone, party_type } = req.query;
     const filters = {
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 10,
+      page,
+      limit,
       name,
       phone,
       party_type
     };
     
     const result = await partiesService.getAllParties(filters);
-    res.json({
-      success: true,
-      data: result.data,
-      pagination: result.pagination
-    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch parties' });
+    res.fail('Failed to fetch parties', 500, 'PARTIES_LIST_ERROR');
   }
 };
 

@@ -1,11 +1,25 @@
 const tasksService = require('../services/tasksService');
+const { normalizePagination } = require('../utils/pagination');
 
 const getAllTasks = async (req, res) => {
   try {
-    const tasks = await tasksService.getAllTasks();
-    res.json({ success: true, data: tasks });
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['due_date', 'created_at', 'id', 'priority']);
+    const { status, priority, assigned_to, due_date } = req.query;
+    const normalizedDueDate = due_date ? new Date(due_date).toISOString().split('T')[0] : undefined;
+
+    const result = await tasksService.getAllTasks({
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      status,
+      priority,
+      assigned_to,
+      due_date: normalizedDueDate
+    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch tasks' });
+    res.fail('Failed to fetch tasks', 500, 'TASKS_LIST_ERROR');
   }
 };
 

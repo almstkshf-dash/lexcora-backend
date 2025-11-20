@@ -1,6 +1,14 @@
 const db = require("../config/db");
 
-const getAllPartiesDocuments = async () => {
+const getAllPartiesDocuments = async ({ page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  const [countRows] = await db.query('SELECT COUNT(*) as total FROM parties_documents');
+  const total = countRows[0]?.total || 0;
+
   const [rows] = await db.query(`
     SELECT 
       pd.*, 
@@ -11,10 +19,11 @@ const getAllPartiesDocuments = async () => {
     FROM parties_documents pd
     LEFT JOIN parties p ON pd.party_id = p.id
     LEFT JOIN employees u ON pd.uploaded_by = u.id
-    ORDER BY pd.created_at DESC
-  `);
+    ORDER BY pd.${orderBy} ${orderDir}
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
   
-  return rows;
+  return { rows, total };
 };
 
 const getPartiesDocumentById = async (id) => {

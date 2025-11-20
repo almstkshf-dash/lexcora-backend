@@ -1,8 +1,17 @@
 const partiesDocumentsModel = require("../models/partiesDocumentsModel");
 const { deleteDocumentFiles } = require("./awsS3Service");
 
-const listPartiesDocuments = async () => {
-  return await partiesDocumentsModel.getAllPartiesDocuments();
+const listPartiesDocuments = async (options) => {
+  const { rows, total } = await partiesDocumentsModel.getAllPartiesDocuments(options);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: options.page,
+      limit: options.limit,
+      totalPages: Math.ceil(total / options.limit)
+    }
+  };
 };
 
 const getPartiesDocument = async (id) => {

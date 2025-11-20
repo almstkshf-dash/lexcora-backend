@@ -1,13 +1,21 @@
 const warningsModel = require("../models/warningsModel");
 const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { normalizePagination } = require("../utils/pagination");
 
 // Get all warnings or by employee_id
 const getWarnings = async (req, res) => {
   try {
     const { employee_id } = req.query;
-    const warnings = await warningsModel.getAllWarnings(employee_id || null);
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id', 'date']);
+    const warningsResult = await warningsModel.getAllWarnings(employee_id || null, { page, limit, sortBy, sortOrder });
+    const warnings = warningsResult.rows || warningsResult.data || warningsResult;
+    const pagination = warningsResult.pagination || (warningsResult.total ? {
+      total: warningsResult.total,
+      page,
+      limit,
+      totalPages: Math.ceil(warningsResult.total / limit)
+    } : undefined);
     
-    // Get documents count for each warning
     const warningsWithDocs = await Promise.all(
       warnings.map(async (warning) => {
         const documents = await warningsModel.getWarningDocuments(warning.id);
@@ -18,16 +26,9 @@ const getWarnings = async (req, res) => {
       })
     );
     
-    res.json({
-      success: true,
-      data: warningsWithDocs,
-      count: warningsWithDocs.length
-    });
+    res.success(warningsWithDocs, req.t('generic.ok'), 200, pagination);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'WARNINGS_LIST_ERROR');
   }
 };
 

@@ -1,8 +1,33 @@
 const db = require("../config/db");
 
 // Get all warnings or by employee_id
-const getAllWarnings = async (employeeId = null) => {
-  let query = `
+const getAllWarnings = async (employeeId = null, { page, limit, sortBy, sortOrder }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['date', 'created_at', 'id'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'date';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  let baseQuery = `
+    FROM warnings w
+    LEFT JOIN employees e ON w.employee_id = e.id
+    LEFT JOIN employees cb ON w.created_by = cb.id
+  `;
+  
+  const params = [];
+  const conditions = [];
+  
+  if (employeeId) {
+    conditions.push(`w.employee_id = ?`);
+    params.push(employeeId);
+  }
+  
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  const [countRows] = await db.query(`SELECT COUNT(*) as total ${baseQuery} ${whereClause}`, params);
+  const total = countRows[0]?.total || 0;
+  
+  const [rows] = await db.query(
+    `
     SELECT 
       w.id,
       w.employee_id,
@@ -13,22 +38,14 @@ const getAllWarnings = async (employeeId = null) => {
       w.created_at,
       e.name as employee_name,
       cb.name as created_by_name
-    FROM warnings w
-    LEFT JOIN employees e ON w.employee_id = e.id
-    LEFT JOIN employees cb ON w.created_by = cb.id
-  `;
-  
-  const params = [];
-  
-  if (employeeId) {
-    query += ` WHERE w.employee_id = ?`;
-    params.push(employeeId);
-  }
-  
-  query += ` ORDER BY w.date DESC, w.created_at DESC`;
-  
-  const [rows] = await db.query(query, params);
-  return rows;
+    ${baseQuery}
+    ${whereClause}
+    ORDER BY w.${orderBy} ${orderDir}, w.created_at ${orderDir}
+    LIMIT ? OFFSET ?
+    `,
+    [...params, limit, offset]
+  );
+  return { rows, total };
 };
 
 // Get warning by ID

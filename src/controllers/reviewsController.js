@@ -5,7 +5,15 @@ const { deleteDocumentFiles } = require("../services/awsS3Service");
 const getReviews = async (req, res) => {
   try {
     const { employee_id } = req.query;
-    const reviews = await reviewsModel.getAllReviews(employee_id || null);
+    const { page, limit, sortBy, sortOrder } = require("../utils/pagination").normalizePagination(req.query, ['created_at', 'id']);
+    const reviewsResult = await reviewsModel.getAllReviews(employee_id || null, { page, limit, sortBy, sortOrder });
+    const reviews = reviewsResult.rows || reviewsResult.data || reviewsResult;
+    const pagination = reviewsResult.pagination || (reviewsResult.total ? {
+      total: reviewsResult.total,
+      page,
+      limit,
+      totalPages: Math.ceil(reviewsResult.total / limit)
+    } : undefined);
     
     // Get documents count for each review
     const reviewsWithDocs = await Promise.all(
@@ -18,16 +26,9 @@ const getReviews = async (req, res) => {
       })
     );
     
-    res.json({
-      success: true,
-      data: reviewsWithDocs,
-      count: reviewsWithDocs.length
-    });
+    res.success(reviewsWithDocs, req.t('generic.ok'), 200, pagination);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'REVIEWS_LIST_ERROR');
   }
 };
 

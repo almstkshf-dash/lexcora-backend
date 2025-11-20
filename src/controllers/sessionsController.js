@@ -1,31 +1,31 @@
 
 const sessionsService = require('../services/sessionsService');
+const { normalizePagination } = require('../utils/pagination');
 
 const getAllSessions = async (req, res) => {
   try {
-    const { page, limit, branchId, fromDate, toDate, fileNumber, caseNumber } = req.query;
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['session_date', 'created_at', 'id']);
+    const { branchId, fileNumber, caseNumber } = req.query;
+    const fromDate = req.query.fromDate ? new Date(req.query.fromDate).toISOString().split('T')[0] : undefined;
+    const toDate = req.query.toDate ? new Date(req.query.toDate).toISOString().split('T')[0] : undefined;
     
     const filters = {
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 50,
+      page,
+      limit,
       branchId,
       fromDate,
       toDate,
       fileNumber,
-      caseNumber
+      caseNumber,
+      sortBy,
+      sortOrder
     };
     
     const result = await sessionsService.getAllSessions(filters);
-    res.json({
-      success: true,
-      data: result.sessions,
-      total: result.total,
-      totalPages: result.totalPages,
-      currentPage: result.currentPage
-    });
+    res.success(result.sessions, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
     console.error('Error fetching sessions:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch sessions' });
+    res.fail('Failed to fetch sessions', 500, 'SESSIONS_LIST_ERROR');
   }
 };
 

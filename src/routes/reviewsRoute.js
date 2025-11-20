@@ -2,9 +2,16 @@ const express = require('express');
 const router = express.Router();
 const reviewsController = require('../controllers/reviewsController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
 // All routes require authentication
-router.get('/', authenticateToken, reviewsController.getReviews);
+router.get(
+  '/',
+  authenticateToken,
+  paginationValidator,
+  sortValidator(['date', 'created_at', 'id']),
+  reviewsController.getReviews
+);
 router.get('/:id', authenticateToken, reviewsController.getReview);
 router.get('/:id/documents', authenticateToken, reviewsController.getReviewDocuments);
 router.post('/', authenticateToken, reviewsController.createReview);

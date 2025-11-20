@@ -5,6 +5,9 @@ const path = require("path");
 
 // Import middlewares
 const { documentUrlMiddleware } = require("./middlewares/documentUrlMiddleware");
+const { responseMiddleware } = require("./middlewares/responseMiddleware");
+const { errorHandler } = require("./middlewares/errorHandler");
+const { i18nMiddleware } = require("./middlewares/i18nMiddleware");
 
 // Import routes
 const authRoute = require("./routes/authRoute");
@@ -79,6 +82,8 @@ app.use(cors({
 app.use(cookieParser('law-backend-cookie-secret-for-session-security-2024')); // COOKIE_SECRET
 app.use(express.json({ limit: '50mb' })); // Increase limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for file uploads
+app.use(i18nMiddleware);
+app.use(responseMiddleware);
 
 // Apply document URL middleware globally to convert S3 keys to accessible URLs
 app.use(documentUrlMiddleware(['document_url', 'file_path', 'url', 'file_url']));
@@ -151,47 +156,35 @@ app.use("/api/legal-assistant", legalAssistantRoute);
 
 app.get("/health", async (req, res) => {
   try {
-    res.json({ 
-      status: "OK", 
-      message: "Law Backend API is running",
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      services: {
-        api: "✅ Running",
-        fileStorage: "✅ Local Storage"
-      }
-    });
+    res.success(
+      {
+        status: "OK",
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        services: {
+          api: "? Running",
+          fileStorage: "? Local Storage"
+        }
+      },
+      "Law Backend API is running"
+    );
   } catch (error) {
-    res.status(500).json({ 
-      status: "ERROR", 
-      message: "Health check failed",
-      timestamp: new Date().toISOString(),
-      error: error.message
-    });
+    res.fail("Health check failed", 500, "HEALTHCHECK_FAILED", { error: error.message });
   }
 });
 
 // Simple ping endpoint for deployment verification
 app.get("/ping", (req, res) => {
-  res.json({ message: "pong", timestamp: new Date().toISOString() });
+  res.success({ timestamp: new Date().toISOString() }, "pong");
+});
+
+// 404 handler - must be last before error handler
+app.use((req, res) => {
+  res.fail("Route not found", 404, "NOT_FOUND");
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    success: false,
-    message: "Something went wrong!",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined
-  });
-});
-
-// 404 handler - must be last
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false,
-    message: "Route not found" 
-  });
-});
+app.use(errorHandler);
 
 module.exports = app;
+

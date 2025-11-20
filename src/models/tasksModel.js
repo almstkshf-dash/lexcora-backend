@@ -1,8 +1,41 @@
 const db = require("../config/db");
 
-const getAllTasks = async () => {
-  const [rows] = await db.query(`SELECT * FROM tasks WHERE status != 'completed' ORDER BY created_at DESC`);
-  return rows;
+const getAllTasks = async ({ page, limit, sortBy, sortOrder, status, priority, assigned_to, due_date }) => {
+  const offset = (page - 1) * limit;
+  const allowedSort = ['due_date', 'created_at', 'id', 'priority'];
+  const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+  const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
+  const conditions = [];
+  const params = [];
+
+  if (status) {
+    conditions.push('t.status = ?');
+    params.push(status);
+  }
+  if (priority) {
+    conditions.push('t.priority = ?');
+    params.push(priority);
+  }
+  if (assigned_to) {
+    conditions.push('t.assigned_to = ?');
+    params.push(assigned_to);
+  }
+  if (due_date) {
+    conditions.push('DATE(t.due_date) = ?');
+    params.push(due_date);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const [countRows] = await db.query(`SELECT COUNT(*) as total FROM tasks t ${whereClause}`, params);
+  const total = countRows[0]?.total || 0;
+
+  const [rows] = await db.query(
+    `SELECT t.* FROM tasks t ${whereClause} ORDER BY t.${orderBy} ${orderDir} LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+  return { rows, total };
 };
 
  const getAssignedToTasks = async (employeeId) => {

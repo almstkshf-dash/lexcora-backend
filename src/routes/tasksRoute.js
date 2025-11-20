@@ -7,9 +7,16 @@ const tasksController = require('../controllers/tasksController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
 const { check } = require('express-validator');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
+const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
 // Get all tasks
-router.get('/', authenticateToken, tasksController.getAllTasks);
+router.get(
+  '/',
+  authenticateToken,
+  paginationValidator,
+  sortValidator(['due_date', 'created_at', 'id', 'priority']),
+  tasksController.getAllTasks
+);
 
 // Get task by ID
 router.get('/:id', authenticateToken, tasksController.getTaskById);

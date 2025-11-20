@@ -1,20 +1,16 @@
 const clientsDepositsService = require("../services/clientsDepositsService");
+const { normalizePagination } = require("../utils/pagination");
 
 const getDepositsByPartyId = async (req, res) => {
   try {
     const { partyId } = req.params;
-    const deposits = await clientsDepositsService.getDepositsByPartyId(partyId);
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'amount']);
+    const result = await clientsDepositsService.getDepositsByPartyId(partyId, { page, limit, sortBy, sortOrder });
     
-    res.status(200).json({
-      success: true,
-      data: deposits
-    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
     console.error("Error fetching deposits:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch deposits"
-    });
+    res.fail("Failed to fetch deposits", 500, "CLIENT_DEPOSITS_LIST_ERROR");
   }
 };
 
@@ -167,22 +163,19 @@ const getAccountStatement = async (req, res) => {
     const { partyId } = req.params;
     const { date_from, date_to } = req.query;
 
+    const dateFrom = date_from ? new Date(date_from).toISOString().split('T')[0] : undefined;
+    const dateTo = date_to ? new Date(date_to).toISOString().split('T')[0] : undefined;
+
     const statement = await clientsDepositsService.getAccountStatement(
       partyId, 
-      date_from, 
-      date_to
+      dateFrom, 
+      dateTo
     );
 
-    res.status(200).json({
-      success: true,
-      data: statement
-    });
+    res.success(statement, req.t('generic.ok'));
   } catch (error) {
     console.error("Error fetching account statement:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch account statement"
-    });
+    res.fail("Failed to fetch account statement", 500, "CLIENT_DEPOSITS_STATEMENT_ERROR");
   }
 };
 

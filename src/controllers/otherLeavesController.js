@@ -1,21 +1,16 @@
 const otherLeavesModel = require("../models/otherLeavesModel");
+const { normalizePagination } = require("../utils/pagination");
 
 // Get all other leaves or by employee_id
 const getOtherLeaves = async (req, res) => {
   try {
     const { employee_id } = req.query;
-    const otherLeaves = await otherLeavesModel.getAllOtherLeaves(employee_id || null);
+    const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id']);
+    const result = await otherLeavesModel.getAllOtherLeaves(employee_id || null, { page, limit, sortBy, sortOrder });
     
-    res.json({
-      success: true,
-      data: otherLeaves,
-      count: otherLeaves.length
-    });
+    res.success(result.rows || result.data || result, req.t('generic.ok'), 200, result.pagination || undefined);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    res.fail(err.message, 500, 'OTHER_LEAVES_LIST_ERROR');
   }
 };
 

@@ -1,9 +1,18 @@
 const courtCaseDocumentsModel = require("../models/courtCaseDocumentsModel");
 const { deleteDocumentFiles } = require('./awsS3Service');
 
-const getAllCourtCaseDocuments = async () => {
+const getAllCourtCaseDocuments = async (options) => {
   try {
-    return await courtCaseDocumentsModel.getAllCourtCaseDocuments();
+    const { rows, total } = await courtCaseDocumentsModel.getAllCourtCaseDocuments(options);
+    return {
+      data: rows,
+      pagination: {
+        total,
+        page: options.page,
+        limit: options.limit,
+        totalPages: Math.ceil(total / options.limit)
+      }
+    };
   } catch (error) {
     throw new Error(`Error fetching court case documents: ${error.message}`);
   }

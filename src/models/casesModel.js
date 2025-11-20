@@ -83,11 +83,16 @@ const getAllCases = async (filters = {}) => {
       fromDate, 
       toDate,
       fileNumber,
-      caseNumber 
+      caseNumber,
+      sortBy,
+      sortOrder
     } = filters;
     
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
+    const allowedSort = ['start_date', 'id', 'case_number', 'file_number', 'created_at'];
+    const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
+    const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
     
     // Build WHERE clause conditions
     let whereConditions = [];
@@ -161,7 +166,7 @@ const getAllCases = async (filters = {}) => {
       LEFT JOIN parties p ON cp.party_id = p.id
       ${whereClause}
       GROUP BY c.id, c.case_number, c.file_number, c.topic, c.start_date, c.is_important, c.is_secret, c.is_archived, c.is_pending, courts.court_ar, courts.court_en, ct.name_ar, ct.name_en, cc.name_ar, cc.name_en
-      ORDER BY c.created_at DESC
+      ORDER BY c.${orderBy} ${orderDir}
       LIMIT ? OFFSET ?
     `;
     

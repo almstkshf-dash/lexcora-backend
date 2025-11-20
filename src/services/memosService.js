@@ -48,9 +48,18 @@ const addMemo = async (userId,memoData) => {
   }
 };
 
-const getAllMemos = async () => {
+const getAllMemos = async (options) => {
   try {
-    return await memosModel.getAllMemos();
+    const { rows, total } = await memosModel.getAllMemos(options);
+    return {
+      data: rows,
+      pagination: {
+        total,
+        page: options.page,
+        limit: options.limit,
+        totalPages: Math.ceil(total / options.limit)
+      }
+    };
   } catch (error) {
     console.error('Error in getAllMemos service:', error);
     throw error;

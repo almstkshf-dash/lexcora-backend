@@ -2,8 +2,17 @@ const employeeModel = require("../models/employeeModel");
 const permissionsModel = require("../models/permissionsModel");
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
-const listEmployees = async () => {
-  return await employeeModel.getAllEmployees();
+const listEmployees = async (filters = {}) => {
+  const { rows, total } = await employeeModel.getAllEmployees(filters);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: filters.page,
+      limit: filters.limit,
+      totalPages: Math.ceil(total / filters.limit)
+    }
+  };
 };
 
 const getEmployee = async (id) => {

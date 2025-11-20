@@ -6,8 +6,17 @@ const { deleteDocumentFiles } = require('./awsS3Service');
 const { sendNotification, sendTemplatedNotification } = require('../utils/notificationHelper');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
-const getAllTasks = async () => {
-  return await tasksModel.getAllTasks();
+const getAllTasks = async (options) => {
+  const { rows, total } = await tasksModel.getAllTasks(options);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: options.page,
+      limit: options.limit,
+      totalPages: Math.ceil(total / options.limit)
+    }
+  };
 };
 
 const createTask = async (task, assignedBy) => {
