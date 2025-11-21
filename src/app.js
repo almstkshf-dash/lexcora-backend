@@ -61,6 +61,7 @@ const eventsRoute = require("./routes/eventsRoute");
 const hrNotificationsRoute = require("./routes/hrNotificationsRoute");
 const appNotificationsRoute = require("./routes/appNotificationsRoute");
 const jobsRoute = require("./routes/jobsRoute");
+const { checkDb, checkS3, getVersionInfo } = require("./utils/healthChecks");
 const formsRoute = require("./routes/formsRoute");
 const partiesFormsRoute = require("./routes/partiesFormsRoute");
 const workHoursRoute = require("./routes/workHoursRoute");
@@ -160,14 +161,17 @@ app.use("/api/legal-assistant", legalAssistantRoute);
 
 app.get("/health", async (req, res) => {
   try {
+    const [dbOk, s3Ok] = await Promise.all([checkDb(), checkS3()]);
     res.success(
       {
         status: "OK",
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
+        version: getVersionInfo(),
         services: {
-          api: "? Running",
-          fileStorage: "? Local Storage"
+          api: "Running",
+          database: dbOk ? "Reachable" : "Unavailable",
+          fileStorage: s3Ok ? "Reachable" : "Unavailable"
         }
       },
       "Law Backend API is running"
