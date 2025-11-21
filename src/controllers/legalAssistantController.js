@@ -93,10 +93,11 @@ const chat = async (req, res) => {
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4-1106-preview',
       messages: messages,
-      temperature: 0.7,
-      max_tokens: 1000,
+      temperature: 0.25,
+      max_tokens: 600,
+      response_format: { type: 'json_object' }
     });
 
     const responseContent = completion.choices[0]?.message?.content || '';
@@ -106,19 +107,32 @@ const chat = async (req, res) => {
     let sources = '';
 
     try {
-      const jsonMatch = responseContent.match(/\{[\s\S]*"answer"[\s\S]*"sources"[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        answer = parsed.answer || responseContent;
-        sources = parsed.sources || '';
-      }
+      const parsed = JSON.parse(responseContent);
+      answer = parsed.answer || responseContent;
+      sources = parsed.sources || '';
     } catch (parseError) {
       console.warn('Could not parse JSON from OpenAI response, using raw content');
     }
 
+    // Minimal format validation
+    if (typeof answer !== 'string' || typeof sources !== 'string') {
+      return res.fail('Invalid AI response format', 502, 'AI_BAD_FORMAT');
+    }
+
+    // Ensure strings and surface top-level fields for frontend compatibility
+    answer = answer || '';
+    sources = sources || '';
+
     // Log the conversation (optional)
 
-    return res.success({ answer, sources, usage: completion.usage }, req.t('ai.reply'));
+    return res.status(200).json({
+      success: true,
+      message: req.t('ai.reply'),
+      answer,
+      sources,
+      usage: completion.usage,
+      data: { answer, sources, usage: completion.usage }
+    });
   } catch (error) {
     console.error('Error in legal assistant controller:', error);
 
