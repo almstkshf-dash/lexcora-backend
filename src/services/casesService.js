@@ -17,6 +17,11 @@ const addCase = async (caseData, createdBy = null) => {
   const uploaded_by = createdBy;
   try {
 
+    // Duplicate validation
+    const duplicate = await casesModel.findDuplicateCase(caseData.case_number, caseData.file_number);
+    if (duplicate) {
+      throw new Error('Case with the same case_number or file_number already exists');
+    }
     
     const caseId = await casesModel.addCase(caseData);
     const files = caseData.files || [];
@@ -68,6 +73,12 @@ const addCase = async (caseData, createdBy = null) => {
 const updateCase = async (id, caseData, updatedBy = null) => {
   const updated_by = updatedBy;
   const relatedCases = caseData.related_cases || [];
+  // Duplicate validation
+  const duplicate = await casesModel.findDuplicateCase(caseData.case_number, caseData.file_number, id);
+  if (duplicate) {
+    throw new Error('Case with the same case_number or file_number already exists');
+  }
+
   await casesModel.clearRelatedCases(id);
   await Promise.all(relatedCases.map(async (relatedCase) => {
     const relatedCaseId = await casesModel.getCaseIdFromFileNumber(relatedCase.file_number);

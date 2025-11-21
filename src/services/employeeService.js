@@ -33,17 +33,37 @@ const getEmployeeSanitized = async (id, { maskPassword = true } = {}) => {
   return { ...rest, password: '********' };
 };
 
+const sanitizeEmployeeInput = (data = {}) => {
+  const sanitized = { ...data };
+  Object.keys(sanitized).forEach((key) => {
+    if (sanitized[key] === '') sanitized[key] = null;
+  });
+  return sanitized;
+};
+
 const addEmployee = async (data, createdBy = null) => {
 try {  
+    const payload = sanitizeEmployeeInput(data);
+
     // Validate status field (if provided)
-    if (data.status && !['active', 'inactive'].includes(data.status)) {
+    if (payload.status && !['active', 'inactive'].includes(payload.status)) {
       throw new Error("Status must be either 'active' or 'inactive'");
     }
+
+    // Duplicate check
+    const duplicate = await employeeModel.checkDuplicateEmployee(
+      payload.name,
+      payload.phone,
+      payload.email
+    );
+    if (duplicate) {
+      throw new Error('Employee with same name, phone, or email already exists');
+    }
     
-    const userId = await employeeModel.createEmployee(data);
+    const userId = await employeeModel.createEmployee(payload);
     
-    if (data.permissions && data.permissions.length > 0 && userId) {
-      for (const permId of data.permissions) {
+    if (payload.permissions && payload.permissions.length > 0 && userId) {
+      for (const permId of payload.permissions) {
         await permissionsModel.addEmployeePermission(userId, permId);
       }
     }
@@ -72,6 +92,7 @@ const addEmployeeWithFetch = async (data, createdBy = null) => {
 };
 
 const updateEmployee = async (id, data, updatedBy = null) => {
+  const payload = sanitizeEmployeeInput(data);
   // Check if employee exists
   const existingEmployee = await employeeModel.getEmployeeById(id);
   if (!existingEmployee) {
@@ -79,21 +100,32 @@ const updateEmployee = async (id, data, updatedBy = null) => {
   }
 
   // Validate status field (if provided)
-  if (data.status && !['active', 'inactive'].includes(data.status)) {
+  if (payload.status && !['active', 'inactive'].includes(payload.status)) {
     throw new Error("Status must be either 'active' or 'inactive'");
   }
 
   // Validate email format (if provided)
-  if (data.email) {
+  if (payload.email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!emailRegex.test(payload.email)) {
       throw new Error("Invalid email format");
     }
   }
 
   // Validate phone format (if provided)
-  if (data.phone && !/^[0-9+\-\s()]+$/.test(data.phone)) {
+  if (payload.phone && !/^[0-9+\-\s()]+$/.test(payload.phone)) {
     throw new Error("Invalid phone format");
+  }
+
+  // Duplicate check (exclude current ID)
+  const duplicate = await employeeModel.checkDuplicateEmployee(
+    payload.name,
+    payload.phone,
+    payload.email,
+    id
+  );
+  if (duplicate) {
+    throw new Error('Employee with same name, phone, or email already exists');
   }
 
   // Validate dates (if provided)
@@ -104,27 +136,27 @@ const updateEmployee = async (id, data, updatedBy = null) => {
   ];
   
   for (const field of dateFields) {
-    if (data[field] && isNaN(Date.parse(data[field]))) {
-      throw new Error(`Invalid date format for ${field}`);
-    }
+  if (payload[field] && isNaN(Date.parse(payload[field]))) {
+    throw new Error(`Invalid date format for ${field}`);
+  }
   }
 
   // Validate salary (if provided)
-  if (data.basicSalary !== undefined && (isNaN(data.basicSalary) || data.basicSalary < 0)) {
+  if (payload.basicSalary !== undefined && (isNaN(payload.basicSalary) || payload.basicSalary < 0)) {
     throw new Error("Basic salary must be a positive number");
   }
 
   // Validate allowances and deductions format
-  if (data.allowances && !Array.isArray(data.allowances)) {
+  if (payload.allowances && !Array.isArray(payload.allowances)) {
     throw new Error("Allowances must be an array");
   }
   
-  if (data.deductions && !Array.isArray(data.deductions)) {
+  if (payload.deductions && !Array.isArray(payload.deductions)) {
     throw new Error("Deductions must be an array");
   }
 
   // Merge with existing data
-  const updatedData = { ...existingEmployee, ...data };
+  const updatedData = { ...existingEmployee, ...payload };
   
   const success = await employeeModel.updateEmployee(id, updatedData);
   if (!success) {

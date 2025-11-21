@@ -74,6 +74,27 @@ const addCase = async (caseData) => {
   }
 };
 
+const findDuplicateCase = async (caseNumber, fileNumber, excludeId = null) => {
+  if (!caseNumber && !fileNumber) return null;
+  let query = `SELECT id, case_number, file_number FROM cases WHERE 1=1`;
+  const params = [];
+  if (caseNumber) {
+    query += ' AND case_number = ?';
+    params.push(caseNumber);
+  }
+  if (fileNumber) {
+    query += ' AND file_number = ?';
+    params.push(fileNumber);
+  }
+  if (excludeId) {
+    query += ' AND id != ?';
+    params.push(excludeId);
+  }
+  query += ' LIMIT 1';
+  const [rows] = await db.query(query, params);
+  return rows[0] || null;
+};
+
 const getAllCases = async (filters = {}) => {
   try {
     const { 
