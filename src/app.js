@@ -8,6 +8,7 @@ const { documentUrlMiddleware } = require("./middlewares/documentUrlMiddleware")
 const { responseMiddleware } = require("./middlewares/responseMiddleware");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { i18nMiddleware } = require("./middlewares/i18nMiddleware");
+const { requestLogger } = require("./middlewares/requestLogger");
 
 // Import routes
 const authRoute = require("./routes/authRoute");
@@ -82,6 +83,7 @@ app.use(cors({
 app.use(cookieParser('law-backend-cookie-secret-for-session-security-2024')); // COOKIE_SECRET
 app.use(express.json({ limit: '50mb' })); // Increase limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for file uploads
+app.use(requestLogger({ slowThresholdMs: parseInt(process.env.SLOW_REQUEST_MS || '1000', 10) }));
 app.use(i18nMiddleware);
 app.use(responseMiddleware);
 

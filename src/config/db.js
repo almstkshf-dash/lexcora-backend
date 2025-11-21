@@ -2,6 +2,7 @@ const mysql = require("mysql2/promise");
 
 // Only create pool if database configuration is available
 let pool = null;
+const SLOW_QUERY_MS = parseInt(process.env.SLOW_QUERY_MS || '500', 10);
 
 const createPool = () => {
   if (!pool && process.env.DB_HOST && process.env.DB_USER && process.env.DB_PASSWORD && process.env.DB_NAME) {
@@ -17,6 +18,24 @@ const createPool = () => {
       dateStrings: true,
       charset: 'utf8mb4'
     });
+
+    // Wrap query to log slow queries
+    const originalQuery = pool.query.bind(pool);
+    pool.query = async (...args) => {
+      const start = Date.now();
+      const result = await originalQuery(...args);
+      const duration = Date.now() - start;
+      if (duration > SLOW_QUERY_MS) {
+        const sql = typeof args[0] === 'string' ? args[0].replace(/\s+/g, ' ').trim() : '';
+        console.warn(JSON.stringify({
+          type: 'slow_query',
+          duration_ms: duration,
+          sql: sql.slice(0, 500),
+          params: args[1] || null
+        }));
+      }
+      return result;
+    };
   }
   return pool;
 };
