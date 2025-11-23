@@ -1,8 +1,8 @@
 const OpenAI = require('openai');
 const { AppError } = require('../utils/errors');
-const sessionsService = require('../services/sessionsService');
-const casesService = require('../services/casesService');
 const aiConversationsModel = require('../models/aiConversationsModel');
+const { detectIntent, fetchDataForIntent } = require('../services/legalAssistantDataService');
+const { ingestAttachments } = require('../services/semanticSearchService');
 
 const SYSTEM_PROMPT = `
 You are a helpful legal assistant specializing in UAE legislation.
@@ -208,80 +208,6 @@ const deriveContextSources = (context, attachments) => {
   return sources.slice(0, MAX_SOURCE_ITEMS);
 };
 
-const detectDataIntent = (text) => {
-  if (!text || typeof text !== 'string') return null;
-  const normalized = text.toLowerCase();
-
-  const wantsSessions =
-    (normalized.includes('session') || normalized.includes('hearing')) &&
-    (normalized.includes('week') || normalized.includes('upcoming') || normalized.includes('next'));
-
-  if (wantsSessions) {
-    return { type: 'sessions_week' };
-  }
-
-  const wantsCases =
-    normalized.includes('list cases') ||
-    (normalized.includes('cases') && (normalized.includes('show') || normalized.includes('all')));
-
-  if (wantsCases) {
-    return { type: 'cases_recent' };
-  }
-
-  return null;
-};
-
-const buildSessionsTable = (sessions) => {
-  const columns = ['Session Date', 'Case', 'Decision', 'Status', 'Link'];
-  const rows = (sessions || []).map((s) => ({
-    'Session Date': s.session_date || s.date || '',
-    Case: s.case_number || s.file_number || s.case_id || '',
-    Decision: s.decision || s.ruling || '',
-    Status: s.status || (s.has_ruling ? 'has ruling' : ''),
-    Link: s.link || ''
-  }));
-  return { title: 'Sessions (upcoming)', columns, rows };
-};
-
-const buildCasesTable = (cases) => {
-  const columns = ['File #', 'Case #', 'Topic', 'Start Date', 'Status'];
-  const rows = (cases || []).map((c) => ({
-    'File #': c.file_number || '',
-    'Case #': c.case_number || '',
-    Topic: c.topic || '',
-    'Start Date': c.start_date || '',
-    Status: c.status || ''
-  }));
-  return { title: 'Cases', columns, rows };
-};
-
-const fetchDataForIntent = async (intent) => {
-  if (!intent) return null;
-
-  if (intent.type === 'sessions_week') {
-    const sessions = await sessionsService.getSessionsInThisWeek();
-    return {
-      answer: `Found ${sessions?.length || 0} sessions scheduled this week.`,
-      sources: [],
-      table: [buildSessionsTable(sessions)],
-      rawData: sessions
-    };
-  }
-
-  if (intent.type === 'cases_recent') {
-    const result = await casesService.getAllCases({ page: 1, limit: 20, sortBy: 'start_date', sortOrder: 'DESC' });
-    const cases = result?.cases || result || [];
-    return {
-      answer: `Here are up to 20 recent cases.`,
-      sources: [],
-      table: [buildCasesTable(cases)],
-      rawData: cases
-    };
-  }
-
-  return null;
-};
-
 /**
  * POST /api/legal-assistant
  * Chat with the legal assistant
@@ -302,11 +228,23 @@ const chat = async (req, res) => {
       throw new AppError(req.t('ai.genericError'), 503, 'SERVICE_UNAVAILABLE');
     }
 
+    // Ingest attachment text into semantic index (best-effort)
+    if (Array.isArray(attachments) && attachments.length) {
+      try {
+        await ingestAttachments(attachments, { caseId });
+      } catch (ingestErr) {
+        console.warn('Attachment ingestion failed:', ingestErr?.message);
+      }
+    }
+
     // Detect simple data queries (sessions/cases) and short-circuit to data fetch
-    const dataIntent = detectDataIntent(message);
-    const dataResult = await fetchDataForIntent(dataIntent);
+    const dataIntent = detectIntent(message);
+    const dataResult = await fetchDataForIntent(dataIntent, { ...(context || {}), caseId });
 
     if (dataResult) {
+      const contextSources = deriveContextSources(context, attachments);
+      const combinedSources = [...(dataResult.sources || []), ...contextSources].slice(0, MAX_SOURCE_ITEMS);
+
       // Persist interaction for audit trail
       try {
         await aiConversationsModel.saveConversation({
@@ -314,7 +252,7 @@ const chat = async (req, res) => {
           caseId,
           message,
           answer: dataResult.answer,
-          sources: dataResult.sources || [],
+          sources: combinedSources,
           context,
           attachments,
           history: [],
@@ -330,7 +268,7 @@ const chat = async (req, res) => {
         success: true,
         message: req.t('ai.reply'),
         answer: dataResult.answer,
-        sources: dataResult.sources || [],
+        sources: combinedSources,
         table: dataResult.table || [],
         rawData: dataResult.rawData || []
       });
@@ -549,6 +487,14 @@ const streamChat = async (req, res) => {
     return res.fail(req.t('ai.genericError'), 503, 'SERVICE_UNAVAILABLE');
   }
 
+  if (Array.isArray(attachments) && attachments.length) {
+    try {
+      await ingestAttachments(attachments, { caseId });
+    } catch (ingestErr) {
+      console.warn('Attachment ingestion failed (stream):', ingestErr?.message);
+    }
+  }
+
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -564,10 +510,12 @@ const streamChat = async (req, res) => {
 
   try {
     // Detect data intent first
-    const dataIntent = detectDataIntent(message);
-    const dataResult = await fetchDataForIntent(dataIntent);
+    const dataIntent = detectIntent(message);
+    const dataResult = await fetchDataForIntent(dataIntent, { ...(context || {}), caseId });
     if (dataResult) {
-      sendEvent({ type: 'final', answer: dataResult.answer, sources: dataResult.sources || [], table: dataResult.table || [], rawData: dataResult.rawData || [] });
+      const contextSources = deriveContextSources(context, attachments);
+      const combinedSources = [...(dataResult.sources || []), ...contextSources].slice(0, MAX_SOURCE_ITEMS);
+      sendEvent({ type: 'final', answer: dataResult.answer, sources: combinedSources, table: dataResult.table || [], rawData: dataResult.rawData || [] });
 
       try {
         await aiConversationsModel.saveConversation({
@@ -575,7 +523,7 @@ const streamChat = async (req, res) => {
           caseId,
           message,
           answer: dataResult.answer,
-          sources: dataResult.sources || [],
+          sources: combinedSources,
           context,
           attachments,
           history: [],
