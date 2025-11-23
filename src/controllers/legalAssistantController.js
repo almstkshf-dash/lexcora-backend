@@ -1,5 +1,8 @@
 const OpenAI = require('openai');
 const { AppError } = require('../utils/errors');
+const sessionsService = require('../services/sessionsService');
+const casesService = require('../services/casesService');
+const aiConversationsModel = require('../models/aiConversationsModel');
 
 const SYSTEM_PROMPT = `
 You are a helpful legal assistant specializing in UAE legislation.
@@ -205,6 +208,80 @@ const deriveContextSources = (context, attachments) => {
   return sources.slice(0, MAX_SOURCE_ITEMS);
 };
 
+const detectDataIntent = (text) => {
+  if (!text || typeof text !== 'string') return null;
+  const normalized = text.toLowerCase();
+
+  const wantsSessions =
+    (normalized.includes('session') || normalized.includes('hearing')) &&
+    (normalized.includes('week') || normalized.includes('upcoming') || normalized.includes('next'));
+
+  if (wantsSessions) {
+    return { type: 'sessions_week' };
+  }
+
+  const wantsCases =
+    normalized.includes('list cases') ||
+    (normalized.includes('cases') && (normalized.includes('show') || normalized.includes('all')));
+
+  if (wantsCases) {
+    return { type: 'cases_recent' };
+  }
+
+  return null;
+};
+
+const buildSessionsTable = (sessions) => {
+  const columns = ['Session Date', 'Case', 'Decision', 'Status', 'Link'];
+  const rows = (sessions || []).map((s) => ({
+    'Session Date': s.session_date || s.date || '',
+    Case: s.case_number || s.file_number || s.case_id || '',
+    Decision: s.decision || s.ruling || '',
+    Status: s.status || (s.has_ruling ? 'has ruling' : ''),
+    Link: s.link || ''
+  }));
+  return { title: 'Sessions (upcoming)', columns, rows };
+};
+
+const buildCasesTable = (cases) => {
+  const columns = ['File #', 'Case #', 'Topic', 'Start Date', 'Status'];
+  const rows = (cases || []).map((c) => ({
+    'File #': c.file_number || '',
+    'Case #': c.case_number || '',
+    Topic: c.topic || '',
+    'Start Date': c.start_date || '',
+    Status: c.status || ''
+  }));
+  return { title: 'Cases', columns, rows };
+};
+
+const fetchDataForIntent = async (intent) => {
+  if (!intent) return null;
+
+  if (intent.type === 'sessions_week') {
+    const sessions = await sessionsService.getSessionsInThisWeek();
+    return {
+      answer: `Found ${sessions?.length || 0} sessions scheduled this week.`,
+      sources: [],
+      table: [buildSessionsTable(sessions)],
+      rawData: sessions
+    };
+  }
+
+  if (intent.type === 'cases_recent') {
+    const result = await casesService.getAllCases({ page: 1, limit: 20, sortBy: 'start_date', sortOrder: 'DESC' });
+    const cases = result?.cases || result || [];
+    return {
+      answer: `Here are up to 20 recent cases.`,
+      sources: [],
+      table: [buildCasesTable(cases)],
+      rawData: cases
+    };
+  }
+
+  return null;
+};
+
 /**
  * POST /api/legal-assistant
  * Chat with the legal assistant
@@ -213,6 +290,7 @@ const chat = async (req, res) => {
   try {
     const { message, userName, userId, history, context, attachments } = req.body;
     const caseId = context?.caseId || req.body.caseId;
+    const requesterId = req.user?.id || userId || null;
 
     // Validate request
     if (!message || typeof message !== 'string') {
@@ -224,6 +302,40 @@ const chat = async (req, res) => {
       throw new AppError(req.t('ai.genericError'), 503, 'SERVICE_UNAVAILABLE');
     }
 
+    // Detect simple data queries (sessions/cases) and short-circuit to data fetch
+    const dataIntent = detectDataIntent(message);
+    const dataResult = await fetchDataForIntent(dataIntent);
+
+    if (dataResult) {
+      // Persist interaction for audit trail
+      try {
+        await aiConversationsModel.saveConversation({
+          userId: requesterId,
+          caseId,
+          message,
+          answer: dataResult.answer,
+          sources: dataResult.sources || [],
+          context,
+          attachments,
+          history: [],
+          usage: null,
+          table: dataResult.table || null,
+          rawData: dataResult.rawData || null
+        });
+      } catch (persistErr) {
+        console.warn('Could not persist AI data intent conversation:', persistErr?.message);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: req.t('ai.reply'),
+        answer: dataResult.answer,
+        sources: dataResult.sources || [],
+        table: dataResult.table || [],
+        rawData: dataResult.rawData || []
+      });
+    }
+
     // Build conversation history for context
     const messages = [
       {
@@ -231,6 +343,16 @@ const chat = async (req, res) => {
         content: SYSTEM_PROMPT,
       },
     ];
+
+    // Pull persisted history if none provided (backend-owned history)
+    let persistedHistory = [];
+    try {
+      if (!history && caseId) {
+        persistedHistory = await aiConversationsModel.getHistoryMessages(caseId, MAX_HISTORY);
+      }
+    } catch (err) {
+      console.warn('Could not load persisted AI history:', err?.message);
+    }
 
     const contextSummary = buildContextSummary(context);
     if (contextSummary) {
@@ -250,7 +372,7 @@ const chat = async (req, res) => {
 
     // Normalize history (per-case or global) and keep recent entries
     const allowedRoles = new Set(['user', 'assistant', 'system']);
-    const normalizedHistory = normalizeHistory(history, caseId)
+    const normalizedHistory = normalizeHistory(history || persistedHistory, caseId)
       .filter((msg) => msg && allowedRoles.has(msg.role) && msg.content)
       .slice(-MAX_HISTORY);
 
@@ -328,6 +450,25 @@ const chat = async (req, res) => {
       userId,
     };
 
+    // Persist conversation (best-effort)
+    try {
+        await aiConversationsModel.saveConversation({
+          userId: requesterId,
+          caseId,
+          message,
+          answer,
+          sources,
+          context,
+          attachments,
+          history: normalizedHistory,
+          usage: completion.usage,
+          table: dataResult?.table || null,
+          rawData: dataResult?.rawData || null
+        });
+    } catch (persistErr) {
+      console.warn('Could not persist AI conversation:', persistErr?.message);
+    }
+
     return res.status(200).json({
       success: true,
       message: req.t('ai.reply'),
@@ -364,7 +505,214 @@ const chat = async (req, res) => {
   }
 };
 
-module.exports = {
-  chat,
+const getHistory = async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    if (!caseId) {
+      return res.fail('caseId is required', 400, 'VALIDATION_ERROR');
+    }
+
+    const limit = Number(req.query.limit) || 50;
+    const conversations = await aiConversationsModel.getConversationsByCase(caseId, limit);
+
+    // Sanitize: only return minimal context/attachments to avoid leaking extra data
+    const sanitized = conversations.map((c) => ({
+      id: c.id,
+      caseId: c.caseId,
+      userId: c.userId,
+      message: c.message,
+      answer: c.answer,
+      sources: c.sources || [],
+      attachments: c.attachments || [],
+      table: c.table || null,
+      rawData: c.rawData || null,
+      created_at: c.created_at
+    }));
+
+    return res.success(sanitized, req.t('generic.ok'));
+  } catch (error) {
+    console.error('Error fetching AI history:', error);
+    return res.fail('Failed to fetch AI history', 500, 'AI_HISTORY_ERROR');
+  }
 };
 
+const streamChat = async (req, res) => {
+  const { message, userName, userId, history, context, attachments } = req.body;
+  const caseId = context?.caseId || req.body.caseId;
+  const requesterId = req.user?.id || userId || null;
+
+  if (!message || typeof message !== 'string') {
+    return res.fail(req.t('generic.validationError'), 400, 'VALIDATION_ERROR');
+  }
+
+  if (!openai) {
+    return res.fail(req.t('ai.genericError'), 503, 'SERVICE_UNAVAILABLE');
+  }
+
+  // SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const sendEvent = (payload) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  const endStream = () => {
+    res.end();
+  };
+
+  try {
+    // Detect data intent first
+    const dataIntent = detectDataIntent(message);
+    const dataResult = await fetchDataForIntent(dataIntent);
+    if (dataResult) {
+      sendEvent({ type: 'final', answer: dataResult.answer, sources: dataResult.sources || [], table: dataResult.table || [], rawData: dataResult.rawData || [] });
+
+      try {
+        await aiConversationsModel.saveConversation({
+          userId: requesterId,
+          caseId,
+          message,
+          answer: dataResult.answer,
+          sources: dataResult.sources || [],
+          context,
+          attachments,
+          history: [],
+          usage: null,
+          table: dataResult.table || null,
+          rawData: dataResult.rawData || null
+        });
+      } catch (persistErr) {
+        console.warn('Could not persist AI data intent conversation:', persistErr?.message);
+      }
+
+      return endStream();
+    }
+
+    // Prepare messages (reuse same logic)
+    const messages = [
+      {
+        role: 'system',
+        content: SYSTEM_PROMPT,
+      },
+    ];
+
+    const contextSummary = buildContextSummary(context);
+    if (contextSummary) {
+      messages.push({ role: 'system', content: contextSummary });
+    }
+
+    const attachmentsSummary = buildAttachmentsSummary(attachments);
+    if (attachmentsSummary) {
+      messages.push({ role: 'system', content: attachmentsSummary });
+    }
+
+    let persistedHistory = [];
+    try {
+      if (!history && caseId) {
+        persistedHistory = await aiConversationsModel.getHistoryMessages(caseId, MAX_HISTORY);
+      }
+    } catch (err) {
+      console.warn('Could not load persisted AI history:', err?.message);
+    }
+
+    const allowedRoles = new Set(['user', 'assistant', 'system']);
+    const normalizedHistory = normalizeHistory(history || persistedHistory, caseId)
+      .filter((msg) => msg && allowedRoles.has(msg.role) && msg.content)
+      .slice(-MAX_HISTORY);
+
+    normalizedHistory.forEach((msg) => {
+      messages.push({
+        role: msg.role,
+        content: String(msg.content),
+      });
+    });
+
+    const lastHistoryContent = normalizedHistory.length
+      ? String(normalizedHistory[normalizedHistory.length - 1].content)
+      : '';
+    const shouldAppendMessage = typeof message === 'string' && message !== lastHistoryContent;
+
+    if (shouldAppendMessage) {
+      messages.push({
+        role: 'user',
+        content: message,
+      });
+    }
+
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4-1106-preview',
+      messages,
+      temperature: 0.25,
+      max_tokens: 600,
+      stream: true,
+      response_format: { type: 'json_object' }
+    });
+
+    let rawContent = '';
+    for await (const chunk of stream) {
+      const token = chunk.choices?.[0]?.delta?.content || '';
+      if (token) {
+        rawContent += token;
+      }
+    }
+
+    const contextSources = deriveContextSources(context, attachments);
+
+    // Parse JSON response
+    const stripFences = (text) => {
+      if (!text) return '';
+      return text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    };
+
+    let answer = rawContent;
+    let sources = [...contextSources];
+    let table = null;
+    let rawData = null;
+
+    try {
+      const parsed = JSON.parse(stripFences(rawContent));
+      answer = parsed.answer || rawContent;
+      if (Array.isArray(parsed.sources)) {
+        sources = [...parsed.sources, ...contextSources].slice(0, MAX_SOURCE_ITEMS);
+      }
+      if (parsed.table) table = parsed.table;
+      if (parsed.rawData) rawData = parsed.rawData;
+    } catch (parseErr) {
+      console.warn('Could not parse JSON from streaming response; using raw content');
+    }
+
+    sendEvent({ type: 'final', answer, sources, table, rawData });
+
+    try {
+      await aiConversationsModel.saveConversation({
+        userId: requesterId,
+        caseId,
+        message,
+        answer,
+        sources,
+        context,
+        attachments,
+        history: normalizedHistory,
+        usage: null,
+        table,
+        rawData
+      });
+    } catch (persistErr) {
+      console.warn('Could not persist AI streaming conversation:', persistErr?.message);
+    }
+
+    return endStream();
+  } catch (error) {
+    console.error('Streaming error in legal assistant controller:', error);
+    sendEvent({ type: 'error', message: req.t('ai.genericError') });
+    return endStream();
+  }
+};
+
+module.exports = {
+  chat,
+  streamChat,
+  getHistory,
+};

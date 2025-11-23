@@ -2,12 +2,16 @@ const express = require('express');
 const router = express.Router();
 const legalAssistantController = require('../controllers/legalAssistantController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../middlewares/validators');
 
 const chatValidators = [
   body('message').isString().trim().notEmpty().withMessage('message is required'),
-  body('context').optional().isObject().withMessage('context must be an object'),
+  body('context')
+    .optional()
+    .custom((val) => val === null || typeof val === 'object')
+    .withMessage('context must be an object'),
   body('context.caseId').optional().isString().trim(),
   body('context.caseSummary').optional().custom((val) => typeof val === 'string' || typeof val === 'object')
     .withMessage('caseSummary must be a string or object'),
@@ -33,5 +37,7 @@ const chatValidators = [
  * @access  Protected (requires authentication)
  */
 router.post('/', authenticateToken, chatValidators, legalAssistantController.chat);
+router.get('/history/:caseId', authenticateToken, checkPermission('View Case'), legalAssistantController.getHistory);
+router.post('/stream', authenticateToken, chatValidators, legalAssistantController.streamChat);
 
 module.exports = router;
