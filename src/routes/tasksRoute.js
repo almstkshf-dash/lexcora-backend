@@ -18,38 +18,38 @@ router.get(
   tasksController.getAllTasks
 );
 
-// Get task by ID
-router.get('/:id', authenticateToken, tasksController.getTaskById);
-
-// Get tasks by employee ID
-router.get('/employee/:employeeId', authenticateToken, tasksController.getTasksByEmployeeId);
+// Get tasks created by an employee (filtered by status)
+router.get('/creator/:employeeId', authenticateToken, tasksController.getCreatorTasks);
 
 // Get tasks assigned to an employee
 router.get('/assigned-to/:employeeId', authenticateToken, tasksController.getAssignedToTasks);
 
-// Get tasks by case ID
-router.get('/case/:caseId', authenticateToken, tasksController.getTasksByCaseId);
+// Get tasks by employee ID
+router.get('/employee/:employeeId', authenticateToken, tasksController.getTasksByEmployeeId);
 
 // Get case tasks with employee details
 router.get('/case-tasks/:caseId', authenticateToken, tasksController.getCaseTasks);
 
-// Get tasks created by an employee (filtered by status)
-router.get('/creator/:employeeId', authenticateToken, tasksController.getCreatorTasks);
+// Get tasks by case ID
+router.get('/case/:caseId', authenticateToken, tasksController.getTasksByCaseId);
+
+// Get task by ID (keep after specific routes to avoid route collisions)
+router.get('/:id', authenticateToken, tasksController.getTaskById);
 
 // Create a new task
 router.post('/', authenticateToken, checkPermission('Add Task'), tasksController.createTask);
-
-// Update a task by ID
-router.put('/:id', authenticateToken, checkPermission('Edit Task'), tasksController.updateTask);
-
-// Delete a task by ID
-router.delete('/:id', authenticateToken, checkPermission('Delete Task'), tasksController.deleteTask);
 
 // Delete a task document by ID
 router.delete('/documents/:id', authenticateToken, tasksController.deleteTaskDocument);
 
 // Delete a task comment by ID
 router.delete('/comments/:id', authenticateToken, tasksController.deleteTaskComment);
+
+// Update a task by ID
+router.put('/:id', authenticateToken, checkPermission('Edit Task'), tasksController.updateTask);
+
+// Delete a task by ID (keep generic delete after specific delete routes)
+router.delete('/:id', authenticateToken, checkPermission('Delete Task'), tasksController.deleteTask);
 
 // Add a comment to a task
 router.post('/:taskId/comments', authenticateToken, tasksController.addCommentToTask);
