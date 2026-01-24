@@ -79,10 +79,45 @@ const searchRoute = require("./routes/searchRoute");
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || true, // Set your frontend domain in production
-  credentials: true 
-}));
+// Dynamic CORS: allow explicit web origins (with credentials) and null origins for RN/bearer calls
+const rawOrigins = process.env.CORS_ORIGINS || '';
+const allowedOrigins = rawOrigins
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+// Backwards compatibility: include FRONTEND_URL if provided
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL.trim());
+}
+
+// Common local defaults (useful if CORS_ORIGINS is empty in dev)
+const defaultLocalOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://10.0.2.2:3000', // Android emulator to host
+];
+defaultLocalOrigins.forEach(origin => {
+  if (!allowedOrigins.includes(origin)) {
+    allowedOrigins.push(origin);
+  }
+});
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow no-origin requests (React Native, curl) for bearer-token flows
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true // Keep cookies for web origins; bearer tokens work without cookies
+};
+
+app.use(cors(corsOptions));
 app.use(cookieParser('law-backend-cookie-secret-for-session-security-2024')); // COOKIE_SECRET
 app.use(express.json({ limit: '50mb' })); // Increase limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Increase limit for file uploads
