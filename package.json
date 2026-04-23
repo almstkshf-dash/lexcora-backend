@@ -9,6 +9,7 @@
     "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "cleanup:orphaned-files": "node scripts/cleanupOrphanedFiles.js",
+    "db:import": "node scripts/import_dump.js",
     "lint": "eslint ."
   },
   "author": "",

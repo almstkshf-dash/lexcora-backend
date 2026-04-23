@@ -221,17 +221,10 @@ const uploadInvoiceAttachments = async (req, res) => {
     }
     
     // Import required modules for S3 upload
-    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    const { PutObjectCommand } = require('@aws-sdk/client-s3');
     const path = require('path');
 
-    // Configure AWS S3 client
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION || 'us-east-1',
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    });
+    const s3Client = require('../config/s3Client');
 
     const folder = 'invoices-attachments';
     const bucketName = process.env.AWS_S3_BUCKET_NAME;

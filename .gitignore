@@ -89,3 +89,4 @@ public
 
 # VS Code
 .vscode/
+.vercel

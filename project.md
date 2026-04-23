@@ -1,4 +1,4 @@
-# CLAUDE.md — Lexcora Project Briefing
+# Lexcora Project Briefing
 
 > Place this file at the root of your VS Code workspace.
 > This file tells any coding agent everything it needs to know about this project.
@@ -172,10 +172,10 @@ NEXT_PUBLIC_API_URL=https://lexcora-backend.vercel.app
 ## Migration Phases — Current Status
 
 - [x] Phase 1 — Disable old AWS credentials
-- [ ] Phase 2 — Export MySQL dump from old RDS
-- [ ] Phase 3 — Import to Railway MySQL
-- [ ] Phase 4 — Setup Cloudflare R2, migrate files from S3
-- [ ] Phase 5 — Add env vars to Vercel backend, redeploy
+- [x] Phase 2 — Export MySQL dump from old RDS (Completed: Found in src/config/Database.sql)
+- [x] Phase 3 — Import to Railway MySQL (Completed: 79 tables imported)
+- [x] Phase 4 — Setup Cloudflare R2 (Configuration completed, migration skipped as no files were available)
+- [x] Phase 5 — Add env vars to Vercel backend and redeploy (Completed: Backend is live at https://lexcora-backend.vercel.app)
 - [ ] Phase 6 — Deploy frontend + client portal to Vercel
 - [ ] Phase 7 — End-to-end testing
 

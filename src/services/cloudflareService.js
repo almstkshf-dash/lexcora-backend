@@ -1,14 +1,6 @@
-const { S3Client, DeleteObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const { DeleteObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
 
-// Configure Cloudflare R2 client
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
-  },
-});
+const s3Client = require('../config/s3Client');
 
 /**
  * Extract key from document_url
@@ -59,7 +51,7 @@ const deleteFileFromR2 = async (documentUrl) => {
       return false;
     }
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
 
     const command = new DeleteObjectCommand({
       Bucket: bucketName,
@@ -96,7 +88,7 @@ const deleteFilesFromR2 = async (documentUrls) => {
       return { success: 0, failed: 0 };
     }
 
-    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
 
     // Use batch delete for better performance
     const command = new DeleteObjectsCommand({
