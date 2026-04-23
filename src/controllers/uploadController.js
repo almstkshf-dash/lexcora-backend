@@ -7,6 +7,7 @@ const { validateFiles, DEFAULT_ALLOWED_MIME, DEFAULT_MAX_SIZE } = require('../ut
 // Configure AWS S3 client
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-east-1',
+  endpoint: process.env.S3_ENDPOINT,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
