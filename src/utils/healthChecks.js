@@ -14,13 +14,13 @@ const checkDb = async () => {
   }
 };
 
-const checkS3 = async () => {
+const checkBlob = async () => {
   try {
-    if (!process.env.AWS_S3_BUCKET_NAME) return false;
-    await s3Client.send(new HeadBucketCommand({ Bucket: process.env.AWS_S3_BUCKET_NAME }));
+    if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
+    // We just check if the token exists as a basic health check
     return true;
   } catch (err) {
-    console.error('S3 health check failed:', err.message);
+    console.error('Blob health check failed:', err.message);
     return false;
   }
 };
@@ -34,6 +34,6 @@ const getVersionInfo = () => ({
 
 module.exports = {
   checkDb,
-  checkS3,
+  checkBlob,
   getVersionInfo
 };

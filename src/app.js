@@ -61,7 +61,7 @@ const eventsRoute = require("./routes/eventsRoute");
 const hrNotificationsRoute = require("./routes/hrNotificationsRoute");
 const appNotificationsRoute = require("./routes/appNotificationsRoute");
 const jobsRoute = require("./routes/jobsRoute");
-const { checkDb, checkS3, getVersionInfo } = require("./utils/healthChecks");
+const { checkDb, checkBlob, getVersionInfo } = require("./utils/healthChecks");
 const formsRoute = require("./routes/formsRoute");
 const partiesFormsRoute = require("./routes/partiesFormsRoute");
 const workHoursRoute = require("./routes/workHoursRoute");
@@ -198,7 +198,7 @@ app.use("/api/search", searchRoute);
 
 app.get("/health", async (req, res) => {
   try {
-    const [dbOk, s3Ok] = await Promise.all([checkDb(), checkS3()]);
+    const [dbOk, blobOk] = await Promise.all([checkDb(), checkBlob()]);
     res.success(
       {
         status: "OK",
@@ -208,7 +208,7 @@ app.get("/health", async (req, res) => {
         services: {
           api: "Running",
           database: dbOk ? "Reachable" : "Unavailable",
-          fileStorage: s3Ok ? "Reachable" : "Unavailable"
+          fileStorage: blobOk ? "Reachable" : "Unavailable"
         }
       },
       "Law Backend API is running"

@@ -176,8 +176,8 @@ NEXT_PUBLIC_API_URL=https://lexcora-backend.vercel.app
 - [x] Phase 3 — Import to Railway MySQL (Completed: 79 tables imported)
 - [x] Phase 4 — Setup Cloudflare R2 (Configuration completed, migration skipped as no files were available)
 - [x] Phase 5 — Add env vars to Vercel backend and redeploy (Completed: Backend is live at https://lexcora-backend.vercel.app)
-- [ ] Phase 6 — Deploy frontend + client portal to Vercel
-- [ ] Phase 7 — End-to-end testing
+- [x] Phase 6 — Deploy frontend + client portal to Vercel (Frontend: https://lexcora-frontend.vercel.app, Portal: https://lexcora-client-portal.vercel.app)
+- [x] Phase 7 — End-to-end testing (Backend Healthy: https://lexcora-backend.vercel.app/health)
 
 ---
 

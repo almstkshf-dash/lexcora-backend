@@ -1,19 +1,14 @@
-const { PutObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { uploadToBlob } = require('./blobStorage');
 const path = require('path');
 
-const s3Client = require('../config/s3Client');
-
 /**
- * Upload a file to S3
+ * Upload a file to Vercel Blob (Maintained for backward compatibility with name uploadToS3)
  * @param {Object} file - The file object from multer (with buffer)
- * @param {String} folder - The folder name in S3
+ * @param {String} folder - The folder name in the blob storage
  * @returns {Object} - Object containing the URL and key of the uploaded file
  */
 const uploadToS3 = async (file, folder = 'documents') => {
   try {
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    
     // Decode the original filename to properly handle Arabic and UTF-8 characters
     let originalFilename = file.originalname;
     try {
@@ -24,56 +19,24 @@ const uploadToS3 = async (file, folder = 'documents') => {
       console.warn('Failed to decode filename, using as-is:', originalFilename);
     }
     
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
     const fileExtension = path.extname(originalFilename);
-    const filename = `${timestamp}-${randomString}${fileExtension}`;
-    const key = `${folder}/${filename}`;
+    const cleanName = originalFilename.replace(fileExtension, '').replace(/[^a-zA-Z0-9]/g, '_');
+    const blobPath = `${folder}/${cleanName}-${Date.now()}${fileExtension}`;
 
-    // Upload to S3
-    const putCommand = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      Metadata: {
-        'original-filename': encodeURIComponent(originalFilename),
-      },
-    });
-
-    await s3Client.send(putCommand);
-
-    // Check if using public URL or presigned URL
-    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
-
-    let fileUrl;
-    
-    if (usePublicUrl && publicUrl) {
-      fileUrl = `${publicUrl}/${key}`;
-    } else {
-      // Generate presigned URL valid for 7 days
-      const { GetObjectCommand } = require('@aws-sdk/client-s3');
-      const getCommand = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-      });
-      fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
-    }
+    // Upload to Vercel Blob
+    const blob = await uploadToBlob(blobPath, file.buffer, file.mimetype);
 
     return {
-      url: fileUrl,
-      key: key,
+      url: blob.url,
+      key: blob.url,
       originalName: originalFilename
     };
   } catch (error) {
-    console.error('Error uploading file to S3:', error);
-    throw new Error('Failed to upload file to S3');
+    console.error('Error uploading file to Vercel Blob:', error);
+    throw new Error('Failed to upload file to storage');
   }
 };
 
 module.exports = {
   uploadToS3,
-  s3Client
 };

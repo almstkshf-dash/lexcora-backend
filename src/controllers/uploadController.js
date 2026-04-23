@@ -1,10 +1,7 @@
-const { PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { uploadToBlob, deleteFromBlob, deleteMultipleFromBlob } = require('../utils/blobStorage');
 const multer = require('multer');
 const path = require('path');
 const { validateFiles, DEFAULT_ALLOWED_MIME, DEFAULT_MAX_SIZE } = require('../utils/fileValidation');
-
-const s3Client = require('../config/s3Client');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
@@ -16,7 +13,7 @@ const upload = multer({
 });
 
 /**
- * Upload files to AWS S3
+ * Upload files to Vercel Blob
  */
 const uploadFiles = async (req, res) => {
   try {
@@ -42,67 +39,29 @@ const uploadFiles = async (req, res) => {
     }
 
     const folder = req.body.folder || 'documents';
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    
-    // Use public URL if bucket is configured for public access
-    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
     const uploadPromises = valid.map(async (file) => {
-      // Decode the original filename to properly handle Arabic and UTF-8 characters
-      // Multer encodes filenames in Latin1, we need to decode them to UTF-8
       let originalFilename = file.originalname;
       try {
-        // Check if the filename needs decoding (contains non-ASCII characters)
         if (/[^\x00-\x7F]/.test(originalFilename)) {
-          // The filename might be incorrectly encoded as Latin1, convert to UTF-8
           originalFilename = Buffer.from(originalFilename, 'latin1').toString('utf8');
         }
       } catch (error) {
         console.warn('Failed to decode filename, using as-is:', originalFilename);
       }
       
-      // Generate unique filename
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
       const fileExtension = path.extname(originalFilename);
-      const filename = `${timestamp}-${randomString}${fileExtension}`;
-      const key = `${folder}/${filename}`;
+      const cleanName = originalFilename.replace(fileExtension, '').replace(/[^a-zA-Z0-9]/g, '_');
+      const blobPath = `${folder}/${cleanName}-${Date.now()}${fileExtension}`;
 
-      // Upload to S3
-      const putCommand = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        // Add metadata for original filename to preserve Arabic characters
-        Metadata: {
-          'original-filename': encodeURIComponent(originalFilename),
-        },
-      });
+      // Upload to Vercel Blob
+      const blob = await uploadToBlob(blobPath, file.buffer, file.mimetype);
 
-      await s3Client.send(putCommand);
-
-      let fileUrl;
-      
-      // If using public URL, use it directly; otherwise generate presigned URL
-      if (usePublicUrl && publicUrl) {
-        fileUrl = `${publicUrl}/${key}`;
-      } else {
-        // Generate presigned URL valid for 7 days
-        const getCommand = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-        });
-        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
-      }
-
-      // Return formatted result with properly decoded filename
       const nowIso = new Date().toISOString();
       return {
         document_name: originalFilename,
-        document_url: fileUrl,
-        key: key, // Store the key for future presigned URL generation
+        document_url: blob.url,
+        key: blob.url, // Store full URL as key for easier deletion in Vercel Blob
         mimetype: file.mimetype,
         size: file.size,
         uploaded_by: req.user?.id || null,
@@ -118,7 +77,7 @@ const uploadFiles = async (req, res) => {
       errors,
     });
   } catch (error) {
-    console.error('Error uploading files to AWS S3:', error);
+    console.error('Error uploading files to Vercel Blob:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to upload files',
@@ -127,80 +86,54 @@ const uploadFiles = async (req, res) => {
 };
 
 /**
- * Generate presigned URL for an existing file
+ * Return blob URL directly (Vercel Blob is public by default)
  */
 const getPresignedUrl = async (req, res) => {
   try {
-    const { key } = req.body;
+    const { key } = req.body; // Key is the full URL in our Vercel implementation
     
     if (!key) {
       return res.status(400).json({
         success: false,
-        error: 'File key is required',
+        error: 'File key (URL) is required',
       });
-    }
-
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    
-    // Check if using public URL
-    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
-    
-    let fileUrl;
-    
-    if (usePublicUrl && publicUrl) {
-      fileUrl = `${publicUrl}/${key}`;
-    } else {
-      // Generate presigned URL valid for 7 days
-      const getCommand = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-      });
-      fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
     }
 
     return res.status(200).json({
       success: true,
-      url: fileUrl,
+      url: key,
     });
   } catch (error) {
-    console.error('Error generating presigned URL:', error);
+    console.error('Error returning URL:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || 'Failed to generate presigned URL',
+      error: error.message || 'Failed to return URL',
     });
   }
 };
 
 /**
- * Delete a single file from AWS S3
+ * Delete a single file from Vercel Blob
  */
 const deleteFile = async (req, res) => {
   try {
-    const { key } = req.body;
+    const { key } = req.body; // Key is the full URL
     
     if (!key) {
       return res.status(400).json({
         success: false,
-        error: 'File key is required',
+        error: 'File key (URL) is required',
       });
     }
 
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    
-    const deleteCommand = new DeleteObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-    });
-
-    await s3Client.send(deleteCommand);
+    await deleteFromBlob(key);
 
     return res.status(200).json({
       success: true,
       message: 'File deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting file from AWS S3:', error);
+    console.error('Error deleting file from Vercel Blob:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete file',
@@ -209,40 +142,27 @@ const deleteFile = async (req, res) => {
 };
 
 /**
- * Delete multiple files from AWS S3
+ * Delete multiple files from Vercel Blob
  */
 const deleteFiles = async (req, res) => {
   try {
-    const { keys } = req.body;
+    const { keys } = req.body; // Keys are full URLs
     
     if (!keys || !Array.isArray(keys) || keys.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'File keys array is required',
+        error: 'File keys (URLs) array is required',
       });
     }
 
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    
-    // Delete multiple files in batch (more efficient)
-    const deleteCommand = new DeleteObjectsCommand({
-      Bucket: bucketName,
-      Delete: {
-        Objects: keys.map(key => ({ Key: key })),
-        Quiet: false,
-      },
-    });
-
-    const result = await s3Client.send(deleteCommand);
+    await deleteMultipleFromBlob(keys);
 
     return res.status(200).json({
       success: true,
       message: `${keys.length} file(s) deleted successfully`,
-      deleted: result.Deleted || [],
-      errors: result.Errors || [],
     });
   } catch (error) {
-    console.error('Error deleting files from AWS S3:', error);
+    console.error('Error deleting files from Vercel Blob:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to delete files',
