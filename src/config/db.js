@@ -16,25 +16,46 @@ const createPool = () => {
       connectionLimit: 10,
       queueLimit: 0,
       dateStrings: true,
-      charset: 'utf8mb4'
+      charset: 'utf8mb4',
+      // Fix for "Connection lost: The server closed the connection"
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000, // 10 seconds
+    });
+
+    // Handle pool errors to prevent process crashes
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle database client:', err);
+      if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
+        console.warn('Database connection was closed or reset. Pool will attempt to reconnect on next query.');
+        pool = null; // Force recreation on next createPool() call
+      }
     });
 
     // Wrap query to log slow queries
     const originalQuery = pool.query.bind(pool);
     pool.query = async (...args) => {
       const start = Date.now();
-      const result = await originalQuery(...args);
-      const duration = Date.now() - start;
-      if (duration > SLOW_QUERY_MS) {
-        const sql = typeof args[0] === 'string' ? args[0].replace(/\s+/g, ' ').trim() : '';
-        console.warn(JSON.stringify({
-          type: 'slow_query',
-          duration_ms: duration,
-          sql: sql.slice(0, 500),
-          params: args[1] || null
-        }));
+      try {
+        const result = await originalQuery(...args);
+        const duration = Date.now() - start;
+        if (duration > SLOW_QUERY_MS) {
+          const sql = typeof args[0] === 'string' ? args[0].replace(/\s+/g, ' ').trim() : '';
+          console.warn(JSON.stringify({
+            type: 'slow_query',
+            duration_ms: duration,
+            sql: sql.slice(0, 500),
+            params: args[1] || null
+          }));
+        }
+        return result;
+      } catch (error) {
+        // If connection is lost during query, log it clearly and reset pool if fatal
+        if (error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ECONNRESET' || error.fatal) {
+          console.error('FATAL DB ERROR: Connection lost during query execution');
+          pool = null; // Reset pool
+        }
+        throw error;
       }
-      return result;
     };
   }
   return pool;
