@@ -97,7 +97,15 @@ const defaultLocalOrigins = [
   'http://127.0.0.1:3000',
   'http://10.0.2.2:3000', // Android emulator to host
 ];
-defaultLocalOrigins.forEach(origin => {
+
+// Production custom domains
+const productionCustomDomains = [
+  'https://portal.lexcora-mbh.com',
+  'https://user.lexcora-mbh.com',
+  'https://api.lexcora-mbh.com',
+];
+
+[...defaultLocalOrigins, ...productionCustomDomains].forEach(origin => {
   if (!allowedOrigins.includes(origin)) {
     allowedOrigins.push(origin);
   }
