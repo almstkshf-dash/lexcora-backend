@@ -42,8 +42,6 @@ const loginUser = async (username, password) => {
     const { password: _, ...userWithoutPassword } = user;
     
     return {
-      success: true,
-      message: 'Login successful',
       user: userWithoutPassword,
       permissions,
       token,
@@ -104,8 +102,7 @@ const getUserProfile = async (userId) => {
     const { password: _, ...userProfile } = user;
     
     return {
-      success: true,
-      data: userProfile,
+      user: userProfile,
       permissions
     };
   } catch (error) {

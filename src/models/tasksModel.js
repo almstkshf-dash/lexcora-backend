@@ -1,8 +1,20 @@
 const db = require("../config/db");
 
-const getAllTasks = async ({ page, limit, sortBy, sortOrder, status, priority, assigned_to, due_date }) => {
+const getAllTasks = async ({ 
+  page = 1, 
+  limit = 10, 
+  sortBy = 'created_at', 
+  sortOrder = 'DESC', 
+  status, 
+  priority, 
+  assigned_to, 
+  assigned_by, 
+  case_id,
+  due_date,
+  search 
+}) => {
   const offset = (page - 1) * limit;
-  const allowedSort = ['due_date', 'created_at', 'id', 'priority'];
+  const allowedSort = ['due_date', 'created_at', 'id', 'priority', 'status'];
   const orderBy = allowedSort.includes(sortBy) ? sortBy : 'created_at';
   const orderDir = sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
@@ -10,8 +22,12 @@ const getAllTasks = async ({ page, limit, sortBy, sortOrder, status, priority, a
   const params = [];
 
   if (status) {
-    conditions.push('t.status = ?');
-    params.push(status);
+    if (status === 'active') {
+      conditions.push("t.status != 'completed' AND t.status != 'cancelled'");
+    } else {
+      conditions.push('t.status = ?');
+      params.push(status);
+    }
   }
   if (priority) {
     conditions.push('t.priority = ?');
@@ -21,27 +37,58 @@ const getAllTasks = async ({ page, limit, sortBy, sortOrder, status, priority, a
     conditions.push('t.assigned_to = ?');
     params.push(assigned_to);
   }
+  if (assigned_by) {
+    conditions.push('t.assigned_by = ?');
+    params.push(assigned_by);
+  }
+  if (case_id) {
+    conditions.push('t.case_id = ?');
+    params.push(case_id);
+  }
   if (due_date) {
     conditions.push('DATE(t.due_date) = ?');
     params.push(due_date);
   }
+  if (search) {
+    conditions.push('(t.title LIKE ? OR t.description LIKE ? OR c.case_number LIKE ?)');
+    const searchVal = `%${search}%`;
+    params.push(searchVal, searchVal, searchVal);
+  }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const [countRows] = await db.query(`SELECT COUNT(*) as total FROM tasks t ${whereClause}`, params);
+  const [countRows] = await db.query(`
+    SELECT COUNT(DISTINCT t.id) as total 
+    FROM tasks t 
+    LEFT JOIN cases c ON t.case_id = c.id
+    ${whereClause}
+  `, params);
   const total = countRows[0]?.total || 0;
 
   const [rows] = await db.query(
-    `SELECT t.* FROM tasks t ${whereClause} ORDER BY t.${orderBy} ${orderDir} LIMIT ? OFFSET ?`,
+    `SELECT t.*, 
+            c.case_number, c.file_number, c.topic as case_topic,
+            assignee.name as assigned_to_name,
+            creator.name as assigned_by_name,
+            creator.name as created_by
+     FROM tasks t 
+     LEFT JOIN cases c ON t.case_id = c.id
+     LEFT JOIN employees assignee ON t.assigned_to = assignee.id
+     LEFT JOIN employees creator ON t.assigned_by = creator.id
+     ${whereClause} 
+     ORDER BY t.${orderBy} ${orderDir} 
+     LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
   return { rows, total };
 };
 
- const getAssignedToTasks = async (employeeId) => {
-   const [rows] = await db.query("SELECT t.*, e.name AS created_by, e.name AS assigned_by_name FROM tasks t JOIN employees e ON t.assigned_by = e.id WHERE t.assigned_to = ? AND t.status != 'completed'", [employeeId]);
-   return rows;
- };
+const getAssignedToTasks = async (employeeId, options = {}) => {
+  return await getAllTasks({ 
+    ...options, 
+    assigned_to: employeeId
+  });
+};
 
 const createTask = async (assignedBy, task) => {
   const { title, description, priority, assigned_to, due_date, case_id } = task;
@@ -95,16 +142,12 @@ const getCaseTasks = async (caseId) => {
   `, [caseId]);
   return rows;
 };
-const getCreatorTasks = async (employeeId,status) => {
-  try {
-  const [rows] = await db.query("SELECT t.*, e.name AS assigned_to_name, e2.name AS assigned_by_name FROM tasks t JOIN employees e ON t.assigned_to = e.id LEFT JOIN employees e2 ON t.assigned_by = e2.id WHERE t.assigned_by = ? AND t.status = ? LIMIT 10", [employeeId,status]);
-  
-  return rows;
-  } catch (error) {
-    console.error('Error fetching creator tasks:', error);
-    throw error;
-  }
-}
+const getCreatorTasks = async (employeeId, options = {}) => {
+  return await getAllTasks({ 
+    ...options, 
+    assigned_by: employeeId 
+  });
+};
 
 const updateTask = async (id, task) => {
   const { title, description, priority, status, assigned_to, due_date, case_id } = task;

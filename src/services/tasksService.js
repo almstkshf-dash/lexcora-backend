@@ -188,16 +188,34 @@ const getTasksByCaseId = async (caseId) => {
   return await tasksModel.getTasksByCaseId(caseId);
 };
 
-const getAssignedToTasks = async (employeeId) => {
-  return await tasksModel.getAssignedToTasks(employeeId);
+const getAssignedToTasks = async (employeeId, options = {}) => {
+  const { rows, total } = await tasksModel.getAssignedToTasks(employeeId, options);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: options.page || 1,
+      limit: options.limit || 10,
+      totalPages: Math.ceil(total / (options.limit || 10))
+    }
+  };
 };
 
 const getCaseTasks = async (caseId) => {
   return await tasksModel.getCaseTasks(caseId);
 };
 
-const getCreatorTasks = async (employeeId, status) => {
-  return await tasksModel.getCreatorTasks(employeeId, status);
+const getCreatorTasks = async (employeeId, options = {}) => {
+  const { rows, total } = await tasksModel.getCreatorTasks(employeeId, options);
+  return {
+    data: rows,
+    pagination: {
+      total,
+      page: options.page || 1,
+      limit: options.limit || 10,
+      totalPages: Math.ceil(total / (options.limit || 10))
+    }
+  };
 };
 
 const deleteTaskDocument = async (id) => {
