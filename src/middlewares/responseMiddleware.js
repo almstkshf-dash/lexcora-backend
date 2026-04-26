@@ -3,9 +3,18 @@
  * Shape: { success: boolean, message: string, data?: any, meta?: any, errorCode?: string, errors?: any }
  */
 const responseMiddleware = (req, res, next) => {
-  res.success = (data = null, message = 'OK', status = 200, meta) => {
+  res.success = (data = null, message = 'OK', status = 200, meta = null) => {
     const body = { success: true, message, data };
-    if (meta) body.meta = meta;
+    if (meta) {
+      if (typeof meta === 'object' && meta !== null) {
+        // Spread meta properties (like pagination, stats) for direct access
+        // while maintaining the .meta property for backward compatibility
+        Object.assign(body, meta);
+        body.meta = meta;
+      } else {
+        body.meta = meta;
+      }
+    }
     return res.status(status).json(body);
   };
 

@@ -22,10 +22,22 @@ const getClientCases = async (req, res) => {
     // Get cases for this client/party (lightweight version)
     const cases = await getPartyCasesLight(clientId);
 
-    res.status(200).json({
-      success: true,
-      data: cases,
-      total: cases.length
+    // Calculate stats
+    const stats = {
+      total: cases.length,
+      active: cases.filter(c => c.is_pending === 0 && c.is_archived === 0).length,
+      pending: cases.filter(c => c.is_pending === 1 && c.is_archived === 0).length,
+      important: cases.filter(c => c.is_important === 1 && c.is_archived === 0).length,
+    };
+
+    return res.success(cases, 'Cases fetched successfully', 200, {
+      pagination: {
+        total: cases.length,
+        page: 1,
+        limit: cases.length,
+        totalPages: 1
+      },
+      stats
     });
   } catch (error) {
     console.error('Error fetching client cases:', error.message);

@@ -148,15 +148,19 @@ const getAllCases = async (filters = {}) => {
       ? 'WHERE ' + whereConditions.join(' AND ') 
       : '';
     
-    // Get total count for pagination
+    // Get total count and stats for the dashboard
     const countQuery = `
-      SELECT COUNT(DISTINCT c.id) as total
+      SELECT 
+        COUNT(DISTINCT c.id) as total,
+        COUNT(DISTINCT CASE WHEN c.is_pending = 0 AND c.is_archived = 0 THEN c.id END) as activeCount,
+        COUNT(DISTINCT CASE WHEN c.is_pending = 1 AND c.is_archived = 0 THEN c.id END) as pendingCount,
+        COUNT(DISTINCT CASE WHEN c.is_important = 1 AND c.is_archived = 0 THEN c.id END) as importantCount
       FROM cases c
       ${whereClause}
     `;
     
     const [countResult] = await db.query(countQuery, queryParams);
-    const total = countResult[0].total;
+    const { total, activeCount, pendingCount, importantCount } = countResult[0];
     
     // Get paginated data
     const dataQuery = `
@@ -209,6 +213,11 @@ const getAllCases = async (filters = {}) => {
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(total / limit)
+      },
+      stats: {
+        active: activeCount,
+        pending: pendingCount,
+        important: importantCount
       }
     };
   } catch (error) {

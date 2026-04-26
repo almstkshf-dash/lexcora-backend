@@ -14,7 +14,11 @@ const getPartyCasesLight = async (partyId) => {
         c.id,
         c.case_number,
         c.file_number,
-        c.topic
+        c.topic,
+        c.is_important,
+        c.is_secret,
+        c.is_archived,
+        c.is_pending
       FROM cases c
       JOIN case_parties cp ON c.id = cp.case_id
       WHERE cp.party_id = ?

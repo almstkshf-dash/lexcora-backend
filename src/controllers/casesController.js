@@ -39,7 +39,10 @@ const getAllCases = async (req, res) => {
     };
 
     const result = await casesService.getAllCases(filters);
-    return res.success(result.cases, req.t('generic.ok'), 200, result.pagination);
+    return res.success(result.cases, req.t('generic.ok'), 200, {
+      pagination: result.pagination,
+      stats: result.stats
+    });
   } catch (error) {
     console.error('Error fetching cases:', error);
     return res.fail('Failed to fetch cases', 500, 'CASES_LIST_ERROR');

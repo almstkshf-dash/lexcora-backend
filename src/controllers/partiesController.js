@@ -15,7 +15,9 @@ const getAllParties = async (req, res) => {
     };
     
     const result = await partiesService.getAllParties(filters);
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.success(result.data, req.t('generic.ok'), 200, {
+      pagination: result.pagination
+    });
   } catch (error) {
     res.fail('Failed to fetch parties', 500, 'PARTIES_LIST_ERROR');
   }
