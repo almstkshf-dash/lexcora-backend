@@ -10,13 +10,15 @@ async function runMigration() {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    multipleStatements: true
+    port: parseInt(process.env.DB_PORT) || 3306,
+    multipleStatements: true,
+    connectTimeout: 60000 // 60 seconds
   });
 
   try {
     console.log('Connected to database...');
     
-  const migrationFile = path.join(__dirname, 'migrations', '20260427_accounting_system.sql');
+    const migrationFile = path.join(__dirname, 'migrations', '20260427_accounting_system.sql');
     const sql = fs.readFileSync(migrationFile, 'utf8');
     
     console.log('Running migration...');

@@ -1,6 +1,30 @@
 -- Migration: Banking and Cash Management
 -- Created At: 2026-04-27
 
+-- Bank Account Logs (Financial transactions)
+CREATE TABLE IF NOT EXISTS `bank_account_logs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `bank_account_id` INT NOT NULL,
+  `type` ENUM('deposit', 'withdrawal') NOT NULL,
+  `amount` DECIMAL(18,2) NOT NULL,
+  `description` TEXT,
+  `created_by` INT,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`bank_account_id`) REFERENCES `bank_accounts`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bank Account Log Attachments
+CREATE TABLE IF NOT EXISTS `bank_account_log_attachments` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `log_id` INT NOT NULL,
+  `document_name` VARCHAR(255),
+  `document_url` VARCHAR(1000),
+  `uploaded_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`log_id`) REFERENCES `bank_account_logs`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Bank Statement Imports
 CREATE TABLE IF NOT EXISTS `bank_statement_imports` (
   `id` INT NOT NULL AUTO_INCREMENT,
@@ -14,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `bank_statement_imports` (
   FOREIGN KEY (`bank_account_id`) REFERENCES `bank_accounts`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bank Statement Lines (Individual transactions from the bank)
+-- Bank Statement Lines
 CREATE TABLE IF NOT EXISTS `bank_statement_lines` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `import_id` INT NOT NULL,
@@ -22,13 +46,13 @@ CREATE TABLE IF NOT EXISTS `bank_statement_lines` (
   `description` TEXT,
   `amount` DECIMAL(18,2) NOT NULL,
   `reference` VARCHAR(255),
-  `fitid` VARCHAR(255), -- Financial Institution Transaction ID
+  `fitid` VARCHAR(255),
   `is_reconciled` TINYINT(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`import_id`) REFERENCES `bank_statement_imports`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bank Reconciliations (Linking internal logs with statement lines)
+-- Bank Reconciliations
 CREATE TABLE IF NOT EXISTS `bank_reconciliations` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `bank_account_id` INT NOT NULL,
@@ -76,6 +100,19 @@ CREATE TABLE IF NOT EXISTS `petty_cash_transactions` (
   FOREIGN KEY (`fund_id`) REFERENCES `petty_cash_funds`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Add petty_cash_fund_id to bank_account_logs to track replenishment from bank
-ALTER TABLE `bank_account_logs` ADD COLUMN `petty_cash_fund_id` INT DEFAULT NULL;
-ALTER TABLE `bank_account_logs` ADD FOREIGN KEY (`petty_cash_fund_id`) REFERENCES `petty_cash_funds`(`id`) ON DELETE SET NULL;
+-- Add petty_cash_fund_id to bank_account_logs
+-- Using a procedure to avoid error if column already exists
+DELIMITER //
+CREATE PROCEDURE AddPettyCashColumn()
+BEGIN
+    IF NOT EXISTS (
+        SELECT * FROM information_schema.columns 
+        WHERE table_name = 'bank_account_logs' AND column_name = 'petty_cash_fund_id'
+    ) THEN
+        ALTER TABLE `bank_account_logs` ADD COLUMN `petty_cash_fund_id` INT DEFAULT NULL;
+        ALTER TABLE `bank_account_logs` ADD FOREIGN KEY (`petty_cash_fund_id`) REFERENCES `petty_cash_funds`(`id`) ON DELETE SET NULL;
+    END IF;
+END //
+DELIMITER ;
+CALL AddPettyCashColumn();
+DROP PROCEDURE AddPettyCashColumn;
