@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bankController = require('../controllers/bankController');
-const { authenticateToken } = require('../middlewares/authMiddleware');
+const { authenticateToken } = require('../middliewares/authMiddleware');
 const { upload } = require('../controllers/uploadController');
 
 // Bank Statement Imports & Reconciliation

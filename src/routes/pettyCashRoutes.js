@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pettyCashController = require('../controllers/pettyCashController');
-const { authenticateToken } = require('../middlewares/authMiddleware');
+const { authenticateToken } = require('../middliewares/authMiddleware');
 
 router.get('/funds', authenticateToken, pettyCashController.getFunds);
 router.get('/funds/:id', authenticateToken, pettyCashController.getFundById);
