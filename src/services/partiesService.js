@@ -1,7 +1,7 @@
 
 const partiesModel = require('../models/partiesModel');
 const casesModel = require('../models/casesModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getAllParties = async (filters) => {

@@ -1,5 +1,5 @@
 const assetsModel = require("../models/assetsModel");
-const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { deleteDocumentFiles } = require("../services/storageService");
 
 // Get all assets with branch info and documents count
 const getAssets = async (req, res) => {

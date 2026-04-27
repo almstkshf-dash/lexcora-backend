@@ -1,5 +1,5 @@
 const partiesDocumentsModel = require("../models/partiesDocumentsModel");
-const { deleteDocumentFiles } = require("./awsS3Service");
+const { deleteDocumentFiles } = require("./storageService");
 
 const listPartiesDocuments = async (options) => {
   const { rows, total } = await partiesDocumentsModel.getAllPartiesDocuments(options);

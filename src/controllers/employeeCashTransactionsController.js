@@ -45,6 +45,9 @@ const createTransaction = async (req, res) => {
       description,
       client_id,
       bank_account_id,
+      case_id,
+      department_id,
+      project_id,
       attachments 
     } = req.body;
     
@@ -61,6 +64,9 @@ const createTransaction = async (req, res) => {
       description,
       client_id,
       bank_account_id,
+      case_id,
+      department_id,
+      project_id,
       attachments,
       created_by 
     });
@@ -86,6 +92,11 @@ const updateTransaction = async (req, res) => {
       amount, 
       type, 
       description,
+      client_id,
+      bank_account_id,
+      case_id,
+      department_id,
+      project_id,
       attachments,
       status
     } = req.body;
@@ -113,6 +124,11 @@ const updateTransaction = async (req, res) => {
       amount, 
       type, 
       description,
+      client_id,
+      bank_account_id,
+      case_id,
+      department_id,
+      project_id,
       attachments,
       updated_by 
     });

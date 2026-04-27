@@ -1,5 +1,5 @@
 const caseDocumentsModel = require("../models/caseDocumentsModel");
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getAllCaseDocuments = async (options) => {

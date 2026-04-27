@@ -3,7 +3,7 @@
 
 const memosModel = require('../models/memosModel');
 const casesModel = require('../models/casesModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { sendMemoNotifications } = require('../utils/notificationHelper');
 
 const addMemo = async (userId,memoData) => {

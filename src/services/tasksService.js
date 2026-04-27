@@ -2,7 +2,7 @@
 // Service functions for tasks
 
 const tasksModel = require('../models/tasksModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { sendNotification, sendTemplatedNotification } = require('../utils/notificationHelper');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 

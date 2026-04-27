@@ -1,21 +1,25 @@
 const bankService = require("../services/bankService");
 const bankReconciliationModel = require("../models/bankReconciliationModel");
 const cashManagementService = require("../services/cashManagementService");
+const { enqueueJob } = require("../jobs/jobQueue");
 
 const importStatement = async (req, res) => {
   try {
-    const { bank_account_id } = req.body;
+    const { bank_account_id, mapping } = req.body;
     const file = req.file;
 
     if (!file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
+    const parsedMapping = mapping ? (typeof mapping === 'string' ? JSON.parse(mapping) : mapping) : null;
+
     const importData = {
       bank_account_id,
       filename: file.originalname,
       file_url: file.location || file.path,
-      created_by: req.user.id
+      created_by: req.user.id,
+      mapping: parsedMapping
     };
 
     const result = await bankService.importStatement(importData, file.buffer);
@@ -57,6 +61,19 @@ const reconcileLine = async (req, res) => {
   }
 };
 
+const syncAccount = async (req, res) => {
+  try {
+    const { bank_account_id } = req.params;
+    const job = await enqueueJob('bank-sync', { 
+      bank_account_id, 
+      user_id: req.user.id 
+    });
+    res.json({ success: true, message: "Sync job started", jobId: job.id });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getCashFlowReport = async (req, res) => {
   try {
     const report = await cashManagementService.getCashFlow(req.query);
@@ -80,6 +97,7 @@ module.exports = {
   autoMatch,
   getUnreconciledLines,
   reconcileLine,
+  syncAccount,
   getCashFlowReport,
   getDailyCashFlow
 };

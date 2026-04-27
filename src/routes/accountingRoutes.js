@@ -24,5 +24,6 @@ router.get("/reports/profit-loss", accountingController.getProfitAndLoss);
 router.get("/reports/balance-sheet", accountingController.getBalanceSheet);
 router.get("/reports/aging-receivables", accountingController.getAgingReceivables);
 router.get("/reports/aging-payables", accountingController.getAgingPayables);
+router.get("/reports/vendor-liabilities", accountingController.getVendorLiabilities);
 
 module.exports = router;

@@ -2,7 +2,7 @@
 // Service functions for judicial orders
 
 const judicialOrdersModel = require('../models/judicialOrdersModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 
 const getAllJudicialOrders = async () => {
   return await judicialOrdersModel.getAllJudicialOrders();

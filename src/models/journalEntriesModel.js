@@ -102,13 +102,15 @@ const createJournalEntry = async (entryData, items, existingConnection = null) =
         item.employee_id || null,
         item.description || description,
         item.debit || 0,
+        (item.debit || 0) * (exchange_rate || 1.0), // base_debit
         item.credit || 0,
+        (item.credit || 0) * (exchange_rate || 1.0), // base_credit
         item.branch_id || branch_id
       ]);
 
       await connection.query(
         `INSERT INTO ledger_entries 
-        (journal_entry_id, account_id, party_id, employee_id, description, debit, credit, branch_id) 
+        (journal_entry_id, account_id, party_id, employee_id, description, debit, base_debit, credit, base_credit, branch_id) 
         VALUES ?`,
         [itemValues]
       );
@@ -136,7 +138,14 @@ const updateJournalStatus = async (id, status) => {
 };
 
 const getTrialBalance = async (filters = {}) => {
-    const { start_date, end_date, branch_id } = filters;
+    const { start_date, end_date, branch_id, consolidate = false } = filters;
+    
+    // If consolidated, we use base_debit/base_credit (system currency)
+    // If not consolidated, we use debit/credit (which might be in different currencies if not careful, 
+    // but usually trial balance is per branch in base currency anyway)
+    const debitCol = consolidate ? 'le.base_debit' : 'le.debit';
+    const creditCol = consolidate ? 'le.base_credit' : 'le.credit';
+
     let query = `
       SELECT 
         a.id as account_id,
@@ -144,9 +153,9 @@ const getTrialBalance = async (filters = {}) => {
         a.name_en,
         a.name_ar,
         a.type,
-        SUM(le.debit) as total_debit,
-        SUM(le.credit) as total_credit,
-        (SUM(le.debit) - SUM(le.credit)) as balance
+        SUM(${debitCol}) as total_debit,
+        SUM(${creditCol}) as total_credit,
+        (SUM(${debitCol}) - SUM(${creditCol})) as balance
       FROM accounts a
       LEFT JOIN ledger_entries le ON a.id = le.account_id
       LEFT JOIN journal_entries je ON le.journal_entry_id = je.id
@@ -162,7 +171,9 @@ const getTrialBalance = async (filters = {}) => {
       query += " AND je.entry_date <= ?";
       params.push(end_date);
     }
-    if (branch_id) {
+    
+    // If consolidate is false and branch_id is provided, filter by branch
+    if (!consolidate && branch_id) {
       query += " AND je.branch_id = ?";
       params.push(branch_id);
     }

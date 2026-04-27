@@ -43,6 +43,14 @@ const createTransaction = async (transactionData) => {
   try {
     await connection.beginTransaction();
     
+    // If disbursement, check if enough balance
+    if (type === 'disbursement') {
+      const [fund] = await connection.query("SELECT current_balance FROM petty_cash_funds WHERE id = ?", [fund_id]);
+      if (!fund.length || fund[0].current_balance < amount) {
+        throw new Error("Insufficient balance in petty cash fund");
+      }
+    }
+
     // Insert transaction
     const [result] = await connection.query(
       "INSERT INTO petty_cash_transactions (fund_id, transaction_date, amount, type, description, reference_number, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",

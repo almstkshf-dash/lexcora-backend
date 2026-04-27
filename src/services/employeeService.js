@@ -185,7 +185,7 @@ const removeEmployee = async (id, deletedBy = null) => {
 
   // Get employee documents before deleting (for AWS S3 cleanup)
   const employeeDocumentsModel = require('../models/employeeDocumentsModel');
-  const { deleteDocumentFiles } = require('./awsS3Service');
+  const { deleteDocumentFiles } = require('./storageService');
   const documents = await employeeDocumentsModel.getByEmployeeId(id);
 
   const success = await employeeModel.deleteEmployee(id);

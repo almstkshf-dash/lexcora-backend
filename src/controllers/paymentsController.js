@@ -3,9 +3,7 @@ const paymentsModel = require("../models/paymentsModel");
 const createPayment = async (req, res) => {
   try {
     const paymentData = req.body;
-    if (req.employee && req.employee.id) {
-      paymentData.created_by = req.employee.id;
-    }
+    paymentData.created_by = req.user?.id || null;
     const result = await paymentsModel.createPayment(paymentData);
     res.status(201).json(result);
   } catch (error) {

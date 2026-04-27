@@ -27,28 +27,44 @@ const createPayment = async (paymentData) => {
 
     const paymentId = result.insertId;
 
-    // Update Invoice/Bill status if fully paid (simplified logic)
+    // Update Invoice/Bill status based on total payments
     if (invoice_id) {
-      await connection.query("UPDATE invoices SET status = 'paid' WHERE id = ?", [invoice_id]);
+      const [[invoice]] = await connection.query("SELECT amount FROM invoices WHERE id = ?", [invoice_id]);
+      const [[paymentSum]] = await connection.query("SELECT SUM(amount) as total_paid FROM payments WHERE invoice_id = ?", [invoice_id]);
+      
+      const totalAmount = parseFloat(invoice?.amount || 0);
+      const totalPaid = parseFloat(paymentSum?.total_paid || 0);
+      
+      const newStatus = totalPaid >= totalAmount ? 'paid' : 'partially_paid';
+      await connection.query("UPDATE invoices SET status = ? WHERE id = ?", [newStatus, invoice_id]);
       
       // Accounting Posting for Receipt (AR)
       await accountingService.postAutomatedEntry('PAYMENT_RECEIVED', {
         amount,
         description: description || `Payment received for invoice ${invoice_id}`,
         reference: reference_number,
+        invoice_number: invoice?.invoice_number || invoice_id, // For description template
         party_id,
         branch_id,
         bank_account_id,
         created_by
       }, connection);
     } else if (bill_id) {
-      await connection.query("UPDATE bills SET status = 'paid' WHERE id = ?", [bill_id]);
+      const [[bill]] = await connection.query("SELECT amount, bill_number FROM bills WHERE id = ?", [bill_id]);
+      const [[paymentSum]] = await connection.query("SELECT SUM(amount) as total_paid FROM payments WHERE bill_id = ?", [bill_id]);
+      
+      const totalAmount = parseFloat(bill?.amount || 0);
+      const totalPaid = parseFloat(paymentSum?.total_paid || 0);
+      
+      const newStatus = totalPaid >= totalAmount ? 'paid' : 'partially_paid';
+      await connection.query("UPDATE bills SET status = ? WHERE id = ?", [newStatus, bill_id]);
       
       // Accounting Posting for Supplier Payment (AP)
       await accountingService.postAutomatedEntry('PAYMENT_MADE', {
         amount,
         description: description || `Payment made for bill ${bill_id}`,
         reference: reference_number,
+        bill_number: bill?.bill_number || bill_id, // For description template
         party_id,
         branch_id,
         bank_account_id,

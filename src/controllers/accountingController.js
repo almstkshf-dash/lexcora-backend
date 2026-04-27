@@ -47,10 +47,10 @@ const createJournalEntry = async (req, res) => {
     const { entryData, items } = req.body;
     // Add creator id from auth middleware
     entryData.created_by = req.user ? req.user.id : entryData.created_by;
-    const result = await journalEntriesModel.createJournalEntry(entryData, items);
+    const result = await accountingService.createManualJournalEntry(entryData, items);
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -110,6 +110,15 @@ const getAgingPayables = async (req, res) => {
   }
 };
 
+const getVendorLiabilities = async (req, res) => {
+  try {
+    const result = await reportService.getVendorLiabilities();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAccounts,
   createAccount,
@@ -121,5 +130,6 @@ module.exports = {
   getProfitAndLoss,
   getBalanceSheet,
   getAgingReceivables,
-  getAgingPayables
+  getAgingPayables,
+  getVendorLiabilities
 };

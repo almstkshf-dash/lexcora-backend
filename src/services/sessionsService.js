@@ -2,7 +2,7 @@
 // Service functions for sessions
 
 const sessionsModel = require('../models/sessionsModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 
 const getAllSessions = async (filters = {}) => {

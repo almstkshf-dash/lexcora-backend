@@ -30,7 +30,7 @@ Each repo is an independent project with its own `package.json`, `.env`, and Ver
 
 ---
 
-## Current Mission: AWS → Vercel + Railway + Cloudflare R2
+## Current Mission: AWS → Vercel + Railway + Vercel Blob
 
 The system was previously hosted on AWS (Elastic Beanstalk + RDS + S3).
 AWS suspended the account due to billing. We are migrating to a cheaper stack.
@@ -41,7 +41,7 @@ AWS suspended the account due to billing. We are migrating to a cheaper stack.
 |---------------|------------------------|------------------------------|
 | Backend host  | Elastic Beanstalk      | Vercel (Serverless)          |
 | Database      | RDS MySQL              | Railway MySQL                |
-| File storage  | S3                     | Cloudflare R2 (S3-compatible)|
+| File storage  | S3                     | Vercel Blob                  |
 | Frontend      | —                      | Vercel                       |
 | Client Portal | —                      | Vercel                       |
 
@@ -57,7 +57,7 @@ AWS suspended the account due to billing. We are migrating to a cheaper stack.
 - MySQL2 (relational DB — complex schema with many tables)
 - JWT authentication (access + refresh tokens)
 - Multer (file uploads)
-- AWS SDK v3 (S3 — being replaced with Cloudflare R2)
+- Vercel Blob SDK (file storage)
 - OpenAI API integration
 - PDF-parse, Mammoth, XLSX for document processing
 
@@ -97,7 +97,7 @@ DB_NAME=lexcora
 DB_USER=<railway-user>
 DB_PASSWORD=<railway-password>
 
-# File Storage — Cloudflare R2
+# File Storage — Vercel Blob
 AWS_ACCESS_KEY_ID=<r2-access-key>
 AWS_SECRET_ACCESS_KEY=<r2-secret-key>
 AWS_REGION=auto

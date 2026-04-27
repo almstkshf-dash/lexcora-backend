@@ -71,6 +71,9 @@ const getAllTransactions = async (filters = {}) => {
       ect.type,
       ect.description,
       ect.status,
+      ect.case_id,
+      ect.department_id,
+      ect.project_id,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -82,12 +85,18 @@ const getAllTransactions = async (filters = {}) => {
       p.phone as client_phone,
       ba.bank_name,
       ba.account_name,
-      ba.account_number
+      ba.account_number,
+      c.topic as case_name,
+      d.name_ar as department_name,
+      proj.name as project_name
     FROM employee_cash_transactions ect
     LEFT JOIN employees e ON ect.employee_id = e.id
     LEFT JOIN employees creator ON ect.created_by = creator.id
     LEFT JOIN parties p ON ect.client_id = p.id
     LEFT JOIN bank_accounts ba ON ect.bank_account_id = ba.id
+    LEFT JOIN cases c ON ect.case_id = c.id
+    LEFT JOIN departments d ON ect.department_id = d.id
+    LEFT JOIN projects proj ON ect.project_id = proj.id
     ${whereClause}
     ORDER BY ect.created_at DESC
     LIMIT ? OFFSET ?
@@ -117,6 +126,9 @@ const getTransactionById = async (id) => {
       ect.type,
       ect.description,
       ect.status,
+      ect.case_id,
+      ect.department_id,
+      ect.project_id,
       ect.created_by,
       ect.created_at,
       e.name as employee_name,
@@ -129,6 +141,9 @@ const getTransactionById = async (id) => {
       ba.bank_name,
       ba.account_name,
       ba.account_number,
+      c.topic as case_name,
+      d.name_ar as department_name,
+      proj.name as project_name,
       (
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT(
@@ -146,6 +161,9 @@ const getTransactionById = async (id) => {
     LEFT JOIN employees creator ON ect.created_by = creator.id
     LEFT JOIN parties p ON ect.client_id = p.id
     LEFT JOIN bank_accounts ba ON ect.bank_account_id = ba.id
+    LEFT JOIN cases c ON ect.case_id = c.id
+    LEFT JOIN departments d ON ect.department_id = d.id
+    LEFT JOIN projects proj ON ect.project_id = proj.id
     WHERE ect.id = ?
   `, [id]);
   
@@ -179,6 +197,9 @@ const createTransaction = async (transactionData) => {
     description,
     client_id = null,
     bank_account_id = null,
+    case_id = null,
+    department_id = null,
+    project_id = null,
     attachments = [],
     created_by 
   } = transactionData;
@@ -191,9 +212,9 @@ const createTransaction = async (transactionData) => {
     // Insert transaction
     const [result] = await connection.query(`
       INSERT INTO employee_cash_transactions 
-      (employee_id, amount, type, description, client_id, bank_account_id, created_by, created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-    `, [employee_id, amount, type, description, client_id, bank_account_id, created_by]);
+      (employee_id, amount, type, description, client_id, bank_account_id, case_id, department_id, project_id, created_by, created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `, [employee_id, amount, type, description, client_id, bank_account_id, case_id, department_id, project_id, created_by]);
     
     const transactionId = result.insertId;
     
@@ -262,6 +283,11 @@ const updateTransaction = async (id, transactionData) => {
     amount, 
     type, 
     description,
+    client_id = null,
+    bank_account_id = null,
+    case_id = null,
+    department_id = null,
+    project_id = null,
     attachments = []
   } = transactionData;
   
@@ -305,9 +331,14 @@ const updateTransaction = async (id, transactionData) => {
       SET employee_id = ?, 
           amount = ?, 
           type = ?, 
-          description = ?
+          description = ?,
+          client_id = ?,
+          bank_account_id = ?,
+          case_id = ?,
+          department_id = ?,
+          project_id = ?
       WHERE id = ?
-    `, [employee_id, amount, type, description, id]);
+    `, [employee_id, amount, type, description, client_id, bank_account_id, case_id, department_id, project_id, id]);
     
     // Apply the new transaction's effect on employee balance
     if (type === 'credit') {

@@ -16,4 +16,11 @@ registerWorker('generate-report', async (payload) => {
   return { reportType: payload.reportType || 'generic', status: 'generated' };
 });
 
+// Bank Sync Worker
+const bankService = require('../services/bankService');
+registerWorker('bank-sync', async (payload) => {
+  const { bank_account_id, user_id } = payload;
+  return await bankService.syncBankAccount(bank_account_id, user_id);
+});
+
 module.exports = {}; // side-effect registration

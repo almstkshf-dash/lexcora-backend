@@ -220,59 +220,30 @@ const uploadInvoiceAttachments = async (req, res) => {
       });
     }
     
-    // Import required modules for S3 upload
-    const { PutObjectCommand } = require('@aws-sdk/client-s3');
+    // Import required modules for Vercel Blob upload
+    const { uploadToBlob } = require('../utils/blobStorage');
     const path = require('path');
 
-    const s3Client = require('../config/s3Client');
-
     const folder = 'invoices-attachments';
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
-    // Upload all files to S3 first
+    // Upload all files to Vercel Blob
     const uploadPromises = req.files.map(async (file) => {
-      // Generate unique filename
+      // Generate unique path/filename
       const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
+      const randomString = Math.random().toString(36).substring(2, 10);
       const fileExtension = path.extname(file.originalname);
-      const filename = `${timestamp}-${randomString}${fileExtension}`;
-      const key = `${folder}/${filename}`;
+      const filename = `${path.basename(file.originalname, fileExtension)}-${timestamp}-${randomString}${fileExtension}`;
+      const blobPath = `${folder}/${filename}`;
 
-      // Upload to S3
-      const putCommand = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      });
+      // Upload to Vercel Blob
+      const blob = await uploadToBlob(blobPath, file.buffer, file.mimetype);
 
-      await s3Client.send(putCommand);
-
-      // Generate file URL - prioritize public URL
-      let fileUrl;
-      if (usePublicUrl && publicUrl) {
-        // Use public URL - no expiration
-        fileUrl = `${publicUrl}/${key}`;
-      } else {
-        // Use pre-signed URL - expires in 7 days
-        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-        const { GetObjectCommand } = require('@aws-sdk/client-s3');
-        const getCommand = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-        });
-        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
-        console.log('Generated pre-signed URL:', fileUrl.substring(0, 100) + '...'); // Log first 100 chars
-      }
-
-      console.log(`File uploaded: ${file.originalname}, URL length: ${fileUrl.length}`);
+      console.log(`File uploaded to Vercel Blob: ${file.originalname}, URL: ${blob.url}`);
 
       return {
         attachment_name: file.originalname,
-        attachment_url: fileUrl,
-        s3_key: key, // Store key for future URL regeneration if needed
+        attachment_url: blob.url,
+        s3_key: blob.url, // Store full URL as key for easier deletion
       };
     });
 

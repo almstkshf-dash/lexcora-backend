@@ -1,5 +1,5 @@
 const courtCaseDocumentsModel = require("../models/courtCaseDocumentsModel");
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 
 const getAllCourtCaseDocuments = async (options) => {
   try {

@@ -7,7 +7,7 @@ const path = require('path');
  * @param {String} folder - The folder name in the blob storage
  * @returns {Object} - Object containing the URL and key of the uploaded file
  */
-const uploadToS3 = async (file, folder = 'documents') => {
+const uploadToStorage = async (file, folder = 'documents') => {
   try {
     // Decode the original filename to properly handle Arabic and UTF-8 characters
     let originalFilename = file.originalname;
@@ -38,5 +38,6 @@ const uploadToS3 = async (file, folder = 'documents') => {
 };
 
 module.exports = {
-  uploadToS3,
+  uploadToStorage,
+  uploadToS3: uploadToStorage, // Alias for backward compatibility
 };

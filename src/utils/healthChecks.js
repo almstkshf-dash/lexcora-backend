@@ -1,8 +1,5 @@
 const db = require('../config/db');
-const { HeadBucketCommand } = require('@aws-sdk/client-s3');
 const pkg = require('../../package.json');
-
-const s3Client = require('../config/s3Client');
 
 const checkDb = async () => {
   try {

@@ -22,17 +22,26 @@ const importStatement = async (importData, fileBuffer) => {
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
+    const mapping = importData.mapping || {};
 
     // 3. Map data to statement lines
-    // Expecting columns: Date, Description, Amount, Reference, FITID (optional)
-    const lines = data.map(row => ({
-      import_id: importId,
-      transaction_date: new Date(row.Date || row.date),
-      description: row.Description || row.description || row.Memo || row.memo || '',
-      amount: parseFloat(row.Amount || row.amount),
-      reference: row.Reference || row.reference || row.Ref || row.ref || '',
-      fitid: row.FITID || row.fitid || row.id || `${Date.now()}-${Math.random()}`
-    })).filter(line => !isNaN(line.amount));
+    // Support custom mapping or fallback to defaults
+    const lines = data.map(row => {
+      const dateKey = mapping.date || 'Date';
+      const descKey = mapping.description || 'Description';
+      const amountKey = mapping.amount || 'Amount';
+      const refKey = mapping.reference || 'Reference';
+      const fitidKey = mapping.fitid || 'FITID';
+
+      return {
+        import_id: importId,
+        transaction_date: new Date(row[dateKey] || row.date || row.Date),
+        description: row[descKey] || row.description || row.Description || row.Memo || row.memo || '',
+        amount: parseFloat(row[amountKey] || row.amount || row.Amount),
+        reference: row[refKey] || row.reference || row.Reference || row.Ref || row.ref || '',
+        fitid: row[fitidKey] || row.fitid || row.FITID || row.id || `${Date.now()}-${Math.random()}`
+      };
+    }).filter(line => !isNaN(line.amount));
 
     // 4. Save lines
     if (lines.length > 0) {
@@ -100,7 +109,30 @@ const autoMatch = async (bankAccountId, reconciledBy) => {
   return { matchesCount: matches.length };
 };
 
+/**
+ * Simulates syncing with a bank API.
+ */
+const syncBankAccount = async (bankAccountId, userId) => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 2000));
+ 
+  // Generate mock statement data
+  const mockBuffer = Buffer.from("Date,Description,Amount,Reference\n" + 
+    `${new Date().toISOString().split('T')[0]},Mock Bank Deposit,500.00,SYNC-${Date.now()}\n` +
+    `${new Date().toISOString().split('T')[0]},Mock Bank Fee,-15.00,FEE-${Date.now()}`);
+ 
+  const importData = {
+    bank_account_id: bankAccountId,
+    filename: `Auto-Sync-${new Date().toISOString().split('T')[0]}.csv`,
+    file_url: 'internal://auto-sync',
+    created_by: userId
+  };
+ 
+  return await importStatement(importData, mockBuffer);
+};
+ 
 module.exports = {
   importStatement,
-  autoMatch
+  autoMatch,
+  syncBankAccount
 };

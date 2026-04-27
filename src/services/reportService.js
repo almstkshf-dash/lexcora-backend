@@ -47,6 +47,41 @@ const getAgingAnalysis = async (type = 'AR') => {
   }
 };
 
+/**
+ * Gets outstanding liabilities grouped by vendor.
+ */
+const getVendorLiabilities = async () => {
+  const query = `
+    SELECT 
+      p.id as vendor_id,
+      p.name as vendor_name,
+      COUNT(b.id) as outstanding_bills_count,
+      SUM(b.amount) as total_billed_amount,
+      SUM(b.amount - IFNULL(pay_sum.total_paid, 0)) as total_outstanding_amount
+    FROM parties p
+    JOIN bills b ON p.id = b.vendor_id
+    LEFT JOIN (
+      SELECT bill_id, SUM(amount) as total_paid 
+      FROM payments 
+      WHERE bill_id IS NOT NULL 
+      GROUP BY bill_id
+    ) pay_sum ON b.id = pay_sum.bill_id
+    WHERE b.status IN ('pending', 'partially_paid')
+    GROUP BY p.id, p.name
+    HAVING total_outstanding_amount > 0
+    ORDER BY total_outstanding_amount DESC
+  `;
+
+  try {
+    const [rows] = await db.query(query);
+    return { success: true, data: rows };
+  } catch (error) {
+    console.error("Error getting vendor liabilities:", error);
+    throw error;
+  }
+};
+
 module.exports = {
-  getAgingAnalysis
+  getAgingAnalysis,
+  getVendorLiabilities
 };

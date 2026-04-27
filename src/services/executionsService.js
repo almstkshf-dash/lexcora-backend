@@ -2,7 +2,7 @@
 // Service functions for executions
 
 const executionsModel = require('../models/executionsModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 
 const getAllExecutions = async () => {
   return await executionsModel.getAllExecutions();

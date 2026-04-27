@@ -9,6 +9,7 @@ router.post('/import', authenticateToken, upload.single('statement'), bankContro
 router.post('/auto-match/:bank_account_id', authenticateToken, bankController.autoMatch);
 router.get('/unreconciled/:bank_account_id', authenticateToken, bankController.getUnreconciledLines);
 router.post('/reconcile', authenticateToken, bankController.reconcileLine);
+router.post('/sync/:bank_account_id', authenticateToken, bankController.syncAccount);
 
 // Cash Flow Reporting
 router.get('/cash-flow', authenticateToken, bankController.getCashFlowReport);

@@ -28,9 +28,7 @@ const createBill = async (req, res) => {
   try {
     const { billData, items } = req.body;
     // Inject creator ID from authenticated user if available
-    if (req.employee && req.employee.id) {
-      billData.created_by = req.employee.id;
-    }
+    billData.created_by = req.user?.id || null;
     const result = await billsModel.createBill(billData, items);
     res.status(201).json(result);
   } catch (error) {

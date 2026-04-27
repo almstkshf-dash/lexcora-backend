@@ -36,7 +36,7 @@ Security enforces stringent access controls across all law firm data.
 
 Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `multer` disk storage) is prohibited.
 
-- **Vercel Blob Storage:** Files (such as PDFs, invoices, and case documents) are routed from the backend directly to Vercel Blob, a highly efficient serverless-native file storage system. 
+- **Vercel Blob Storage:** Files (such as PDFs, invoices, and case documents) are routed from the backend directly to Vercel Blob, a highly efficient serverless-native file storage system. This is our primary and only file storage provider.
 - **Multer Integration:** File uploads stream through memory storage via `multer` before being shipped to Blob storage to guarantee secure handling.
 
 ---
@@ -68,7 +68,17 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - **API Integration:** New endpoints registered under `/api/banking` and `/api/petty-cash`.
 - **Technical Detail:** Created 5 new database tables and extended `bank_account_logs` to support fund-based accounting. All financial logic is wrapped in database transactions to ensure data integrity.
 
- # #   7 .   O n g o i n g   T a s k s  
- -   F u l l   v a l i d a t i o n   o f   a l l   E x p r e s s   A P I   e n d p o i n t s   w i t h i n   t h e   V e r c e l   s e r v e r l e s s   c o n t e x t .  
- -   F i n a l i z i n g   t h e   V e r c e l   B l o b   u p l o a d   c o n t r o l l e r s .  
- -   A d j u s t i n g   C O R S   p o l i c i e s   e x p l i c i t l y   f o r   p o r t a l . l e x c o r a - m b h . c o m   a n d   u s e r . l e x c o r a - m b h . c o m   t o   p r e v e n t   p r e - f l i g h t   a u t h o r i z a t i o n   e r r o r s .
+### Accounting and Financial Refinement (April 2026)
+- **Problem:** The accounting system needed stronger data validation, better multi-currency handling for international transactions, and a more flexible way to manage automated postings.
+- **Solution:** Refined the core accounting engine to support multi-branch consolidation and robust data integrity.
+- **Key Features:**
+  - **Multi-currency & Consolidation:** Extended ledger entries to store "Base Currency" amounts alongside original transaction amounts. This enables real-time consolidation of financial reports (P&L, Balance Sheet) across multiple branches regardless of local currencies.
+  - **Dynamic Automated Posting:** Replaced hardcoded posting logic with a database-driven `posting_settings` table. This allows firm administrators to map business events (e.g., Invoice Created, Payment Received) to specific GL accounts without code changes.
+  - **Data Validation Layer:** Implemented a strict validation service for journal entries. Every entry is checked for balance (Debit == Credit), non-zero values, and minimum entry requirements before being persisted.
+  - **Enhanced COA:** Added metadata flags to the Chart of Accounts (`is_reconcilable`, `allow_manual_posting`) to prevent erroneous manual entries into controlled accounts (like Accounts Receivable).
+  - **Reporting Engine Updates:** Updated Trial Balance and Financial Statements logic to support consolidated views using system-wide base currency (AED).
+
+## 7. Ongoing Tasks
+- Full validation of all Express API endpoints within the Vercel serverless context.
+- Finalizing the Vercel Blob upload controllers.
+- Adjusting CORS policies explicitly for portal.lexcora-mbh.com and user.lexcora-mbh.com to prevent pre-flight authorization errors.

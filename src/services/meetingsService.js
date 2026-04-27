@@ -1,6 +1,6 @@
 const meetingsModel = require('../models/meetingsModel');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 const { notifyUser } = require('../models/appNotificationsModel');
 const { getAdminEmployees } = require('./employeeService');
 
