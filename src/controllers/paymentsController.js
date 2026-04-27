@@ -1,0 +1,38 @@
+const paymentsModel = require("../models/paymentsModel");
+
+const createPayment = async (req, res) => {
+  try {
+    const paymentData = req.body;
+    if (req.employee && req.employee.id) {
+      paymentData.created_by = req.employee.id;
+    }
+    const result = await paymentsModel.createPayment(paymentData);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPaymentsByInvoiceId = async (req, res) => {
+  try {
+    const data = await paymentsModel.getPaymentsByInvoiceId(req.params.invoiceId);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPaymentsByBillId = async (req, res) => {
+  try {
+    const data = await paymentsModel.getPaymentsByBillId(req.params.billId);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = {
+  createPayment,
+  getPaymentsByInvoiceId,
+  getPaymentsByBillId
+};

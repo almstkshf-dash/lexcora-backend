@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const accountingService = require("../services/accountingService");
 
 const getAllInvoices = async () => {
   try {
@@ -173,6 +174,17 @@ const createInvoice = async (invoice, items, attachments = []) => {
         [attachmentValues]
       );
     }
+
+    // Automated Accounting Posting
+    await accountingService.postAutomatedEntry('INVOICE_CREATED', {
+      amount: invoice.amount,
+      currency: invoice.currency || 'AED',
+      description: `Invoice ${invoiceNumber}`,
+      reference: invoiceNumber,
+      party_id: invoice.client_id,
+      branch_id: invoice.branch_id,
+      created_by: invoice.created_by
+    }, connection);
 
     await connection.commit();
 

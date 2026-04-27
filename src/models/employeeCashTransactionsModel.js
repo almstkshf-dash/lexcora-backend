@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const accountingService = require("../services/accountingService");
 
 const getAllTransactions = async (filters = {}) => {
   const { page = 1, limit = 10, search = '', type = '', employee_id = '', client_id = '', date_from = '', date_to = '' } = filters;
@@ -231,6 +232,18 @@ const createTransaction = async (transactionData) => {
       console.log('No attachments to insert');
     }
     
+    // Automated Accounting Posting
+    const accountingEvent = type === 'debit' ? 'EXPENSE_PAID' : 'PAYMENT_RECEIVED';
+    await accountingService.postAutomatedEntry(accountingEvent, {
+      amount: amount,
+      description: description,
+      reference: `ECT-${transactionId}`,
+      party_id: client_id,
+      employee_id: employee_id,
+      bank_account_id: bank_account_id,
+      created_by: created_by
+    }, connection);
+
     await connection.commit();
     
     return { success: true, data: { id: transactionId } };

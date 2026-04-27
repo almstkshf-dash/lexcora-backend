@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const accountingService = require("../services/accountingService");
 
 const getDepositsByPartyId = async (partyId, { page, limit, sortBy, sortOrder }) => {
   const query = `
@@ -65,6 +66,15 @@ const createDeposit = async (depositData) => {
       depositData.amount,
       depositData.party_id
     ]);
+
+    // Automated Accounting Posting
+    await accountingService.postAutomatedEntry('CLIENT_DEPOSIT', {
+      amount: depositData.amount,
+      description: depositData.description,
+      reference: `DEP-${result.insertId}`,
+      party_id: depositData.party_id,
+      created_by: depositData.created_by
+    }, connection);
 
     await connection.commit();
     return result;

@@ -11,8 +11,8 @@ const getAllParties = async (filters = {}) => {
 
   const conditions = [];
   
-  // Always filter to show only 'client' and 'opponent' types
-  conditions.push("(p.party_type = 'client' OR p.party_type = 'opponent')");
+  // Always filter to show only 'client', 'opponent', and 'vendor' types
+  conditions.push("(p.party_type = 'client' OR p.party_type = 'opponent' OR p.party_type = 'vendor')");
   
   if (name) {
     conditions.push('p.name LIKE ?');
@@ -309,15 +309,17 @@ const searchParties = async (query, partyType = null) => {
   
   // Build the party_type filter
   // Include all party types: clients, opponents, and potential clients (New, Contacted, Unqualified, Qualified)
-  let partyTypeCondition = "(party_type = 'client' OR party_type = 'opponent' OR party_type = 'New' OR party_type = 'Contacted' OR party_type = 'Unqualified' OR party_type = 'Qualified')";
+  let partyTypeCondition = "(party_type = 'client' OR party_type = 'opponent' OR party_type = 'vendor' OR party_type = 'New' OR party_type = 'Contacted' OR party_type = 'Unqualified' OR party_type = 'Qualified')";
   const params = [searchPattern, searchPattern];
   
   if (partyType === 'client') {
     partyTypeCondition = "party_type = 'client'";
   } else if (partyType === 'opponent') {
     partyTypeCondition = "party_type = 'opponent'";
+  } else if (partyType === 'vendor') {
+    partyTypeCondition = "party_type = 'vendor'";
   } else if (partyType === 'potential') {
-    // For potential clients, include all non-client and non-opponent types
+    // For potential clients, include all non-client/opponent/vendor types
     partyTypeCondition = "(party_type = 'New' OR party_type = 'Contacted' OR party_type = 'Unqualified' OR party_type = 'Qualified')";
   }
   

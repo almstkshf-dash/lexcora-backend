@@ -75,6 +75,11 @@ const legalPeriodsRoute = require("./routes/legalPeriodsRoutes");
 const employeeCashTransactionsRoute = require("./routes/employeeCashTransactionsRoute");
 const legalAssistantRoute = require("./routes/legalAssistantRoute");
 const searchRoute = require("./routes/searchRoute");
+const accountingRoute = require("./routes/accountingRoutes");
+const billsRoute = require("./routes/billsRoute");
+const paymentsRoute = require("./routes/paymentsRoute");
+const bankingRoute = require("./routes/bankingRoutes");
+const pettyCashRoute = require("./routes/pettyCashRoutes");
 
 const app = express();
 
@@ -207,6 +212,11 @@ app.use("/api/legal-periods", legalPeriodsRoute);
 app.use("/api/employee-cash-transactions", employeeCashTransactionsRoute);
 app.use("/api/legal-assistant", legalAssistantRoute);
 app.use("/api/search", searchRoute);
+app.use("/api/accounting", accountingRoute);
+app.use("/api/bills", billsRoute);
+app.use("/api/payments", paymentsRoute);
+app.use("/api/banking", bankingRoute);
+app.use("/api/petty-cash", pettyCashRoute);
 
 app.get("/health", async (req, res) => {
   try {
