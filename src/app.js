@@ -62,6 +62,7 @@ const hrNotificationsRoute = require("./routes/hrNotificationsRoute");
 const appNotificationsRoute = require("./routes/appNotificationsRoute");
 const jobsRoute = require("./routes/jobsRoute");
 const { checkDb, checkBlob, getVersionInfo } = require("./utils/healthChecks");
+const db = require("./config/db");
 const formsRoute = require("./routes/formsRoute");
 const partiesFormsRoute = require("./routes/partiesFormsRoute");
 const workHoursRoute = require("./routes/workHoursRoute");
@@ -82,6 +83,21 @@ const bankingRoute = require("./routes/bankingRoutes");
 const pettyCashRoute = require("./routes/pettyCashRoutes");
 
 const app = express();
+
+// Ensure required tables exist (idempotent migrations)
+(async () => {
+  try {
+    await db.query(`CREATE TABLE IF NOT EXISTS projects (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`);
+  } catch (e) {
+    console.warn('Startup migration warning:', e.message);
+  }
+})();
 
 // Middleware
 // Dynamic CORS: allow explicit web origins (with credentials) and null origins for RN/bearer calls

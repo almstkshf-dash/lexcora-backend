@@ -14,6 +14,9 @@ const getAllTransactions = async (req, res) => {
       date_to: date_to || ''
     };
     const result = await employeeCashTransactionsService.getAllTransactions(filters);
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
     res.json(result);
   } catch (error) {
     console.error('Error fetching employee cash transactions:', error);

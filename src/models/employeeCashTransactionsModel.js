@@ -3,6 +3,7 @@ const accountingService = require("../services/accountingService");
 const allocationService = require("../services/allocationService");
 
 const getAllTransactions = async (filters = {}) => {
+  try {
   const { page = 1, limit = 10, search = '', type = '', employee_id = '', client_id = '', date_from = '', date_to = '' } = filters;
   const offset = (page - 1) * limit;
   
@@ -114,6 +115,10 @@ const getAllTransactions = async (filters = {}) => {
       hasMore: page < totalPages
     }
   };
+  } catch (error) {
+    console.error('Error fetching all transactions:', error);
+    return { success: false, message: error.message };
+  }
 };
 
 const getTransactionById = async (id) => {
