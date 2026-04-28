@@ -9,7 +9,7 @@ const getAllBankAccounts = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching bank accounts:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch bank accounts' });
+    res.status(500).json({ success: false, error: req.t('bank.failedFetchBankAccounts') });
   }
 };
 
@@ -22,7 +22,7 @@ const getBankAccountById = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching bank account:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch bank account' });
+    res.status(500).json({ success: false, error: req.t('bank.failedFetchBankAccount') });
   }
 };
 
@@ -59,7 +59,7 @@ const createBankAccount = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating bank account:', error);
-    res.status(500).json({ success: false, error: 'Failed to create bank account' });
+    res.status(500).json({ success: false, error: req.t('bank.failedCreateBankAccount') });
   }
 };
 
@@ -95,7 +95,7 @@ const updateBankAccount = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating bank account:', error);
-    res.status(500).json({ success: false, error: 'Failed to update bank account' });
+    res.status(500).json({ success: false, error: req.t('bank.failedUpdateBankAccount') });
   }
 };
 
@@ -113,7 +113,7 @@ const deleteBankAccount = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting bank account:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete bank account' });
+    res.status(500).json({ success: false, error: req.t('bank.failedDeleteBankAccount') });
   }
 };
 
@@ -124,7 +124,7 @@ const updateAccountBalance = async (req, res) => {
     if (!amount || !operation) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Amount and operation are required' 
+        error: req.t('finance.validationAmountOperationRequired') 
       });
     }
     
@@ -141,7 +141,7 @@ const updateAccountBalance = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating account balance:', error);
-    res.status(500).json({ success: false, error: 'Failed to update account balance' });
+    res.status(500).json({ success: false, error: req.t('bank.failedUpdateAccountBalance') });
   }
 };
 
@@ -157,7 +157,7 @@ const getBankAccountLogs = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching bank account logs:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch bank account logs' });
+    res.status(500).json({ success: false, error: req.t('bank.failedFetchBankAccountLogs') });
   }
 };
 
@@ -169,7 +169,7 @@ const createBankAccountLog = async (req, res) => {
     if (!bank_account_id || !type || !amount) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Bank account ID, type, and amount are required' 
+        error: req.t('bank.failedCreateBankAccountLog') 
       });
     }
     
@@ -213,7 +213,7 @@ const createBankAccountLog = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating bank account log:', error);
-    res.status(500).json({ success: false, error: 'Failed to create bank account log' });
+    res.status(500).json({ success: false, error: req.t('bank.failedCreateBankAccountLog') });
   }
 };
 
@@ -225,7 +225,7 @@ const updateBankAccountLog = async (req, res) => {
     if (!type || !amount) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Type and amount are required' 
+        error: req.t('bank.failedUpdateBankAccountLog') 
       });
     }
     
@@ -279,7 +279,7 @@ const updateBankAccountLog = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating bank account log:', error);
-    res.status(500).json({ success: false, error: 'Failed to update bank account log' });
+    res.status(500).json({ success: false, error: req.t('bank.failedUpdateBankAccountLog') });
   }
 };
 
@@ -298,7 +298,7 @@ const deleteBankAccountLog = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting bank account log:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete bank account log' });
+    res.status(500).json({ success: false, error: req.t('bank.failedDeleteBankAccountLog') });
   }
 };
 

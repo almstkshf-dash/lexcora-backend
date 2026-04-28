@@ -17,7 +17,7 @@ const getAllTransactions = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching employee cash transactions:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch transactions' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchTransactions') });
   }
 };
 
@@ -31,7 +31,7 @@ const getTransactionById = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching transaction:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch transaction' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchTransaction') });
   }
 };
 
@@ -80,7 +80,7 @@ const createTransaction = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating transaction:', error);
-    res.status(500).json({ success: false, error: 'Failed to create transaction' });
+    res.status(500).json({ success: false, error: req.t('finance.failedCreateTransaction') });
   }
 };
 
@@ -140,7 +140,7 @@ const updateTransaction = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating transaction:', error);
-    res.status(500).json({ success: false, error: 'Failed to update transaction' });
+    res.status(500).json({ success: false, error: req.t('finance.failedUpdateTransaction') });
   }
 };
 
@@ -154,7 +154,7 @@ const deleteTransaction = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting transaction:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete transaction' });
+    res.status(500).json({ success: false, error: req.t('finance.failedDeleteTransaction') });
   }
 };
 
@@ -169,7 +169,7 @@ const deleteAttachment = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting attachment:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete attachment' });
+    res.status(500).json({ success: false, error: req.t('finance.failedDeleteAttachment') });
   }
 };
 
@@ -198,7 +198,7 @@ const getTransactionStatistics = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching transaction statistics:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch transaction statistics' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchTransactionStatistics') });
   }
 };
 
@@ -215,7 +215,7 @@ const getExpensesByClientId = async (req, res) => {
     console.error("Error fetching expenses:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch expenses"
+      message: req.t('finance.failedFetchExpenses')
     });
   }
 };

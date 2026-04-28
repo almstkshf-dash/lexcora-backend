@@ -9,7 +9,7 @@ const importStatement = async (req, res) => {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res.status(400).json({ success: false, message: req.t('bank.noFileUploaded') });
     }
 
     const parsedMapping = mapping ? (typeof mapping === 'string' ? JSON.parse(mapping) : mapping) : null;
@@ -68,7 +68,7 @@ const syncAccount = async (req, res) => {
       bank_account_id, 
       user_id: req.user.id 
     });
-    res.json({ success: true, message: "Sync job started", jobId: job.id });
+    res.json({ success: true, message: req.t('bank.syncJobStarted'), jobId: job.id });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
