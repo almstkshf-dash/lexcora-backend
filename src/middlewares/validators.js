@@ -7,10 +7,10 @@ const { body, param, query, validationResult } = require('express-validator');
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array() 
+      errors: errors.array()
     });
   }
   next();
@@ -86,9 +86,9 @@ const phoneValidator = (fieldName = 'phone') => [
  */
 const stringValidator = (fieldName, options = {}) => {
   const { min = 1, max = 255, required = true } = options;
-  
+
   const validators = [];
-  
+
   if (required) {
     validators.push(
       body(fieldName).trim().notEmpty().withMessage(`${fieldName} is required`)
@@ -98,13 +98,13 @@ const stringValidator = (fieldName, options = {}) => {
       body(fieldName).optional().trim()
     );
   }
-  
+
   validators.push(
     body(fieldName).isLength({ min, max }).withMessage(`${fieldName} must be between ${min} and ${max} characters`)
   );
-  
+
   validators.push(handleValidationErrors);
-  
+
   return validators;
 };
 
@@ -113,9 +113,9 @@ const stringValidator = (fieldName, options = {}) => {
  */
 const numberValidator = (fieldName, options = {}) => {
   const { min, max, required = true } = options;
-  
+
   const validators = [];
-  
+
   if (required) {
     validators.push(
       body(fieldName).notEmpty().withMessage(`${fieldName} is required`)
@@ -125,9 +125,9 @@ const numberValidator = (fieldName, options = {}) => {
       body(fieldName).optional()
     );
   }
-  
+
   const numericCheck = body(fieldName).isNumeric().withMessage(`${fieldName} must be a number`);
-  
+
   if (min !== undefined && max !== undefined) {
     numericCheck.isFloat({ min, max }).withMessage(`${fieldName} must be between ${min} and ${max}`);
   } else if (min !== undefined) {
@@ -135,10 +135,10 @@ const numberValidator = (fieldName, options = {}) => {
   } else if (max !== undefined) {
     numericCheck.isFloat({ max }).withMessage(`${fieldName} must be at most ${max}`);
   }
-  
+
   validators.push(numericCheck);
   validators.push(handleValidationErrors);
-  
+
   return validators;
 };
 

@@ -4,7 +4,7 @@ const { upload, uploadFiles, getPresignedUrl, deleteFile, deleteFiles } = requir
 const { authenticateToken } = require('../middliewares/authMiddleware');
 
 // Upload multiple files
-router.post('/', upload.array('files', 10), uploadFiles);
+router.post('/', authenticateToken, upload.array('files', 10), uploadFiles);
 
 // Get presigned URL for existing file
 router.post('/presigned-url', authenticateToken, getPresignedUrl);

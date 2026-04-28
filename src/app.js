@@ -131,7 +131,11 @@ const corsOptions = {
     }
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true // Keep cookies for web origins; bearer tokens work without cookies
+  credentials: true, // Keep cookies for web origins; bearer tokens work without cookies
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Access-Control-Allow-Origin'],
+  optionsSuccessStatus: 204,
+  preflightContinue: false
 };
 
 app.use(cors(corsOptions));
@@ -145,8 +149,11 @@ app.use(responseMiddleware);
 // Apply document URL middleware globally to convert S3 keys to accessible URLs
 app.use(documentUrlMiddleware(['document_url', 'file_path', 'url', 'file_url']));
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Serve static files from uploads directory in local development only.
+// In Vercel production, uploaded files are stored and served from Vercel Blob.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+}
 
 // Routes
 app.use("/api/auth", authRoute);

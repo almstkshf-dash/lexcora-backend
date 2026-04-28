@@ -79,6 +79,7 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - **Reporting Engine Updates:** Updated Trial Balance and Financial Statements logic to support consolidated views using system-wide base currency (AED).
 
 ## 7. Ongoing Tasks
-- Full validation of all Express API endpoints within the Vercel serverless context.
+- Completed endpoint validation pass for Express on serverless: confirmed app startup, route registration, and production-safe behavior for Vercel deployment.
+- Disabled local `/uploads` static serving in production so file access is handled exclusively through Vercel Blob.
 - Finalizing the Vercel Blob upload controllers.
 - Adjusting CORS policies explicitly for portal.lexcora-mbh.com and user.lexcora-mbh.com to prevent pre-flight authorization errors.
