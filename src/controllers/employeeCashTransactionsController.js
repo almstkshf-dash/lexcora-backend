@@ -15,6 +15,7 @@ const getAllTransactions = async (req, res) => {
     };
     const result = await employeeCashTransactionsService.getAllTransactions(filters);
     if (!result.success) {
+      console.error('[getAllTransactions] DB error:', result.message);
       return res.status(500).json(result);
     }
     res.json(result);

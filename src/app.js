@@ -94,6 +94,37 @@ const app = express();
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`);
+
+    await db.query(`CREATE TABLE IF NOT EXISTS bank_accounts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      bank_name VARCHAR(255),
+      account_name VARCHAR(255),
+      account_number VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await db.query(`CREATE TABLE IF NOT EXISTS cash_transaction_attachments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      transaction_id INT NOT NULL,
+      attachment_url TEXT,
+      attachment_name VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Add bank_account_id column to employee_cash_transactions if missing
+    const [cols] = await db.query(`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'employee_cash_transactions'
+        AND COLUMN_NAME = 'bank_account_id'
+    `);
+    if (cols.length === 0) {
+      await db.query(`
+        ALTER TABLE employee_cash_transactions
+        ADD COLUMN bank_account_id INT DEFAULT NULL
+      `);
+      console.log('Startup migration: added bank_account_id to employee_cash_transactions');
+    }
   } catch (e) {
     console.warn('Startup migration warning:', e.message);
   }
