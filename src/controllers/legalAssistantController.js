@@ -46,12 +46,16 @@ const MAX_ATTACHMENT_ITEMS = 5;
 
 // Initialize OpenAI client
 let openai;
-try {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-} catch (error) {
-  console.error('Failed to initialize OpenAI client:', error);
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  } catch (error) {
+    console.error('Failed to initialize OpenAI client:', error?.message || error);
+  }
+} else {
+  console.warn('OpenAI client disabled: OPENAI_API_KEY is not set.');
 }
 
 const normalizeHistory = (history, caseId) => {

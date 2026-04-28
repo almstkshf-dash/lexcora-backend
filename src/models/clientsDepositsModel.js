@@ -1,15 +1,65 @@
 const db = require("../config/db");
 const accountingService = require("../services/accountingService");
 
+let cachedClientsDepositsDateColumn = null;
+let cachedClientsDepositsColumns = null;
+
+const getClientsDepositsColumns = async () => {
+  if (cachedClientsDepositsColumns) return cachedClientsDepositsColumns;
+  try {
+    const [columns] = await db.query("SHOW COLUMNS FROM clients_deposits");
+    cachedClientsDepositsColumns = new Set(columns.map((col) => col.Field));
+  } catch (error) {
+    cachedClientsDepositsColumns = new Set();
+  }
+  return cachedClientsDepositsColumns;
+};
+
+const resolveClientsDepositsDateColumn = async () => {
+  if (cachedClientsDepositsDateColumn) {
+    return cachedClientsDepositsDateColumn;
+  }
+
+  try {
+    const columnNames = await getClientsDepositsColumns();
+
+    if (columnNames.has("created_at")) {
+      cachedClientsDepositsDateColumn = "created_at";
+    } else if (columnNames.has("deposit_date")) {
+      cachedClientsDepositsDateColumn = "deposit_date";
+    } else if (columnNames.has("date")) {
+      cachedClientsDepositsDateColumn = "date";
+    } else {
+      cachedClientsDepositsDateColumn = "id";
+    }
+  } catch (error) {
+    // Fallback to stable column to avoid runtime crashes in listing endpoint.
+    cachedClientsDepositsDateColumn = "id";
+  }
+
+  return cachedClientsDepositsDateColumn;
+};
+
 const getDepositsByPartyId = async (partyId, { page, limit, sortBy, sortOrder }) => {
+  const columns = await getClientsDepositsColumns();
+  if (!columns.has("party_id")) {
+    return { rows: [], total: 0 };
+  }
+
+  const dateSortColumn = await resolveClientsDepositsDateColumn();
+  const resolvedSortColumn = sortBy === "amount" ? "cd.amount" : `cd.${dateSortColumn}`;
+  const hasCreatedBy = columns.has("created_by");
+  const createdBySelect = hasCreatedBy ? "e.name as created_by_name" : "NULL as created_by_name";
+  const employeesJoin = hasCreatedBy ? "LEFT JOIN employees e ON cd.created_by = e.id" : "";
+
   const query = `
     SELECT 
       cd.*,
-      e.name as created_by_name
+      ${createdBySelect}
     FROM clients_deposits cd
-    LEFT JOIN employees e ON cd.created_by = e.id
+    ${employeesJoin}
     WHERE cd.party_id = ?
-    ORDER BY ${sortBy === 'amount' ? 'cd.amount' : 'cd.created_at'} ${sortOrder === 'ASC' ? 'ASC' : 'DESC'}
+    ORDER BY ${resolvedSortColumn} ${sortOrder === 'ASC' ? 'ASC' : 'DESC'}
     LIMIT ? OFFSET ?
   `;
   
@@ -193,21 +243,34 @@ const deleteDeposit = async (depositId) => {
 };
 
 const getAccountStatement = async (partyId, dateFrom, dateTo) => {
+  const columns = await getClientsDepositsColumns();
+  if (!columns.has("party_id")) {
+    return [];
+  }
+
+  const depositsDateColumn = await resolveClientsDepositsDateColumn();
+  const depositsDateExpr = `cd.${depositsDateColumn}`;
+  const hasCreatedBy = columns.has("created_by");
+  const hasDescription = columns.has("description");
+  const depositsDescriptionExpr = hasDescription ? "cd.description" : "NULL";
+  const depositsCreatedByExpr = hasCreatedBy ? "e.name" : "NULL";
+  const depositsJoin = hasCreatedBy ? "LEFT JOIN employees e ON cd.created_by = e.id" : "";
+
   // Build WHERE clause for date filtering with proper table aliases
   let dateConditionDeposits = '';
   let dateConditionTransactions = '';
   let queryParams = [partyId];
   
   if (dateFrom && dateTo) {
-    dateConditionDeposits = 'AND DATE(cd.created_at) BETWEEN ? AND ?';
+    dateConditionDeposits = `AND DATE(${depositsDateExpr}) BETWEEN ? AND ?`;
     dateConditionTransactions = 'AND DATE(ect.created_at) BETWEEN ? AND ?';
     queryParams.push(dateFrom, dateTo);
   } else if (dateFrom) {
-    dateConditionDeposits = 'AND DATE(cd.created_at) >= ?';
+    dateConditionDeposits = `AND DATE(${depositsDateExpr}) >= ?`;
     dateConditionTransactions = 'AND DATE(ect.created_at) >= ?';
     queryParams.push(dateFrom);
   } else if (dateTo) {
-    dateConditionDeposits = 'AND DATE(cd.created_at) <= ?';
+    dateConditionDeposits = `AND DATE(${depositsDateExpr}) <= ?`;
     dateConditionTransactions = 'AND DATE(ect.created_at) <= ?';
     queryParams.push(dateTo);
   }
@@ -216,13 +279,13 @@ const getAccountStatement = async (partyId, dateFrom, dateTo) => {
     SELECT 
       'deposit' as source,
       cd.id,
-      cd.created_at as date,
+      ${depositsDateExpr} as date,
       'credit' as type,
       cd.amount,
-      cd.description,
-      e.name as created_by_name
+      ${depositsDescriptionExpr} as description,
+      ${depositsCreatedByExpr} as created_by_name
     FROM clients_deposits cd
-    LEFT JOIN employees e ON cd.created_by = e.id
+    ${depositsJoin}
     WHERE cd.party_id = ? ${dateConditionDeposits}
     
     UNION ALL

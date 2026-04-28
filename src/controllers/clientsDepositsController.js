@@ -9,7 +9,13 @@ const getDepositsByPartyId = async (req, res) => {
     
     res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    console.error("Error fetching deposits:", error);
+    console.error("Error fetching deposits:", {
+      message: error?.message,
+      code: error?.code,
+      errno: error?.errno,
+      sqlMessage: error?.sqlMessage,
+      sqlState: error?.sqlState
+    });
     res.fail("Failed to fetch deposits", 500, "CLIENT_DEPOSITS_LIST_ERROR");
   }
 };
