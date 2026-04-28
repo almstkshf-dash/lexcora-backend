@@ -5,17 +5,17 @@ const getFunds = async (req, res) => {
     const funds = await pettyCashModel.getAllFunds(req.query.branch_id);
     res.json({ success: true, data: funds });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchFunds') });
   }
 };
 
 const getFundById = async (req, res) => {
   try {
     const fund = await pettyCashModel.getFundById(req.params.id);
-    if (!fund) return res.status(404).json({ success: false, message: "Fund not found" });
+    if (!fund) return res.status(404).json({ success: false, message: req.t('finance.fundNotFound') });
     res.json({ success: true, data: fund });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchFund') });
   }
 };
 
@@ -28,9 +28,9 @@ const createFund = async (req, res) => {
     res.json({ success: true, id });
   } catch (error) {
     if (error.message === "Fund name is required") {
-      return res.status(400).json({ success: false, message: error.message });
+      return res.status(400).json({ success: false, message: req.t('finance.fundNameRequired') });
     }
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedCreateFund') });
   }
 };
 
@@ -42,7 +42,7 @@ const createTransaction = async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedCreatePettyCashTransaction') });
   }
 };
 
@@ -51,7 +51,7 @@ const getFundTransactions = async (req, res) => {
     const transactions = await pettyCashModel.getFundTransactions(req.params.id, req.query);
     res.json({ success: true, data: transactions });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchFundTransactions') });
   }
 };
 

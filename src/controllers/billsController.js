@@ -10,7 +10,7 @@ const getAllBills = async (req, res) => {
     const result = await billsModel.getAllBills(filters);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchBills') });
   }
 };
 
@@ -20,7 +20,7 @@ const getBillById = async (req, res) => {
     if (!result.success) return res.status(404).json(result);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchBill') });
   }
 };
 
@@ -32,7 +32,7 @@ const createBill = async (req, res) => {
     const result = await billsModel.createBill(billData, items);
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedCreateBill') });
   }
 };
 
@@ -42,7 +42,7 @@ const updateBillStatus = async (req, res) => {
     const result = await billsModel.updateBillStatus(req.params.id, status);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedUpdateBillStatus') });
   }
 };
 

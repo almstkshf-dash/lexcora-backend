@@ -9,7 +9,7 @@ const getAllInvoices = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching invoices:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch invoices' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchInvoices') });
   }
 };
 
@@ -22,7 +22,7 @@ const getInvoiceById = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching invoice:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch invoice' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchInvoice') });
   }
 };
 
@@ -32,7 +32,7 @@ const getInvoicesByClientId = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching client invoices:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch client invoices' });
+    res.status(500).json({ success: false, error: req.t('finance.failedFetchClientInvoices') });
   }
 };
 
@@ -56,7 +56,7 @@ const createInvoice = async (req, res) => {
     if (!invoice_date) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invoice date is required' 
+        error: req.t('finance.invoiceDateRequired') 
       });
     }
 
@@ -64,7 +64,7 @@ const createInvoice = async (req, res) => {
     if (!amount || parseFloat(amount) <= 0) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Amount must be greater than zero' 
+        error: req.t('finance.amountGreaterThanZero') 
       });
     }
 
@@ -72,7 +72,7 @@ const createInvoice = async (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        error: 'At least one invoice item is required' 
+        error: req.t('finance.atLeastOneItemRequired') 
       });
     }
     
@@ -101,7 +101,7 @@ const createInvoice = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     console.error('Error creating invoice:', error);
-    res.status(500).json({ success: false, error: 'Failed to create invoice' });
+    res.status(500).json({ success: false, error: req.t('finance.failedCreateInvoice') });
   }
 };
 
@@ -143,7 +143,7 @@ const updateInvoice = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating invoice:', error);
-    res.status(500).json({ success: false, error: 'Failed to update invoice' });
+    res.status(500).json({ success: false, error: req.t('finance.failedUpdateInvoice') });
   }
 };
 
@@ -161,7 +161,7 @@ const deleteInvoice = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting invoice:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete invoice' });
+    res.status(500).json({ success: false, error: req.t('finance.failedDeleteInvoice') });
   }
 };
 
@@ -176,7 +176,7 @@ const deleteInvoiceAttachment = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error deleting invoice attachment:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete attachment' });
+    res.status(500).json({ success: false, error: req.t('finance.failedDeleteAttachment') });
   }
 };
 
@@ -188,7 +188,7 @@ const updateInvoiceStatus = async (req, res) => {
     if (!status) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Status is required' 
+        error: req.t('finance.statusRequired') 
       });
     }
     
@@ -204,7 +204,7 @@ const updateInvoiceStatus = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error updating invoice status:', error);
-    res.status(500).json({ success: false, error: 'Failed to update invoice status' });
+    res.status(500).json({ success: false, error: req.t('finance.failedUpdateInvoiceStatus') });
   }
 };
 
@@ -216,7 +216,7 @@ const uploadInvoiceAttachments = async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No files provided',
+        error: req.t('finance.noFilesProvided'),
       });
     }
     
@@ -262,7 +262,7 @@ const uploadInvoiceAttachments = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error uploading invoice attachments:', error);
-    res.status(500).json({ success: false, error: 'Failed to upload attachments' });
+    res.status(500).json({ success: false, error: req.t('finance.failedUploadAttachments') });
   }
 };
 

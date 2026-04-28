@@ -7,7 +7,7 @@ const createPayment = async (req, res) => {
     const result = await paymentsModel.createPayment(paymentData);
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedCreatePayment') });
   }
 };
 
@@ -16,7 +16,7 @@ const getPaymentsByInvoiceId = async (req, res) => {
     const data = await paymentsModel.getPaymentsByInvoiceId(req.params.invoiceId);
     res.json({ success: true, data });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchPayments') });
   }
 };
 
@@ -25,7 +25,7 @@ const getPaymentsByBillId = async (req, res) => {
     const data = await paymentsModel.getPaymentsByBillId(req.params.billId);
     res.json({ success: true, data });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: req.t('finance.failedFetchPayments') });
   }
 };
 
