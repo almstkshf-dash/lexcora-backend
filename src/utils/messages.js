@@ -68,6 +68,8 @@ const messages = {
     fundNameRequired: { en: 'Fund name is required', ar: 'اسم الصندوق مطلوب' },
     failedCreatePettyCashTransaction: { en: 'Failed to create transaction', ar: 'فشل في إنشاء المعاملة' },
     failedFetchFundTransactions: { en: 'Failed to fetch fund transactions', ar: 'فشل في جلب معاملات الصندوق' },
+    transactionNotFound: { en: 'Transaction not found', ar: 'المعاملة غير موجودة' },
+    attachmentNotFound: { en: 'Attachment not found', ar: 'المرفق غير موجود' },
   },
   bank: {
     noFileUploaded: { en: 'No file uploaded', ar: 'لم يتم تحميل أي ملف' },

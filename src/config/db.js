@@ -100,7 +100,8 @@ const dbProxy = new Proxy({}, {
     if (!currentPool) {
       throw new Error('Database connection not available. Please check your database configuration.');
     }
-    return currentPool[prop];
+    const value = currentPool[prop];
+    return typeof value === 'function' ? value.bind(currentPool) : value;
   }
 });
 

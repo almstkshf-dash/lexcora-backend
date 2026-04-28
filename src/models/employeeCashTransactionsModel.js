@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const accountingService = require("../services/accountingService");
 const allocationService = require("../services/allocationService");
+const { getMessage } = require("../utils/messages");
 
 const getAllTransactions = async (filters = {}) => {
   try {
@@ -174,7 +175,7 @@ const getTransactionById = async (id) => {
   `, [id]);
   
   if (rows.length === 0) {
-    return { success: false, message: 'Transaction not found' };
+    return { success: false, message: getMessage('finance.transactionNotFound', 'ar') };
   }
   
   // Parse attachments to ensure it's always an array
@@ -339,7 +340,7 @@ const updateTransaction = async (id, transactionData) => {
     
     if (oldTransactions.length === 0) {
       await connection.rollback();
-      return { success: false, message: 'Transaction not found' };
+      return { success: false, message: getMessage('finance.transactionNotFound', 'ar') };
     }
     
     const oldTransaction = oldTransactions[0];
@@ -437,7 +438,7 @@ const deleteTransaction = async (id) => {
     
     if (transactions.length === 0) {
       await connection.rollback();
-      return { success: false, message: 'Transaction not found' };
+      return { success: false, message: getMessage('finance.transactionNotFound', 'ar') };
     }
     
     const transaction = transactions[0];
@@ -485,7 +486,7 @@ const deleteAttachment = async (transactionId, attachmentId) => {
     );
     
     if (result.affectedRows === 0) {
-      return { success: false, message: 'Attachment not found' };
+      return { success: false, message: getMessage('finance.attachmentNotFound', 'ar') };
     }
     
     return { success: true };
@@ -505,7 +506,7 @@ const updateTransactionStatus = async (id, { status }) => {
     );
     
     if (result.affectedRows === 0) {
-      return { success: false, message: 'Transaction not found' };
+      return { success: false, message: getMessage('finance.transactionNotFound', 'ar') };
     }
     
     return { success: true };
