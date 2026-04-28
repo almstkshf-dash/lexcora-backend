@@ -53,11 +53,15 @@ const getJournalEntryById = async (id) => {
     if (entries.length === 0) return { success: false, message: "Journal entry not found" };
 
     const [items] = await db.query(`
-      SELECT le.*, a.code as account_code, a.name_en as account_name, p.name as party_name, emp.name as employee_name
+      SELECT le.*, a.code as account_code, a.name_en as account_name, p.name as party_name, emp.name as employee_name,
+             c.topic as case_name, proj.name as project_name, d.name_ar as department_name
       FROM ledger_entries le
       JOIN accounts a ON le.account_id = a.id
       LEFT JOIN parties p ON le.party_id = p.id
       LEFT JOIN employees emp ON le.employee_id = emp.id
+      LEFT JOIN cases c ON le.case_id = c.id
+      LEFT JOIN projects proj ON le.project_id = proj.id
+      LEFT JOIN departments d ON le.department_id = d.id
       WHERE le.journal_entry_id = ?
     `, [id]);
 
@@ -105,12 +109,15 @@ const createJournalEntry = async (entryData, items, existingConnection = null) =
         (item.debit || 0) * (exchange_rate || 1.0), // base_debit
         item.credit || 0,
         (item.credit || 0) * (exchange_rate || 1.0), // base_credit
-        item.branch_id || branch_id
+        item.branch_id || branch_id,
+        item.case_id || null,
+        item.project_id || null,
+        item.department_id || null
       ]);
 
       await connection.query(
         `INSERT INTO ledger_entries 
-        (journal_entry_id, account_id, party_id, employee_id, description, debit, base_debit, credit, base_credit, branch_id) 
+        (journal_entry_id, account_id, party_id, employee_id, description, debit, base_debit, credit, base_credit, branch_id, case_id, project_id, department_id) 
         VALUES ?`,
         [itemValues]
       );

@@ -1,5 +1,5 @@
 const warningsModel = require("../models/warningsModel");
-const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { deleteDocumentFiles } = require("../services/storageService");
 const { normalizePagination } = require("../utils/pagination");
 
 // Get all warnings or by employee_id

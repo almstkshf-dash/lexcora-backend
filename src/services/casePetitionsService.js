@@ -2,7 +2,7 @@
 // Service functions for case petitions
 
 const casePetitionsModel = require('../models/casePetitionsModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 
 const addCasePetition = async (petitionData) => {
   const files = petitionData.files || [];

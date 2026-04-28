@@ -3,7 +3,7 @@
  * This handles both public URLs and presigned URLs based on environment configuration
  */
 
-const { getAccessibleUrl } = require('../services/awsS3Service');
+const { getAccessibleUrl } = require('../services/storageService');
 
 /**
  * Process document URLs in the response data

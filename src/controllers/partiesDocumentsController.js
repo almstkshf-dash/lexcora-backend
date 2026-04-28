@@ -179,56 +179,38 @@ const uploadPartiesDocument = async (req, res) => {
       });
     }
 
-    // Import required modules for S3 upload
-    const { PutObjectCommand } = require('@aws-sdk/client-s3');
+    const { uploadToBlob } = require('../utils/blobStorage');
     const path = require('path');
 
-    const s3Client = require('../config/s3Client');
-
     const folder = 'parties-documents';
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    const usePublicUrl = process.env.AWS_S3_USE_PUBLIC_URL === 'true';
-    const publicUrl = process.env.AWS_S3_PUBLIC_URL;
 
     // Upload all files and create document records
     const uploadPromises = req.files.map(async (file) => {
-      // Generate unique filename
-      const timestamp = Date.now();
-      const randomString = Math.random().toString(36).substring(2, 15);
-      const fileExtension = path.extname(file.originalname);
-      const filename = `${timestamp}-${randomString}${fileExtension}`;
-      const key = `${folder}/${filename}`;
-
-      // Upload to S3
-      const putCommand = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      });
-
-      await s3Client.send(putCommand);
-
-      // Generate file URL
-      let fileUrl;
-      if (usePublicUrl && publicUrl) {
-        fileUrl = `${publicUrl}/${key}`;
-      } else {
-        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-        const { GetObjectCommand } = require('@aws-sdk/client-s3');
-        const getCommand = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-        });
-        fileUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }); // 7 days
+      // Generate unique filename/path
+      let originalFilename = file.originalname;
+      
+      // Handle Arabic filenames
+      try {
+        if (/[^\x00-\x7F]/.test(originalFilename)) {
+          originalFilename = Buffer.from(originalFilename, 'latin1').toString('utf8');
+        }
+      } catch (error) {
+        console.warn('Failed to decode filename:', originalFilename);
       }
+
+      const fileExtension = path.extname(originalFilename);
+      const cleanName = originalFilename.replace(fileExtension, '').replace(/[^a-zA-Z0-9]/g, '_');
+      const blobPath = `${folder}/${cleanName}-${Date.now()}${fileExtension}`;
+
+      // Upload to Vercel Blob
+      const blob = await uploadToBlob(blobPath, file.buffer, file.mimetype);
 
       // Create document record in database
       const documentData = {
         party_id: party_id,
-        file_name: file.originalname,
-        url: fileUrl,
-        uploaded_by: req.user?.id || null // If user is authenticated
+        file_name: originalFilename,
+        url: blob.url,
+        uploaded_by: req.user?.id || null
       };
 
       return await partiesDocumentsService.addPartiesDocument(documentData);
@@ -242,7 +224,7 @@ const uploadPartiesDocument = async (req, res) => {
       data: uploadedDocuments
     });
   } catch (error) {
-    console.error('Error uploading parties documents:', error);
+    console.error('Error uploading parties documents to Vercel Blob:', error);
     const status = error.message.includes("Missing required fields") ||
                    error.message.includes("must be") ||
                    error.message.includes("Party not found") ? 400 : 500;

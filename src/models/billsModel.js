@@ -1,13 +1,18 @@
 const db = require("../config/db");
 const accountingService = require("../services/accountingService");
+const allocationService = require("../services/allocationService");
 
 const getAllBills = async (filters = {}) => {
   const { vendor_id, status, branch_id } = filters;
   let query = `
-    SELECT b.*, p.name as vendor_name, br.name_ar as branch_name
+    SELECT b.*, p.name as vendor_name, br.name_ar as branch_name, 
+           c.topic as case_name, proj.name as project_name, d.name_ar as department_name
     FROM bills b
     LEFT JOIN parties p ON b.vendor_id = p.id
     LEFT JOIN branches br ON b.branch_id = br.id
+    LEFT JOIN cases c ON b.case_id = c.id
+    LEFT JOIN projects proj ON b.project_id = proj.id
+    LEFT JOIN departments d ON b.department_id = d.id
     WHERE 1=1
   `;
   const params = [];
@@ -39,10 +44,14 @@ const getAllBills = async (filters = {}) => {
 const getBillById = async (id) => {
   try {
     const [bills] = await db.query(`
-      SELECT b.*, p.name as vendor_name, br.name_ar as branch_name
+      SELECT b.*, p.name as vendor_name, br.name_ar as branch_name,
+             c.topic as case_name, proj.name as project_name, d.name_ar as department_name
       FROM bills b
       LEFT JOIN parties p ON b.vendor_id = p.id
       LEFT JOIN branches br ON b.branch_id = br.id
+      LEFT JOIN cases c ON b.case_id = c.id
+      LEFT JOIN projects proj ON b.project_id = proj.id
+      LEFT JOIN departments d ON b.department_id = d.id
       WHERE b.id = ?
     `, [id]);
 
@@ -65,12 +74,21 @@ const createBill = async (billData, items) => {
   try {
     await connection.beginTransaction();
 
-    const { bill_date, bill_number, amount, vendor_id, branch_id, status, vat, currency, description, created_by } = billData;
+    const { 
+      bill_date, bill_number, amount, vendor_id, branch_id, status, vat, currency, 
+      description, created_by, case_id, project_id, department_id, allocation_rule_id 
+    } = billData;
 
     const [result] = await connection.query(
-      `INSERT INTO bills (bill_date, bill_number, amount, vendor_id, branch_id, status, vat, currency, description, created_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [bill_date, bill_number, amount, vendor_id, branch_id || null, status || 'pending', vat || 0, currency || 'AED', description || null, created_by]
+      `INSERT INTO bills (
+        bill_date, bill_number, amount, vendor_id, branch_id, status, vat, currency, 
+        description, created_by, case_id, project_id, department_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        bill_date, bill_number, amount, vendor_id, branch_id || null, status || 'pending', 
+        vat || 0, currency || 'AED', description || null, created_by,
+        case_id || null, project_id || null, department_id || null
+      ]
     );
 
     const billId = result.insertId;
@@ -80,16 +98,44 @@ const createBill = async (billData, items) => {
       await connection.query("INSERT INTO bill_items (bill_id, description, amount) VALUES ?", [itemValues]);
     }
 
-    // Accounting Posting
-    await accountingService.postAutomatedEntry('BILL_RECEIVED', {
-      amount,
-      currency,
-      description: `Bill ${bill_number} from vendor`,
-      reference: bill_number,
-      party_id: vendor_id,
-      branch_id,
-      created_by
-    }, connection);
+    // Accounting Posting with Allocation Support
+    if (allocation_rule_id) {
+      const allocations = await allocationService.calculateAllocations(allocation_rule_id, amount);
+      await allocationService.saveTransactionAllocations('bill', billId, allocations, connection);
+
+      // Post a split entry in the ledger
+      const items = allocations.map(a => ({
+        amount: a.amount,
+        case_id: a.case_id,
+        project_id: a.project_id,
+        department_id: a.department_id,
+        description: `Split Bill ${bill_number} (${a.percentage}%)`
+      }));
+
+      // We need a way to post multiple debit lines. 
+      // Let's update accountingService to support split entries.
+      await accountingService.postSplitAutomatedEntry('BILL_RECEIVED', {
+        currency,
+        reference: bill_number,
+        party_id: vendor_id,
+        branch_id,
+        created_by,
+        splits: items
+      }, connection);
+    } else {
+      await accountingService.postAutomatedEntry('BILL_RECEIVED', {
+        amount,
+        currency,
+        description: `Bill ${bill_number} from vendor`,
+        reference: bill_number,
+        party_id: vendor_id,
+        branch_id,
+        case_id,
+        project_id,
+        department_id,
+        created_by
+      }, connection);
+    }
 
     await connection.commit();
     return { success: true, data: { id: billId } };

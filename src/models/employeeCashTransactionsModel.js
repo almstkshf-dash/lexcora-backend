@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const accountingService = require("../services/accountingService");
+const allocationService = require("../services/allocationService");
 
 const getAllTransactions = async (filters = {}) => {
   const { page = 1, limit = 10, search = '', type = '', employee_id = '', client_id = '', date_from = '', date_to = '' } = filters;
@@ -200,6 +201,7 @@ const createTransaction = async (transactionData) => {
     case_id = null,
     department_id = null,
     project_id = null,
+    allocation_rule_id = null,
     attachments = [],
     created_by 
   } = transactionData;
@@ -253,17 +255,44 @@ const createTransaction = async (transactionData) => {
       console.log('No attachments to insert');
     }
     
-    // Automated Accounting Posting
+    // Automated Accounting Posting with Allocation Support
     const accountingEvent = type === 'debit' ? 'EXPENSE_PAID' : 'PAYMENT_RECEIVED';
-    await accountingService.postAutomatedEntry(accountingEvent, {
-      amount: amount,
-      description: description,
-      reference: `ECT-${transactionId}`,
-      party_id: client_id,
-      employee_id: employee_id,
-      bank_account_id: bank_account_id,
-      created_by: created_by
-    }, connection);
+    
+    if (type === 'debit' && allocation_rule_id) {
+      const allocations = await allocationService.calculateAllocations(allocation_rule_id, amount);
+      await allocationService.saveTransactionAllocations('employee_cash_transaction', transactionId, allocations, connection);
+
+      const items = allocations.map(a => ({
+        amount: a.amount,
+        case_id: a.case_id,
+        project_id: a.project_id,
+        department_id: a.department_id,
+        description: `Split Expense ECT-${transactionId} (${a.percentage}%)`
+      }));
+
+      await accountingService.postSplitAutomatedEntry(accountingEvent, {
+        currency: 'AED',
+        reference: `ECT-${transactionId}`,
+        party_id: client_id,
+        employee_id: employee_id,
+        branch_id: null, // Add if needed
+        created_by: created_by,
+        splits: items
+      }, connection);
+    } else {
+      await accountingService.postAutomatedEntry(accountingEvent, {
+        amount: amount,
+        description: description,
+        reference: `ECT-${transactionId}`,
+        party_id: client_id,
+        employee_id: employee_id,
+        bank_account_id: bank_account_id,
+        case_id: case_id,
+        project_id: project_id,
+        department_id: department_id,
+        created_by: created_by
+      }, connection);
+    }
 
     await connection.commit();
     
@@ -326,7 +355,7 @@ const updateTransaction = async (id, transactionData) => {
     }
     
     // Update transaction record
-    const [result] = await connection.query(`
+    await connection.query(`
       UPDATE employee_cash_transactions 
       SET employee_id = ?, 
           amount = ?, 
@@ -426,7 +455,7 @@ const deleteTransaction = async (id) => {
     }
     
     // Attachments will be deleted automatically due to ON DELETE CASCADE
-    const [result] = await connection.query(
+    await connection.query(
       "DELETE FROM employee_cash_transactions WHERE id = ?", 
       [id]
     );
@@ -461,7 +490,7 @@ const deleteAttachment = async (transactionId, attachmentId) => {
   }
 };
 
-const updateTransactionStatus = async (id, { status, updated_by }) => {
+const updateTransactionStatus = async (id, { status }) => {
   try {
     const [result] = await db.query(
       `UPDATE employee_cash_transactions 

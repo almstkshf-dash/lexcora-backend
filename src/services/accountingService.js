@@ -13,7 +13,10 @@ const postAutomatedEntry = async (event, data, connection = null) => {
     reference, 
     party_id, 
     employee_id, 
-    branch_id, 
+    branch_id,
+    case_id,
+    project_id,
+    department_id,
     created_by 
   } = data;
 
@@ -56,7 +59,10 @@ const postAutomatedEntry = async (event, data, connection = null) => {
       credit: 0,
       party_id,
       employee_id,
-      branch_id
+      branch_id,
+      case_id,
+      project_id,
+      department_id
     },
     {
       account_id: credit_account_id,
@@ -65,9 +71,82 @@ const postAutomatedEntry = async (event, data, connection = null) => {
       credit: amount,
       party_id,
       employee_id,
-      branch_id
+      branch_id,
+      case_id,
+      project_id,
+      department_id
     }
   ];
+
+  return await journalEntriesModel.createJournalEntry(entryData, items, connection);
+};
+
+/**
+ * Posts an automated entry with multiple splits (e.g., shared expenses).
+ */
+const postSplitAutomatedEntry = async (event, data, connection = null) => {
+  const { 
+    currency = 'AED', 
+    exchange_rate = 1.0, 
+    reference, 
+    party_id, 
+    employee_id, 
+    branch_id, 
+    created_by,
+    splits // Array of { amount, description, case_id, project_id, department_id }
+  } = data;
+
+  const [settingsRows] = await db.query(
+    "SELECT debit_account_id, credit_account_id FROM posting_settings WHERE event_key = ? AND is_active = TRUE", 
+    [event]
+  );
+
+  if (settingsRows.length === 0) {
+    throw new Error(`Active posting settings not found for event: ${event}`);
+  }
+
+  const { debit_account_id, credit_account_id } = settingsRows[0];
+  const totalAmount = splits.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+
+  const entryData = {
+    entry_date: new Date(),
+    reference_number: reference,
+    description: `Split Posting for ${event}: ${reference}`,
+    currency_code: currency,
+    exchange_rate: exchange_rate,
+    status: 'posted',
+    created_by: created_by,
+    branch_id: branch_id
+  };
+
+  const items = [];
+
+  // Add debit lines for each split
+  for (const split of splits) {
+    items.push({
+      account_id: debit_account_id,
+      description: split.description,
+      debit: split.amount,
+      credit: 0,
+      party_id,
+      employee_id,
+      branch_id,
+      case_id: split.case_id,
+      project_id: split.project_id,
+      department_id: split.department_id
+    });
+  }
+
+  // Add single credit line for the total
+  items.push({
+    account_id: credit_account_id,
+    description: `Total for ${event}: ${reference}`,
+    debit: 0,
+    credit: totalAmount,
+    party_id,
+    employee_id,
+    branch_id
+  });
 
   return await journalEntriesModel.createJournalEntry(entryData, items, connection);
 };
@@ -160,5 +239,6 @@ module.exports = {
   getProfitAndLoss,
   getBalanceSheet,
   validateJournalEntry,
-  createManualJournalEntry
+  createManualJournalEntry,
+  postSplitAutomatedEntry
 };

@@ -214,7 +214,7 @@ const updateAsset = async (req, res) => {
   }
 };
 
-// Delete asset and all its documents (from DB and Cloudflare R2)
+// Delete asset and all its documents (from DB and Vercel Blob)
 const deleteAsset = async (req, res) => {
   try {
     const { id } = req.params;
@@ -234,7 +234,7 @@ const deleteAsset = async (req, res) => {
     // Delete asset from database (CASCADE will delete document records)
     await assetsModel.deleteAsset(id);
     
-    // Delete files from Cloudflare R2
+    // Delete files from Vercel Blob
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
@@ -252,7 +252,7 @@ const deleteAsset = async (req, res) => {
   }
 };
 
-// Delete single asset document (from DB and Cloudflare R2)
+// Delete single asset document (from DB and Vercel Blob)
 const deleteAssetDocument = async (req, res) => {
   try {
     const { id, documentId } = req.params;
@@ -271,7 +271,7 @@ const deleteAssetDocument = async (req, res) => {
     // Delete document from database
     await assetsModel.deleteAssetDocument(documentId, id);
     
-    // Delete file from Cloudflare R2
+    // Delete file from Vercel Blob
     if (documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }

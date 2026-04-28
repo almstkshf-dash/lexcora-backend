@@ -1,5 +1,5 @@
 const partiesFormsModel = require("../models/partiesFormsModel");
-const { deleteFileFromS3 } = require("../services/awsS3Service");
+const { deleteFileFromS3 } = require("../services/storageService");
 
 // Get all parties forms
 const getPartiesForms = async (req, res) => {

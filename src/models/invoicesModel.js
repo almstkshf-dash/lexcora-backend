@@ -15,18 +15,27 @@ const getAllInvoices = async () => {
         i.status,
         i.vat,
         i.currency,
+        i.case_id,
+        i.project_id,
+        i.department_id,
         i.created_at,
         i.created_by,
         c.name as client_name,
         b.name_ar as branch_name,
         ba.bank_name,
         ba.account_number,
-        creator.name as created_by_name
+        creator.name as created_by_name,
+        cases.topic as case_name,
+        proj.name as project_name,
+        dept.name_ar as department_name
       FROM invoices i
       LEFT JOIN parties c ON i.client_id = c.id
       LEFT JOIN branches b ON i.branch_id = b.id
       LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
       LEFT JOIN employees creator ON i.created_by = creator.id
+      LEFT JOIN cases ON i.case_id = cases.id
+      LEFT JOIN projects proj ON i.project_id = proj.id
+      LEFT JOIN departments dept ON i.department_id = dept.id
       ORDER BY i.created_at DESC
     `);
     return { success: true, data: rows };
@@ -56,18 +65,27 @@ const getInvoiceById = async (id) => {
       i.status,
       i.vat,
       i.currency,
+      i.case_id,
+      i.project_id,
+      i.department_id,
       i.created_at,
       i.created_by,
       c.name as client_name,
       b.name_ar as branch_name,
       ba.bank_name,
       ba.account_number,
-      creator.name as created_by_name
+      creator.name as created_by_name,
+      cases.topic as case_name,
+      proj.name as project_name,
+      dept.name_ar as department_name
     FROM invoices i
     LEFT JOIN parties c ON i.client_id = c.id
     LEFT JOIN branches b ON i.branch_id = b.id
     LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
     LEFT JOIN employees creator ON i.created_by = creator.id
+    LEFT JOIN cases ON i.case_id = cases.id
+    LEFT JOIN projects proj ON i.project_id = proj.id
+    LEFT JOIN departments dept ON i.department_id = dept.id
     WHERE i.id = ?
   `, [id]);
   
@@ -128,8 +146,11 @@ const createInvoice = async (invoice, items, attachments = []) => {
         status,
         vat,
         currency,
+        case_id,
+        project_id,
+        department_id,
         created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoice.invoice_date,
         invoiceNumber,
@@ -140,6 +161,9 @@ const createInvoice = async (invoice, items, attachments = []) => {
         invoice.status || 'pending',
         invoice.vat || 0,
         invoice.currency || 'AED',
+        invoice.case_id || null,
+        invoice.project_id || null,
+        invoice.department_id || null,
         invoice.created_by
       ]
     );
@@ -183,6 +207,9 @@ const createInvoice = async (invoice, items, attachments = []) => {
       reference: invoiceNumber,
       party_id: invoice.client_id,
       branch_id: invoice.branch_id,
+      case_id: invoice.case_id,
+      project_id: invoice.project_id,
+      department_id: invoice.department_id,
       created_by: invoice.created_by
     }, connection);
 
@@ -254,6 +281,18 @@ const updateInvoice = async (id, invoice, items, attachments = null) => {
     if (invoice.currency !== undefined) {
       updateFields.push('currency = ?');
       updateValues.push(invoice.currency);
+    }
+    if (invoice.case_id !== undefined) {
+      updateFields.push('case_id = ?');
+      updateValues.push(invoice.case_id || null);
+    }
+    if (invoice.project_id !== undefined) {
+      updateFields.push('project_id = ?');
+      updateValues.push(invoice.project_id || null);
+    }
+    if (invoice.department_id !== undefined) {
+      updateFields.push('department_id = ?');
+      updateValues.push(invoice.department_id || null);
     }
 
     if (updateFields.length > 0) {
@@ -337,7 +376,28 @@ const deleteInvoice = async (id) => {
       return { success: false, message: 'Invoice not found' };
     }
 
-    // Delete invoice attachments (CASCADE should handle this, but being explicit)
+    // Get invoice attachments to delete from Vercel Blob
+    const [attachments] = await connection.query(
+      'SELECT attachment_url FROM invoice_attachments WHERE invoice_id = ?',
+      [id]
+    );
+
+    // Delete attachments from Vercel Blob
+    if (attachments.length > 0) {
+      const storageService = require('../services/storageService');
+      for (const att of attachments) {
+        if (att.attachment_url) {
+          try {
+            await storageService.deleteFile(att.attachment_url);
+            console.log(`Deleted invoice attachment from Vercel Blob: ${att.attachment_url}`);
+          } catch (storageError) {
+            console.error('Error deleting invoice attachment from Vercel Blob:', storageError);
+          }
+        }
+      }
+    }
+
+    // Delete invoice attachments
     await connection.query('DELETE FROM invoice_attachments WHERE invoice_id = ?', [id]);
 
     // Delete invoice items (CASCADE should handle this, but being explicit)
@@ -407,15 +467,20 @@ const deleteInvoiceAttachment = async (attachmentId) => {
       return { success: false, error: 'Attachment not found' };
     }
     
+    // Delete attachment from Vercel Blob if URL exists
+    if (attachments[0].attachment_url) {
+      try {
+        const storageService = require('../services/storageService');
+        await storageService.deleteFile(attachments[0].attachment_url);
+        console.log(`Deleted invoice attachment from Vercel Blob: ${attachments[0].attachment_url}`);
+      } catch (storageError) {
+        console.error('Error deleting invoice attachment from Vercel Blob:', storageError);
+        // Continue even if storage deletion fails
+      }
+    }
+    
     // Delete attachment from database
     await connection.query('DELETE FROM invoice_attachments WHERE id = ?', [attachmentId]);
-    
-    // TODO: Delete physical file from filesystem if needed
-    // const fs = require('fs');
-    // const filePath = attachments[0].file_path;
-    // if (fs.existsSync(filePath)) {
-    //   fs.unlinkSync(filePath);
-    // }
     
     return { success: true, message: 'Attachment deleted successfully' };
   } catch (error) {

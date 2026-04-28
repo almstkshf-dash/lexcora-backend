@@ -1,5 +1,5 @@
 const clientsDealsModel = require('../models/clientsDealsModel');
-const { deleteDocumentFiles } = require('./awsS3Service');
+const { deleteDocumentFiles } = require('./storageService');
 
 const getAllClientsDeals = async (filters) => {
   return await clientsDealsModel.getAllClientsDeals(filters);

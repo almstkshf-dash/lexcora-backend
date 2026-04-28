@@ -1,5 +1,5 @@
 const reviewsModel = require("../models/reviewsModel");
-const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { deleteDocumentFiles } = require("../services/storageService");
 
 // Get all reviews or by employee_id
 const getReviews = async (req, res) => {

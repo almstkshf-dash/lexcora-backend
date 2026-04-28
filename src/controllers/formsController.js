@@ -1,5 +1,5 @@
 const formsModel = require("../models/formsModel");
-const { deleteFileFromS3, generatePresignedUrl } = require("../services/awsS3Service");
+const { deleteFileFromS3, generatePresignedUrl } = require("../services/storageService");
 
 // Get all forms
 const getForms = async (req, res) => {

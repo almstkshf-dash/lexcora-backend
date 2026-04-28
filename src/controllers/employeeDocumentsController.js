@@ -1,7 +1,4 @@
 const employeeDocumentsModel = require('../models/employeeDocumentsModel');
-const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
-
-const s3Client = require('../config/s3Client');
 
 /**
  * Upload employee document
@@ -141,23 +138,9 @@ const deleteDocument = async (req, res) => {
       });
     }
 
-    // Extract key from URL
-    const url = new URL(document.document_url);
-    const key = url.pathname.substring(1); // Remove leading slash
-
-    // Delete from S3
-    const bucketName = process.env.AWS_S3_BUCKET_NAME;
-    const deleteParams = {
-      Bucket: bucketName,
-      Key: key,
-    };
-
-    try {
-      await s3Client.send(new DeleteObjectCommand(deleteParams));
-    } catch (error) {
-      console.error('Error deleting from S3:', error);
-      // Continue to delete from database even if S3 deletion fails
-    }
+    // Delete from storage (Vercel Blob via storageService)
+    const { deleteFile } = require('../services/storageService');
+    await deleteFile(document.document_url);
 
     // Delete from database
     await employeeDocumentsModel.delete(id);

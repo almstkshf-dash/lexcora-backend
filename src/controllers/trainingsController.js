@@ -1,5 +1,5 @@
 const trainingsModel = require("../models/trainingsModel");
-const { deleteDocumentFiles } = require("../services/awsS3Service");
+const { deleteDocumentFiles } = require("../services/storageService");
 const { normalizePagination } = require("../utils/pagination");
 
 // Get all trainings or by employee_id
