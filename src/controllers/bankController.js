@@ -85,7 +85,12 @@ const getCashFlowReport = async (req, res) => {
 
 const getDailyCashFlow = async (req, res) => {
   try {
-    const data = await cashManagementService.getDailyCashFlow(req.query.days || 30);
+    const parsedDays = Number.parseInt(req.query.days, 10);
+    const days = Number.isFinite(parsedDays) && parsedDays > 0 ? Math.min(parsedDays, 365) : 30;
+    const data = await cashManagementService.getDailyCashFlow({
+      days,
+      branch_id: req.query.branch_id
+    });
     res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

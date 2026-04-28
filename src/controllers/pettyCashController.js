@@ -27,6 +27,9 @@ const createFund = async (req, res) => {
     });
     res.json({ success: true, id });
   } catch (error) {
+    if (error.message === "Fund name is required") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: error.message });
   }
 };

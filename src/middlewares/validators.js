@@ -216,6 +216,29 @@ const sortValidator = (allowedColumns) => [
   handleValidationErrors
 ];
 
+/**
+ * Validate cash flow report query parameters
+ */
+const cashFlowQueryValidator = [
+  query('date_from').optional().isISO8601().withMessage('date_from must be a valid date (YYYY-MM-DD)'),
+  query('date_to').optional().isISO8601().withMessage('date_to must be a valid date (YYYY-MM-DD)'),
+  query('branch_id').optional().isInt({ min: 1 }).withMessage('branch_id must be a positive integer'),
+  query('date_to').optional().custom((dateTo, { req }) => {
+    if (!req.query.date_from || !dateTo) return true;
+    return new Date(dateTo) >= new Date(req.query.date_from);
+  }).withMessage('date_to must be greater than or equal to date_from'),
+  handleValidationErrors
+];
+
+/**
+ * Validate daily cash flow query parameters
+ */
+const dailyCashFlowQueryValidator = [
+  query('days').optional().isInt({ min: 1, max: 365 }).withMessage('days must be an integer between 1 and 365'),
+  query('branch_id').optional().isInt({ min: 1 }).withMessage('branch_id must be a positive integer'),
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   idValidator,
@@ -232,5 +255,7 @@ module.exports = {
   idsArrayValidator,
   partyOrderValidators,
   bankAccountValidators,
-  sortValidator
+  sortValidator,
+  cashFlowQueryValidator,
+  dailyCashFlowQueryValidator
 };

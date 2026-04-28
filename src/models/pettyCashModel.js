@@ -1,10 +1,22 @@
 const db = require("../config/db");
 
+const normalizeNullableInt = (value) => {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const normalizeAmount = (value, fallback = 0) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number.parseFloat(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
 /**
  * Petty Cash Funds
  */
 const getAllFunds = async (branchId = null) => {
-  let query = "SELECT pcf.*, e.name as responsible_employee_name, b.name_en as branch_name FROM petty_cash_funds pcf LEFT JOIN employees e ON pcf.responsible_employee_id = e.id LEFT JOIN branches b ON pcf.branch_id = b.id";
+  let query = "SELECT pcf.*, pcf.current_balance as balance, e.name as responsible_employee_name, b.name_en as branch_name FROM petty_cash_funds pcf LEFT JOIN employees e ON pcf.responsible_employee_id = e.id LEFT JOIN branches b ON pcf.branch_id = b.id";
   let params = [];
   
   if (branchId) {
@@ -25,10 +37,37 @@ const getFundById = async (id) => {
 };
 
 const createFund = async (fundData) => {
-  const { name, branch_id, responsible_employee_id, limit_amount, created_by } = fundData;
+  const {
+    name,
+    branch_id,
+    responsible_employee_id,
+    limit_amount,
+    initial_balance,
+    created_by
+  } = fundData;
+
+  const normalizedName = typeof name === "string" ? name.trim() : "";
+  if (!normalizedName) {
+    throw new Error("Fund name is required");
+  }
+
+  const normalizedBranchId = normalizeNullableInt(branch_id);
+  const normalizedResponsibleEmployeeId = normalizeNullableInt(responsible_employee_id);
+  const normalizedLimitAmount = normalizeAmount(limit_amount, 0);
+  const normalizedInitialBalance = normalizeAmount(initial_balance, 0);
+
   const [result] = await db.query(
-    "INSERT INTO petty_cash_funds (name, branch_id, responsible_employee_id, limit_amount, created_by) VALUES (?, ?, ?, ?, ?)",
-    [name, branch_id, responsible_employee_id, limit_amount, created_by]
+    `INSERT INTO petty_cash_funds 
+    (name, branch_id, responsible_employee_id, limit_amount, current_balance, created_by) 
+    VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      normalizedName,
+      normalizedBranchId,
+      normalizedResponsibleEmployeeId,
+      normalizedLimitAmount,
+      normalizedInitialBalance,
+      created_by
+    ]
   );
   return result.insertId;
 };
@@ -76,7 +115,7 @@ const createTransaction = async (transactionData) => {
 
 const getFundTransactions = async (fundId, filters = {}) => {
   const { date_from, date_to } = filters;
-  let query = "SELECT pct.*, e.name as created_by_name FROM petty_cash_transactions pct LEFT JOIN employees e ON pct.created_by = e.id WHERE pct.fund_id = ?";
+  let query = "SELECT pct.*, pct.transaction_date as date, e.name as created_by_name FROM petty_cash_transactions pct LEFT JOIN employees e ON pct.created_by = e.id WHERE pct.fund_id = ?";
   let params = [fundId];
   
   if (date_from) {
