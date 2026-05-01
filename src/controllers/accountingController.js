@@ -3,6 +3,8 @@ const journalEntriesModel = require("../models/journalEntriesModel");
 const currenciesModel = require("../models/currenciesModel");
 const accountingService = require("../services/accountingService");
 const reportService = require("../services/reportService");
+const fiscalPeriodsModel = require("../models/fiscalPeriodsModel");
+const budgetsModel = require("../models/budgetsModel");
 
 // Accounts
 const getAccounts = async (req, res) => {
@@ -14,10 +16,48 @@ const getAccounts = async (req, res) => {
   }
 };
 
+const getAccountsTree = async (req, res) => {
+  try {
+    const result = await accountsModel.getAccountsTree(req.query);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
 const createAccount = async (req, res) => {
   try {
     const result = await accountsModel.createAccount(req.body);
     res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+// Fiscal Periods
+const getFiscalPeriods = async (req, res) => {
+  try {
+    const result = await fiscalPeriodsModel.getAllPeriods(req.query);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const createFiscalPeriod = async (req, res) => {
+  try {
+    req.body.created_by = req.user ? req.user.id : null;
+    const result = await fiscalPeriodsModel.createPeriod(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const updateFiscalPeriodStatus = async (req, res) => {
+  try {
+    const result = await fiscalPeriodsModel.updatePeriodStatus(req.params.id, req.body.status);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: req.t('generic.internalError') });
   }
@@ -67,8 +107,17 @@ const getCurrencies = async (req, res) => {
 // Reports
 const getTrialBalance = async (req, res) => {
   try {
-    const result = await journalEntriesModel.getTrialBalance(req.query);
+    const result = await accountingService.getTrialBalance(req.query);
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const getCashFlow = async (req, res) => {
+  try {
+    const result = await accountingService.getCashFlow(req.query);
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, message: req.t('generic.internalError') });
   }
@@ -94,8 +143,8 @@ const getBalanceSheet = async (req, res) => {
 
 const getAgingReceivables = async (req, res) => {
   try {
-    const result = await reportService.getAgingAnalysis('AR');
-    res.json(result);
+    const result = await accountingService.getAgedReceivables(req.query);
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, message: req.t('generic.internalError') });
   }
@@ -103,8 +152,8 @@ const getAgingReceivables = async (req, res) => {
 
 const getAgingPayables = async (req, res) => {
   try {
-    const result = await reportService.getAgingAnalysis('AP');
-    res.json(result);
+    const result = await accountingService.getAgedPayables(req.query);
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, message: req.t('generic.internalError') });
   }
@@ -112,7 +161,54 @@ const getAgingPayables = async (req, res) => {
 
 const getVendorLiabilities = async (req, res) => {
   try {
-    const result = await reportService.getVendorLiabilities();
+    const result = await accountingService.getAgedPayables(req.query);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const getCaseSummary = async (req, res) => {
+  try {
+    const result = await accountingService.getCaseFinancialSummary(req.params.caseId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const getProjectSummary = async (req, res) => {
+  try {
+    const result = await accountingService.getProjectFinancialSummary(req.params.projectId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const getDepartmentSummary = async (req, res) => {
+  try {
+    const result = await accountingService.getDepartmentFinancialSummary(req.params.departmentId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+// Budgets
+const setBudget = async (req, res) => {
+  try {
+    req.body.created_by = req.user ? req.user.id : null;
+    const result = await budgetsModel.setBudget(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
+const getBudgetVsActual = async (req, res) => {
+  try {
+    const result = await accountingService.getBudgetVsActual(req.query);
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: req.t('generic.internalError') });
@@ -121,6 +217,7 @@ const getVendorLiabilities = async (req, res) => {
 
 module.exports = {
   getAccounts,
+  getAccountsTree,
   createAccount,
   getJournalEntries,
   getJournalEntry,
@@ -131,5 +228,14 @@ module.exports = {
   getBalanceSheet,
   getAgingReceivables,
   getAgingPayables,
-  getVendorLiabilities
+  getVendorLiabilities,
+  getCaseSummary,
+  getProjectSummary,
+  getDepartmentSummary,
+  getCashFlow,
+  getFiscalPeriods,
+  createFiscalPeriod,
+  updateFiscalPeriodStatus,
+  setBudget,
+  getBudgetVsActual
 };

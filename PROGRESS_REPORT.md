@@ -78,6 +78,18 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - **Enhanced COA:** Added metadata flags to the Chart of Accounts (`is_reconcilable`, `allow_manual_posting`) to prevent erroneous manual entries into controlled accounts (like Accounts Receivable).
   - **Reporting Engine Updates:** Updated Trial Balance and Financial Statements logic to support consolidated views using system-wide base currency (AED).
 
+### Finance Department and COA Improvements (May 2026)
+- **Problem:** The Chart of Accounts lacked hierarchical visualization and rollup capabilities. The finance department needed more robust reporting for aging, budgeting, and fiscal period control.
+- **Solution:** Significantly enhanced the core accounting engine and reporting suite.
+- **Key Features:**
+  - **Hierarchical COA (Tree View):** Implemented recursive tree retrieval for the Chart of Accounts, allowing the frontend to display accounts in a nested structure.
+  - **Hierarchical Report Rollup:** Updated Profit & Loss and Balance Sheet reports to automatically roll up balances from child accounts to their parents, providing a true hierarchical financial view.
+  - **Fiscal Period Control:** Added a new mechanism to open/close fiscal periods (months/years). The system now prevents manual journal entries in closed periods, ensuring data integrity for finalized months.
+  - **Budgeting & Variance Analysis:** Implemented a budgeting module allowing firms to set monthly/annual budgets per account. Added a "Budget vs. Actual" report with variance and performance percentage tracking.
+  - **Advanced Aging Reports:** Integrated direct Aged Receivables (AR) and Aged Payables (AP) reports into the accounting service, categorized by 0-30, 31-60, 61-90, and 90+ day buckets.
+  - **Case-Specific Profitability:** Added a dedicated Case Financial Summary report that calculates income, expenses, and net profit per legal case based on linked ledger entries.
+- **Technical Detail:** Added 2 new database tables (`fiscal_periods`, `account_budgets`) and updated `accountsModel`, `accountingService`, and `accountingController` with multiple new endpoints and logic layers.
+
 ## 7. Ongoing Tasks
 - Completed endpoint validation pass for Express on serverless: confirmed app startup, route registration, and production-safe behavior for Vercel deployment.
 - Disabled local `/uploads` static serving in production so file access is handled exclusively through Vercel Blob.

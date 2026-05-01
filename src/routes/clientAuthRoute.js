@@ -28,4 +28,8 @@ router.get('/cases', authenticateClientToken, clientCasesController.getClientCas
 // Get client case by ID
 router.get('/cases/:id', authenticateClientToken, clientCasesController.getClientCaseById);
 
+// Finance routes
+router.get('/finance-summary', authenticateClientToken, clientAuthController.getClientFinanceSummary);
+router.get('/invoices', authenticateClientToken, clientAuthController.getClientInvoices);
+
 module.exports = router;

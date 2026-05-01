@@ -160,6 +160,7 @@ const getTrialBalance = async (filters = {}) => {
         a.name_en,
         a.name_ar,
         a.type,
+        a.parent_id,
         SUM(${debitCol}) as total_debit,
         SUM(${creditCol}) as total_credit,
         (SUM(${debitCol}) - SUM(${creditCol})) as balance
@@ -185,7 +186,7 @@ const getTrialBalance = async (filters = {}) => {
       params.push(branch_id);
     }
 
-    query += " GROUP BY a.id, a.code, a.name_en, a.name_ar, a.type ORDER BY a.code ASC";
+    query += " GROUP BY a.id, a.code, a.name_en, a.name_ar, a.type, a.parent_id ORDER BY a.code ASC";
 
     try {
       const [rows] = await db.query(query, params);

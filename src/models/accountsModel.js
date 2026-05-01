@@ -41,11 +41,20 @@ const getAccountById = async (id) => {
 };
 
 const createAccount = async (accountData) => {
-  const { code, name_ar, name_en, type, parent_id, branch_id } = accountData;
+  const { code, name_ar, name_en, type, parent_id, branch_id, is_reconcilable, allow_manual_posting } = accountData;
   try {
     const [result] = await db.query(
-      "INSERT INTO accounts (code, name_ar, name_en, type, parent_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)",
-      [code, name_ar, name_en, type, parent_id || null, branch_id || null]
+      "INSERT INTO accounts (code, name_ar, name_en, type, parent_id, branch_id, is_reconcilable, allow_manual_posting) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [
+        code, 
+        name_ar, 
+        name_en, 
+        type, 
+        parent_id || null, 
+        branch_id || null, 
+        is_reconcilable ? 1 : 0, 
+        allow_manual_posting ? 1 : 0
+      ]
     );
     return { success: true, data: { id: result.insertId } };
   } catch (error) {
@@ -59,7 +68,7 @@ const updateAccount = async (id, accountData) => {
   const params = [];
   
   Object.keys(accountData).forEach(key => {
-    if (['code', 'name_ar', 'name_en', 'type', 'parent_id', 'branch_id', 'is_active'].includes(key)) {
+    if (['code', 'name_ar', 'name_en', 'type', 'parent_id', 'branch_id', 'is_active', 'is_reconcilable', 'allow_manual_posting'].includes(key)) {
       fields.push(`${key} = ?`);
       params.push(accountData[key]);
     }
@@ -87,10 +96,35 @@ const deleteAccount = async (id) => {
   }
 };
 
+const getAccountsTree = async (filters = {}) => {
+  const result = await getAllAccounts(filters);
+  if (!result.success) return result;
+
+  const accounts = result.data;
+  const accountMap = {};
+  const tree = [];
+
+  accounts.forEach(account => {
+    account.children = [];
+    accountMap[account.id] = account;
+  });
+
+  accounts.forEach(account => {
+    if (account.parent_id && accountMap[account.parent_id]) {
+      accountMap[account.parent_id].children.push(account);
+    } else {
+      tree.push(account);
+    }
+  });
+
+  return { success: true, data: tree };
+};
+
 module.exports = {
   getAllAccounts,
   getAccountById,
   createAccount,
   updateAccount,
-  deleteAccount
+  deleteAccount,
+  getAccountsTree
 };

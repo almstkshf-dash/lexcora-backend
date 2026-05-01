@@ -88,10 +88,20 @@ const getClientCaseById = async (req, res) => {
     // Get sessions for this case
     const sessions = await getSessionsByCase(id);
 
-    // Combine case details with sessions
+    // Get financial summary for this case
+    let financialSummary = null;
+    try {
+      const { getCaseFinancialSummary } = require('../services/accountingService');
+      financialSummary = await getCaseFinancialSummary(id);
+    } catch (err) {
+      console.warn('Could not fetch financial summary for case:', id, err.message);
+    }
+
+    // Combine case details with sessions and financial summary
     const fullCaseData = {
       ...caseDetails,
-      sessions: sessions || []
+      sessions: sessions || [],
+      financial_summary: financialSummary
     };
 
     res.status(200).json({

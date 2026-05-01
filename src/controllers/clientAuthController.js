@@ -191,11 +191,64 @@ const createClientRequest = async (req, res) => {
   }
 };
 
+/**
+ * Get Client Finance Summary
+ */
+const getClientFinanceSummary = async (req, res) => {
+  try {
+    const partyId = req.user.id;
+    const { getPartyFinancialSummary } = require('../services/accountingService');
+    const summary = await getPartyFinancialSummary(partyId);
+    
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Get client finance summary error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching finance summary'
+    });
+  }
+};
+
+/**
+ * Get Client Invoices
+ */
+const getClientInvoices = async (req, res) => {
+  try {
+    const partyId = req.user.id;
+    const db = require('../config/db');
+    
+    const [invoices] = await db.query(`
+      SELECT i.*, c.name_en as currency_name
+      FROM invoices i
+      LEFT JOIN currencies c ON i.currency = c.code
+      WHERE i.client_id = ?
+      ORDER BY i.invoice_date DESC
+    `, [partyId]);
+    
+    res.status(200).json({
+      success: true,
+      data: invoices
+    });
+  } catch (error) {
+    console.error('Get client invoices error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching invoices'
+    });
+  }
+};
+
 module.exports = {
   loginClient,
   logoutClient,
   getCurrentClient,
   getClientDocuments,
   getClientRequests,
-  createClientRequest
+  createClientRequest,
+  getClientFinanceSummary,
+  getClientInvoices
 };

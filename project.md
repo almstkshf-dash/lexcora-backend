@@ -180,6 +180,7 @@ NEXT_PUBLIC_API_URL=https://lexcora-backend.vercel.app
 - [x] Phase 6 — Deploy frontend + client portal to Vercel (Frontend: https://lexcora-frontend.vercel.app, Portal: https://lexcora-client-portal.vercel.app)
 - [x] Phase 7 — End-to-end testing (Backend Healthy: https://lexcora-backend.vercel.app/health)
 - [x] Phase 8 — AR/AP & Vendor Management Implementation (Backend models, controllers, and services completed)
+- [x] Phase 9 — Advanced Finance & COA Enhancements (Hierarchical rollup, Budgeting, Aging Reports, Fiscal Periods)
 
 ---
 
