@@ -81,6 +81,7 @@ const billsRoute = require("./routes/billsRoute");
 const paymentsRoute = require("./routes/paymentsRoute");
 const bankingRoute = require("./routes/bankingRoutes");
 const pettyCashRoute = require("./routes/pettyCashRoutes");
+const ledgerRoute = require("./routes/ledgerRoute");
 
 const app = express();
 
@@ -267,6 +268,7 @@ app.use("/api/employee-cash-transactions", employeeCashTransactionsRoute);
 app.use("/api/legal-assistant", legalAssistantRoute);
 app.use("/api/search", searchRoute);
 app.use("/api/accounting", accountingRoute);
+app.use("/api/ledger", ledgerRoute);
 app.use("/api/bills", billsRoute);
 app.use("/api/payments", paymentsRoute);
 app.use("/api/banking", bankingRoute);

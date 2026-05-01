@@ -443,19 +443,6 @@ INSERT INTO `case_petition_documents` (`id`, `petition_id`, `document_name`, `do
 -- --------------------------------------------------------
 
 --
--- بنية الجدول `case_relations`
---
-
-CREATE TABLE `case_relations` (
-  `id` int NOT NULL,
-  `case_id` int NOT NULL,
-  `related_case_id` int NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
 -- بنية الجدول `case_types`
 --
 
@@ -2813,13 +2800,6 @@ ALTER TABLE `case_petition_documents`
   ADD KEY `petition_id` (`petition_id`);
 
 --
--- Indexes for table `case_relations`
---
-ALTER TABLE `case_relations`
-  ADD UNIQUE KEY `related_case_id` (`related_case_id`),
-  ADD KEY `case_relations_ibfk_1` (`case_id`);
-
---
 -- Indexes for table `case_types`
 --
 ALTER TABLE `case_types`
@@ -3873,13 +3853,6 @@ ALTER TABLE `case_petitions`
 --
 ALTER TABLE `case_petition_documents`
   ADD CONSTRAINT `case_petition_documents_ibfk_1` FOREIGN KEY (`petition_id`) REFERENCES `case_petitions` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT;
-
---
--- القيود للجدول `case_relations`
---
-ALTER TABLE `case_relations`
-  ADD CONSTRAINT `case_relations_ibfk_1` FOREIGN KEY (`case_id`) REFERENCES `cases` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `case_relations_ibfk_2` FOREIGN KEY (`related_case_id`) REFERENCES `cases` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 --
 -- القيود للجدول `cash_transaction_attachments`

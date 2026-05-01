@@ -679,10 +679,32 @@ const createCaseWithRelations = async (data, createdBy = null) => {
     }
 
     // 5. Add related cases
+    // Persist related case links in the existing related_cases table
+    // so they match getRelatedCases() and updateCase() behavior.
     const relatedCases = Array.isArray(caseData.related_cases) ? caseData.related_cases : [];
-    for (const relatedCaseId of relatedCases) {
+    for (const relatedCase of relatedCases) {
+      let relatedCaseId = null;
+
+      if (typeof relatedCase === 'number') {
+        relatedCaseId = relatedCase;
+      } else if (typeof relatedCase === 'string' && /^\d+$/.test(relatedCase)) {
+        relatedCaseId = Number(relatedCase);
+      } else if (relatedCase && typeof relatedCase === 'object') {
+        if (relatedCase.id) {
+          relatedCaseId = Number(relatedCase.id);
+        } else if (relatedCase.related_case_id) {
+          relatedCaseId = Number(relatedCase.related_case_id);
+        } else if (relatedCase.file_number) {
+          relatedCaseId = await casesModel.getCaseIdFromFileNumber(relatedCase.file_number);
+        }
+      }
+
+      if (!relatedCaseId) {
+        continue;
+      }
+
       await connection.query(
-        'INSERT INTO case_relations (case_id, related_case_id) VALUES (?, ?)',
+        'INSERT INTO related_cases (case_id, related_case_id) VALUES (?, ?)',
         [caseId, relatedCaseId]
       );
     }
