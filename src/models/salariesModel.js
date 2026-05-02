@@ -128,4 +128,3 @@ module.exports = {
   updateSalary,
   deleteSalary
 };
-实现 net_salary // Typo fix needed in next turn or script
