@@ -21,6 +21,9 @@ router.put('/:id', authenticateToken, meetingsController.updateMeeting);
 // Delete a meeting
 router.delete('/:id', authenticateToken, meetingsController.deleteMeeting);
 
+// Generate invoice for a consultation
+router.post('/:id/invoice', authenticateToken, meetingsController.generateInvoice);
+
 // Meeting Documents routes
 // Get all documents for a meeting
 router.get('/:meetingId/documents', authenticateToken, meetingsController.getMeetingDocuments);

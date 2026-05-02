@@ -224,6 +224,10 @@ const deleteMeetingDocument = async (documentId, deletedBy = null) => {
   return document !== null;
 };
 
+const generateInvoice = async (id, createdBy) => {
+  return await meetingsModel.generateConsultationInvoice(id, createdBy);
+};
+
 module.exports = {
   getAllMeetings,
   getMeetingById,
@@ -231,6 +235,7 @@ module.exports = {
   createMeeting,
   updateMeeting,
   deleteMeeting,
+  generateInvoice,
   getMeetingDocuments,
   addMeetingDocuments,
   deleteMeetingDocument

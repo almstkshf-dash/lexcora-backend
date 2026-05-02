@@ -2,7 +2,7 @@ const meetingsService = require('../services/meetingsService');
 
 const getAllMeetings = async (req, res) => {
   try {
-    const { page, limit, party_id, date, meet_result, created_by, search, meeting_type } = req.query;
+    const { page, limit, party_id, date, meet_result, created_by, search, meeting_type, case_id, is_consultation } = req.query;
     const filters = {
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 10,
@@ -11,7 +11,9 @@ const getAllMeetings = async (req, res) => {
       meet_result,
       created_by,
       search,
-      meeting_type
+      meeting_type,
+      case_id,
+      is_consultation: is_consultation === 'true' || is_consultation === true
     };
     
     const result = await meetingsService.getAllMeetings(filters);
@@ -100,6 +102,18 @@ const deleteMeeting = async (req, res) => {
   }
 };
 
+const generateInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const createdBy = req.user?.id || null;
+    const result = await meetingsService.generateInvoice(id, createdBy);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error generating invoice for meeting:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to generate invoice' });
+  }
+};
+
 // Meeting Documents Controllers
 const getMeetingDocuments = async (req, res) => {
   try {
@@ -154,6 +168,7 @@ module.exports = {
   createMeeting,
   updateMeeting,
   deleteMeeting,
+  generateInvoice,
   getMeetingDocuments,
   addMeetingDocuments,
   deleteMeetingDocument

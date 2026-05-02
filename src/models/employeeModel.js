@@ -137,7 +137,8 @@ const createEmployee = async (employee) => {
     accountNumber,
     bankName,
     contractType,
-    registrationExpirationDate
+    registrationExpirationDate,
+    hourlyRate = 0
   } = employee;
 
   // Helper function to convert empty strings to null for date fields
@@ -167,8 +168,8 @@ const createEmployee = async (employee) => {
       health_insurance_end_date, contract_end_date, basic_salary, branch_id, status,
       account_close_date, another_allownce, account_activation_date, fisrt_day_of_work,
       housing_allowance, trnsportation_allownce, pay_type, iban, account_number, bank_name, contract_type,
-      registration_expiration_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      registration_expiration_date, hourly_rate
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     name, 
     username, 
@@ -201,7 +202,8 @@ const createEmployee = async (employee) => {
     normalizeValue(accountNumber), 
     normalizeValue(bankName), 
     normalizeValue(contractType),
-    normalizeDate(registrationExpirationDate)
+    normalizeDate(registrationExpirationDate),
+    hourlyRate || 0
   ]);
   
   return result.insertId;
@@ -248,7 +250,8 @@ const updateEmployee = async (id, employee) => {
     bankName,
     contractType,
     registrationExpirationDate,
-    registrationExpiryDate // Support both naming conventions
+    registrationExpiryDate, // Support both naming conventions
+    hourlyRate
   } = employee;
 
   // Helper function to convert empty strings to null for date fields
@@ -287,7 +290,7 @@ const updateEmployee = async (id, employee) => {
     account_close_date = ?, another_allownce = ?, account_activation_date = ?,
     fisrt_day_of_work = ?, housing_allowance = ?, trnsportation_allownce = ?,
     pay_type = ?, iban = ?, account_number = ?, bank_name = ?, contract_type = ?,
-    registration_expiration_date = ?`;
+    registration_expiration_date = ?, hourly_rate = ?`;
   
   let params = [
     normalizeValue(name),
@@ -320,7 +323,8 @@ const updateEmployee = async (id, employee) => {
     normalizeValue(accountNumber), 
     normalizeValue(bankName), 
     normalizeValue(contractType),
-    normalizeDate(finalRegistrationExpirationDate)
+    normalizeDate(finalRegistrationExpirationDate),
+    hourlyRate || 0
   ];
   
   // Only update password if it's provided and not masked

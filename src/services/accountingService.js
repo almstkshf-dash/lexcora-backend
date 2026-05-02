@@ -23,7 +23,7 @@ const postAutomatedEntry = async (event, data, connection = null) => {
   } = data;
 
   // Get dynamic posting settings for this event
-  const [settingsRows] = await db.query(
+  const [settingsRows] = await (connection || db).query(
     "SELECT debit_account_id, credit_account_id, description_template FROM posting_settings WHERE event_key = ? AND is_active = TRUE", 
     [event]
   );

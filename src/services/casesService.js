@@ -5,6 +5,7 @@ const e = require('express');
 const casesModel = require('../models/casesModel');
 const courtsModel = require('../models/courtsModel');
 const employeeModel = require('../models/employeeModel');
+const accountingService = require('./accountingService');
 const { deleteDocumentFiles } = require('./storageService');
 const { logAdd, logUpdate, logDelete } = require('./logsService');
 const { sendCaseNotification } = require('../utils/notificationHelper');
@@ -708,14 +709,28 @@ const createCaseWithRelations = async (data, createdBy = null) => {
         [caseId, relatedCaseId]
       );
     }
+    
+    // 5.b Add related files
+    const relatedFiles = Array.isArray(caseData.relatedFiles) ? caseData.relatedFiles : [];
+    for (const file of relatedFiles) {
+      await connection.query(
+        'INSERT INTO case_related_files (case_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?)',
+        [caseId, file.document_name, file.document_url, createdBy]
+      );
+    }
 
     // 6. Add parties
     const parties = Array.isArray(data.parties) ? data.parties : [];
+    let primaryClientId = null;
     for (const party of parties) {
       await connection.query(
         'INSERT INTO case_parties (case_id, party_id, type, employee_id) VALUES (?, ?, ?, ?)',
         [caseId, party.id, party.type, createdBy]
       );
+      
+      if (party.type === 'client' && !primaryClientId) {
+        primaryClientId = party.id;
+      }
 
       // Add party documents
       const partyFiles = Array.isArray(party.files) ? party.files : [];
@@ -724,6 +739,27 @@ const createCaseWithRelations = async (data, createdBy = null) => {
           'INSERT INTO case_parties_documents (case_id, party_id, document_name, document_url, uploaded_by) VALUES (?, ?, ?, ?, ?)',
           [caseId, party.id, file.document_name, file.document_url, createdBy]
         );
+      }
+    }
+
+    // Automated Accounting Entry for Fees & Expenses
+    if (caseData.fees && Number(caseData.fees) > 0) {
+      try {
+        await accountingService.postAutomatedEntry('CASE_CREATED', {
+          amount: Number(caseData.fees),
+          currency: 'AED',
+          case_id: caseId,
+          party_id: primaryClientId,
+          branch_id: caseData.branch_id,
+          created_by: createdBy,
+          case_number: caseData.case_number,
+          file_number: fileNumber
+        }, connection);
+      } catch (accountingError) {
+        console.error('Failed to post automated entry for case fees:', accountingError);
+        // We don't necessarily want to fail the whole case creation if accounting fails,
+        // but for a strict ERP we might. Given the user's request, we'll let it throw to rollback.
+        throw accountingError;
       }
     }
 

@@ -1,16 +1,33 @@
 const express = require('express');
-const router = express.Router();
-const employeeRequestsController = require('../controllers/employeeRequestsController');
+const router  = express.Router();
+const c = require('../controllers/employeeRequestsController');
 const { authenticateToken } = require('../middliewares/authMiddleware');
+const { checkPermission }   = require('../middlewares/permissionsMiddleware');
 
-// All routes require authentication
-router.get('/', authenticateToken, employeeRequestsController.getEmployeeRequests);
-router.get('/employee/:employeeId', authenticateToken, employeeRequestsController.getRequestsByEmployeeId);
-router.get('/:id', authenticateToken, employeeRequestsController.getEmployeeRequest);
-router.post('/', authenticateToken, employeeRequestsController.createEmployeeRequest);
-router.put('/:id', authenticateToken, employeeRequestsController.updateEmployeeRequest);
-router.patch('/:id/manager-approval', authenticateToken, employeeRequestsController.updateManagerApproval);
-router.patch('/:id/hr-approval', authenticateToken, employeeRequestsController.updateHrApproval);
-router.delete('/:id', authenticateToken, employeeRequestsController.deleteEmployeeRequest);
+// ── Public (authenticated) reads ─────────────────────────────────
+router.get('/',                        authenticateToken, c.getEmployeeRequests);
+router.get('/finance-summary',         authenticateToken, c.getFinanceSummary);
+router.get('/employee/:employeeId',    authenticateToken, c.getRequestsByEmployeeId);
+router.get('/:id',                     authenticateToken, c.getEmployeeRequest);
+
+// ── Create / update basic request fields ─────────────────────────
+router.post('/',                       authenticateToken, c.createEmployeeRequest);
+router.put('/:id',                     authenticateToken, c.updateEmployeeRequest);
+
+// ── Approval workflow ─────────────────────────────────────────────
+// Manager approval — any authenticated user with the general permission
+router.patch('/:id/manager-approval',  authenticateToken, c.updateManagerApproval);
+
+// HR approval — HR department
+router.patch('/:id/hr-approval',       authenticateToken, c.updateHrApproval);
+
+// Finance approval — requires explicit Finance permission (checked inside controller)
+router.patch('/:id/finance-approval',  authenticateToken, c.updateFinanceApproval);
+
+// ── Financial values — gated inside controller ────────────────────
+router.patch('/:id/financial-values',  authenticateToken, c.updateLeaveFinancialValues);
+
+// ── Delete ────────────────────────────────────────────────────────
+router.delete('/:id',                  authenticateToken, c.deleteEmployeeRequest);
 
 module.exports = router;

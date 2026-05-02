@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 const getAllMeetings = async (filters = {}) => {
-  const { page = 1, limit = 10, party_id, date, meet_result, created_by, search, meeting_type } = filters;
+  const { page = 1, limit = 10, party_id, date, meet_result, created_by, search, meeting_type, case_id, is_consultation } = filters;
   const offset = (page - 1) * limit;
 
   // Build WHERE clause dynamically
@@ -12,6 +12,10 @@ const getAllMeetings = async (filters = {}) => {
   if (party_id) {
     conditions.push('m.party_id = ?');
     params.push(party_id);
+  }
+  if (case_id) {
+    conditions.push('m.case_id = ?');
+    params.push(case_id);
   }
   if (date) {
     conditions.push('m.date = ?');
@@ -28,6 +32,10 @@ const getAllMeetings = async (filters = {}) => {
   if (meeting_type) {
     conditions.push('m.meeting_type = ?');
     params.push(meeting_type);
+  }
+  if (is_consultation !== undefined) {
+    conditions.push('m.is_consultation = ?');
+    params.push(is_consultation ? 1 : 0);
   }
   if (search) {
     conditions.push('(p.name LIKE ? OR p.phone LIKE ? OR m.note LIKE ? OR m.address LIKE ?)');
@@ -57,11 +65,16 @@ const getAllMeetings = async (filters = {}) => {
            e.name as created_by_name,
            p.name as client_name,
            p.phone as client_phone,
+           c.topic as case_topic,
+           c.file_number as case_file_number,
+           inv.invoice_number,
            COUNT(DISTINCT ma.employee_id) as attendees_count,
            GROUP_CONCAT(DISTINCT ma.employee_id) as attendee_ids
     FROM meetings m
     LEFT JOIN parties p ON m.party_id = p.id
     LEFT JOIN employees e ON m.created_by = e.id
+    LEFT JOIN cases c ON m.case_id = c.id
+    LEFT JOIN invoices inv ON m.invoice_id = inv.id
     LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id
     ${whereClause} 
     GROUP BY m.id
@@ -88,10 +101,15 @@ const getMeetingById = async (id) => {
            p.phone as party_phone,
            e.name as created_by_name,
            p.name as client_name,
-           p.phone as client_phone
+           p.phone as client_phone,
+           c.topic as case_topic,
+           c.file_number as case_file_number,
+           inv.invoice_number
     FROM meetings m
     LEFT JOIN parties p ON m.party_id = p.id
     LEFT JOIN employees e ON m.created_by = e.id
+    LEFT JOIN cases c ON m.case_id = c.id
+    LEFT JOIN invoices inv ON m.invoice_id = inv.id
     WHERE m.id = ?
   `;
   const [rows] = await db.query(query, [id]);
@@ -106,6 +124,7 @@ const getMeetingById = async (id) => {
     SELECT 
       ma.employee_id,
       emp.name as employee_name,
+      emp.hourly_rate,
       r.role_ar,
       r.role_en
     FROM meeting_attendance ma
@@ -134,10 +153,12 @@ const getMeetingsByPartyId = async (partyId) => {
            e.name as created_by_name,
            p.name as client_name,
            p.phone as client_phone,
+           c.topic as case_topic,
            COUNT(DISTINCT ma.employee_id) as attendees_count
     FROM meetings m
     LEFT JOIN parties p ON m.party_id = p.id
     LEFT JOIN employees e ON m.created_by = e.id
+    LEFT JOIN cases c ON m.case_id = c.id
     LEFT JOIN meeting_attendance ma ON m.id = ma.meeting_id
     WHERE m.party_id = ?
     GROUP BY m.id
@@ -155,6 +176,7 @@ const createMeeting = async (data) => {
 
     const { 
       party_id, 
+      case_id,
       note, 
       date, 
       start_time, 
@@ -164,16 +186,25 @@ const createMeeting = async (data) => {
       meeting_type, 
       address,
       link,
+      is_consultation = false,
+      consultation_fee = 0,
+      duration_minutes = 0,
+      hourly_rate = 0,
       employee_ids = []
     } = data;
     
     const query = `
-      INSERT INTO meetings (party_id, note, date, start_time, end_time, meet_result, created_by, meeting_type, address, link)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO meetings (
+        party_id, case_id, note, date, start_time, end_time, 
+        meet_result, created_by, meeting_type, address, link,
+        is_consultation, consultation_fee, duration_minutes, hourly_rate
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const [result] = await connection.query(query, [
-      party_id,
+      party_id || null,
+      case_id || null,
       note || null,
       date,
       start_time || null,
@@ -182,7 +213,11 @@ const createMeeting = async (data) => {
       created_by || null,
       meeting_type || null,
       address || null,
-      link || null
+      link || null,
+      is_consultation ? 1 : 0,
+      consultation_fee || 0,
+      duration_minutes || 0,
+      hourly_rate || 0
     ]);
     
     const meetingId = result.insertId;
@@ -215,6 +250,7 @@ const updateMeeting = async (id, data) => {
 
     const { 
       party_id, 
+      case_id,
       note, 
       date, 
       start_time, 
@@ -223,6 +259,10 @@ const updateMeeting = async (id, data) => {
       meeting_type, 
       address,
       link,
+      is_consultation,
+      consultation_fee,
+      duration_minutes,
+      hourly_rate,
       employee_ids = []
     } = data;
     
@@ -237,38 +277,46 @@ const updateMeeting = async (id, data) => {
       return false;
     }
 
-    const query = `
-      UPDATE meetings 
-      SET party_id = ?, note = ?, date = ?, start_time = ?, end_time = ?, meet_result = ?, meeting_type = ?, address = ?, link = ?
-      WHERE id = ?
-    `;
-    
-    await connection.query(query, [
-      party_id,
-      note || null,
-      date,
-      start_time || null,
-      end_time || null,
-      meet_result || null,
-      meeting_type || null,
-      address || null,
-      link || null,
-      id
-    ]);
+    // Build dynamic update
+    const updates = [];
+    const params = [];
 
-    // Delete existing attendees
-    await connection.query(
-      'DELETE FROM meeting_attendance WHERE meeting_id = ?',
-      [id]
-    );
+    const fields = {
+      party_id, case_id, note, date, start_time, end_time,
+      meet_result, meeting_type, address, link,
+      is_consultation: is_consultation !== undefined ? (is_consultation ? 1 : 0) : undefined,
+      consultation_fee, duration_minutes, hourly_rate
+    };
 
-    // Insert new attendees
-    if (employee_ids && employee_ids.length > 0) {
-      const attendeeValues = employee_ids.map(emp_id => [id, emp_id]);
+    Object.keys(fields).forEach(key => {
+      if (fields[key] !== undefined) {
+        updates.push(`${key} = ?`);
+        params.push(fields[key]);
+      }
+    });
+
+    if (updates.length > 0) {
+      params.push(id);
+      const query = `UPDATE meetings SET ${updates.join(', ')} WHERE id = ?`;
+      await connection.query(query, params);
+    }
+
+    // Update attendees if provided
+    if (employee_ids !== undefined) {
+      // Delete existing attendees
       await connection.query(
-        `INSERT INTO meeting_attendance (meeting_id, employee_id) VALUES ?`,
-        [attendeeValues]
+        'DELETE FROM meeting_attendance WHERE meeting_id = ?',
+        [id]
       );
+
+      // Insert new attendees
+      if (employee_ids && employee_ids.length > 0) {
+        const attendeeValues = employee_ids.map(emp_id => [id, emp_id]);
+        await connection.query(
+          `INSERT INTO meeting_attendance (meeting_id, employee_id) VALUES ?`,
+          [attendeeValues]
+        );
+      }
     }
 
     await connection.commit();
@@ -314,6 +362,66 @@ const deleteMeeting = async (id) => {
     return true;
   } catch (error) {
     await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+// Consultation Invoicing Logic
+const generateConsultationInvoice = async (meetingId, createdBy) => {
+  const connection = await db.getConnection();
+  const invoicesModel = require('./invoicesModel');
+  
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get meeting details
+    const [meetingRows] = await connection.query(`
+      SELECT m.*, p.name as client_name, p.id as client_id, p.branch_id
+      FROM meetings m
+      JOIN parties p ON m.party_id = p.id
+      WHERE m.id = ?
+    `, [meetingId]);
+
+    const meeting = meetingRows[0];
+    if (!meeting) throw new Error('Meeting not found');
+    if (!meeting.is_consultation) throw new Error('Meeting is not a consultation');
+    if (meeting.invoice_id) throw new Error('Consultation already invoiced');
+
+    // 2. Create Invoice
+    const invoiceData = {
+      invoice_date: new Date(),
+      amount: meeting.consultation_fee,
+      client_id: meeting.client_id,
+      branch_id: meeting.branch_id,
+      status: 'pending',
+      currency: 'AED',
+      case_id: meeting.case_id,
+      created_by: createdBy
+    };
+
+    const invoiceItems = [
+      {
+        description: `Legal Consultation on ${meeting.date} (Duration: ${meeting.duration_minutes} mins)`,
+        amount: meeting.consultation_fee
+      }
+    ];
+
+    const result = await invoicesModel.createInvoice(invoiceData, invoiceItems, [], connection);
+    const invoiceId = result.data.id;
+
+    // 3. Link Invoice to Meeting
+    await connection.query(
+      'UPDATE meetings SET invoice_id = ? WHERE id = ?',
+      [invoiceId, meetingId]
+    );
+
+    await connection.commit();
+    return { success: true, invoiceId, invoiceNumber: result.data.invoice_number };
+  } catch (error) {
+    await connection.rollback();
+    console.error('generateConsultationInvoice error:', error);
     throw error;
   } finally {
     connection.release();
@@ -371,5 +479,6 @@ module.exports = {
   deleteMeeting,
   getMeetingDocuments,
   addMeetingDocument,
-  deleteMeetingDocument
-};
+  deleteMeetingDocument,
+  generateConsultationInvoice
+};

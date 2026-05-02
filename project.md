@@ -181,6 +181,20 @@ NEXT_PUBLIC_API_URL=https://lexcora-backend.vercel.app
 - [x] Phase 7 — End-to-end testing (Backend Healthy: https://lexcora-backend.vercel.app/health)
 - [x] Phase 8 — AR/AP & Vendor Management Implementation (Backend models, controllers, and services completed)
 - [x] Phase 9 — Advanced Finance & COA Enhancements (Hierarchical rollup, Budgeting, Aging Reports, Fiscal Periods)
+- [x] Phase 10 — Automated Financial Integrations (Case fees posting to Ledger)
+- [x] Phase 11 — HR/Finance Integration (Leave value calculation, UAE Labor Law COA mapping, auto-journal generation for HR requests)
+
+---
+
+## Financial Workflow Integrations
+
+### Automated Postings
+The system uses a dynamic `posting_settings` table to map business events to GL accounts.
+- **CASE_CREATED**: When a case is created with non-zero fees, it automatically posts:
+  - **Debit**: Accounts Receivable (1103)
+  - **Credit**: Legal Services Revenue (4100)
+- **INVOICE_CREATED**: Standard invoicing posts to the same accounts (ensure no double-counting if fees were already posted).
+- **PAYMENT_RECEIVED**: Posts to Bank/Cash and clears AR.
 
 ---
 

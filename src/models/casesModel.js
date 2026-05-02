@@ -464,6 +464,21 @@ const getAllCaseDetails = async (id) => {
       WHERE case_id = ?
       ORDER BY date DESC
     `, [id]);
+    // Get related files
+    const [relatedFilesRows] = await db.query(`
+      SELECT * FROM case_related_files WHERE case_id = ?
+      ORDER BY created_at DESC
+    `, [id]);
+
+    // Get related cases
+    const [relatedCasesRows] = await db.query(`
+      SELECT 
+        c.id, c.case_number, c.file_number, c.topic
+      FROM related_cases rc
+      JOIN cases c ON rc.related_case_id = c.id
+      WHERE rc.case_id = ?
+    `, [id]);
+
      return { 
       info:caseDetails, 
       parties:partiesRows,
@@ -473,7 +488,9 @@ const getAllCaseDetails = async (id) => {
       judicial:judicialOrdersRows,
       petitions:petitionsRows,
       degrees:degreesRows,
-      petition:petitionOrdersRows
+      petition:petitionOrdersRows,
+      relatedFiles: relatedFilesRows,
+      relatedCases: relatedCasesRows
     };
 
 

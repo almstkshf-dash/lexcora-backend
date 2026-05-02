@@ -90,6 +90,31 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - **Case-Specific Profitability:** Added a dedicated Case Financial Summary report that calculates income, expenses, and net profit per legal case based on linked ledger entries.
 - **Technical Detail:** Added 2 new database tables (`fiscal_periods`, `account_budgets`) and updated `accountsModel`, `accountingService`, and `accountingController` with multiple new endpoints and logic layers.
 
+### Automated Case Finance Integration (May 2026)
+- **Problem:** Fees entered during case creation were stored as static data and not reflected in the firm's financial reports (Ledger, Revenue reports) until an invoice was manually generated.
+- **Solution:** Integrated the case creation workflow with the automated accounting engine.
+- **Key Features:**
+  - **Real-time Revenue Recognition:** Creating a case with a "Fees & Expenses" value now triggers an automatic journal entry.
+  - **Ledger Transparency:** The firm's "Expected Revenue" and "Accounts Receivable" are updated immediately upon case creation.
+  - **Dynamic Event Mapping:** Added the `CASE_CREATED` event to `posting_settings`, allowing flexible account mapping without further code changes.
+- **Technical Detail:** 
+  - Updated `accountingService.postAutomatedEntry` to support database transactions.
+  - Modified `casesService.createCaseWithRelations` to call the accounting engine within the case creation transaction.
+  - Implemented primary client detection to link financial entries to the correct party ID.
+
+### Case Details Enhancement & Unified Meeting Management (May 2026)
+- **Problem:** Users could not view related cases or files directly from the Case Details page. Additionally, meeting management was fragmented with multiple non-standard modals across different modules (Potential Clients, Parties).
+- **Solution:** Enhanced the Case Details view and unified the meeting/consultation workflow across the platform.
+- **Key Features:**
+  - **Related Records Integration:** Updated the backend and frontend to fetch and display "Related Cases" and "Related Files" in a responsive, bilingual table within the Case Details view.
+  - **Unified Meeting Modal:** Replaced disparate meeting creation logic with a single, centralized `AddMeetingModal` component used globally across `Potential Clients`, `Parties`, and `Meetings` modules.
+  - **Consultation Fee Integration:** Ensured that legal consultation fees are automatically calculated based on duration and correctly linked to the Chart of Accounts and Invoice generation.
+  - **Bilingual Support:** Fully localized the new "Related Cases" sections and meeting management tools in both English and Arabic, including RTL layout support.
+- **Technical Detail:** 
+  - Updated `casesModel.js` to retrieve `related_cases` in the `getAllCaseDetails` service.
+  - Refactored `PotentialClients.js` and `Parties.js` to utilize the shared meeting service.
+  - Added missing translation keys for related files and case management in `en.json` and `ar.json`.
+
 ## 7. Ongoing Tasks
 - Completed endpoint validation pass for Express on serverless: confirmed app startup, route registration, and production-safe behavior for Vercel deployment.
 - Disabled local `/uploads` static serving in production so file access is handled exclusively through Vercel Blob.

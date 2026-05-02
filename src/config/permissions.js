@@ -90,6 +90,11 @@ const PERMISSIONS = {
     delete: 'Delete Employee Cash Transaction',
     deleteAttachment: 'Delete Employee Cash Transaction Attachment',
   },
+  payroll: {
+    view: 'View Payroll',
+    process: 'Process Payroll',
+    pay: 'Pay Salary',
+  },
 };
 
 /**
