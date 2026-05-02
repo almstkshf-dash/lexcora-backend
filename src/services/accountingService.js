@@ -32,7 +32,9 @@ const postAutomatedEntry = async (event, data, connection = null) => {
     throw new Error(`Active posting settings not found for event: ${event}`);
   }
 
-  const { debit_account_id, credit_account_id, description_template } = settingsRows[0];
+  const { debit_account_id: default_debit, credit_account_id: default_credit, description_template } = settingsRows[0];
+  const debit_account_id = data.debit_account_id || default_debit;
+  const credit_account_id = data.credit_account_id || default_credit;
 
   // Resolve description template if needed
   let finalDescription = description;

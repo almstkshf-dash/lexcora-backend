@@ -5,5 +5,11 @@
       "source": "/(.*)",
       "destination": "/index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/accounting/assets/run-depreciation",
+      "schedule": "0 0 1 * *"
+    }
   ]
 }

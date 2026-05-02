@@ -7,7 +7,8 @@ const {
   createAsset,
   updateAsset,
   deleteAsset,
-  deleteAssetDocument
+  deleteAssetDocument,
+  disposeAsset
 } = require("../controllers/assetsController");
 const { authenticateToken } = require("../middliewares/authMiddleware");
 
@@ -16,6 +17,7 @@ router.get("/", authenticateToken, getAssets);
 router.get("/:id", authenticateToken, getAsset);
 router.get("/:id/documents", authenticateToken, getAssetDocuments);
 router.post("/", authenticateToken, createAsset);
+router.post("/:id/dispose", authenticateToken, disposeAsset);
 router.put("/:id", authenticateToken, updateAsset);
 router.delete("/:id", authenticateToken, deleteAsset);
 router.delete("/:id/documents/:documentId", authenticateToken, deleteAssetDocument);

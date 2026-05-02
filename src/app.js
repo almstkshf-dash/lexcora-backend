@@ -64,6 +64,7 @@ const appNotificationsRoute = require("./routes/appNotificationsRoute");
 const jobsRoute = require("./routes/jobsRoute");
 const { checkDb, checkBlob, getVersionInfo } = require("./utils/healthChecks");
 const db = require("./config/db");
+require("./jobs/workers"); // Initialize background job workers
 const formsRoute = require("./routes/formsRoute");
 const partiesFormsRoute = require("./routes/partiesFormsRoute");
 const workHoursRoute = require("./routes/workHoursRoute");
@@ -82,6 +83,7 @@ const billsRoute = require("./routes/billsRoute");
 const paymentsRoute = require("./routes/paymentsRoute");
 const bankingRoute = require("./routes/bankingRoutes");
 const pettyCashRoute = require("./routes/pettyCashRoutes");
+const clientMessagesRoute = require("./routes/clientMessagesRoute");
 const ledgerRoute = require("./routes/ledgerRoute");
 
 const app = express();
@@ -275,6 +277,7 @@ app.use("/api/bills", billsRoute);
 app.use("/api/payments", paymentsRoute);
 app.use("/api/banking", bankingRoute);
 app.use("/api/petty-cash", pettyCashRoute);
+app.use("/api/client-messages", clientMessagesRoute);
 
 app.get("/health", async (req, res) => {
   try {

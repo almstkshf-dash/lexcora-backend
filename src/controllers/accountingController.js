@@ -5,6 +5,7 @@ const accountingService = require("../services/accountingService");
 const reportService = require("../services/reportService");
 const fiscalPeriodsModel = require("../models/fiscalPeriodsModel");
 const budgetsModel = require("../models/budgetsModel");
+const assetsModel = require("../models/assetsModel");
 
 // Accounts
 const getAccounts = async (req, res) => {
@@ -195,6 +196,15 @@ const getDepartmentSummary = async (req, res) => {
   }
 };
 
+const getAssetsReport = async (req, res) => {
+  try {
+    const result = await assetsModel.getAllAssets(req.query);
+    res.json({ success: true, data: result.data });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
 // Budgets
 const setBudget = async (req, res) => {
   try {
@@ -215,6 +225,23 @@ const getBudgetVsActual = async (req, res) => {
   }
 };
 
+const triggerDepreciationJob = async (req, res) => {
+  try {
+    const { enqueueJob } = require('../jobs/jobQueue');
+    const user_id = req.user ? req.user.id : null;
+    
+    const job = await enqueueJob('run-depreciation', { user_id });
+    
+    res.json({ 
+      success: true, 
+      message: "Depreciation job queued successfully",
+      job_id: job.id
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAccounts,
   getAccountsTree,
@@ -232,10 +259,12 @@ module.exports = {
   getCaseSummary,
   getProjectSummary,
   getDepartmentSummary,
+  getAssetsReport,
   getCashFlow,
   getFiscalPeriods,
   createFiscalPeriod,
   updateFiscalPeriodStatus,
   setBudget,
-  getBudgetVsActual
+  getBudgetVsActual,
+  triggerDepreciationJob
 };

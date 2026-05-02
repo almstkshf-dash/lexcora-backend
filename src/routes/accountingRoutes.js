@@ -36,8 +36,12 @@ router.get("/reports/case-summary/:caseId", accountingController.getCaseSummary)
 router.get("/reports/project-summary/:projectId", accountingController.getProjectSummary);
 router.get("/reports/department-summary/:departmentId", accountingController.getDepartmentSummary);
 router.get("/reports/budget-vs-actual", accountingController.getBudgetVsActual);
+router.get("/reports/assets", accountingController.getAssetsReport);
 
 // Budgets
 router.post("/budgets", accountingController.setBudget);
+
+// Depreciation Job Trigger
+router.post("/assets/run-depreciation", accountingController.triggerDepreciationJob);
 
 module.exports = router;

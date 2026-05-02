@@ -102,6 +102,14 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - Modified `casesService.createCaseWithRelations` to call the accounting engine within the case creation transaction.
   - Implemented primary client detection to link financial entries to the correct party ID.
 
+### Automated Asset Depreciation (May 2026)
+- **Objective:** Automate the monthly depreciation calculation for all firm assets.
+- **Solution:** Configured a Vercel Cron Job to trigger the depreciation engine automatically.
+- **Implementation:**
+  - Added a `crons` configuration in `vercel.json` to call the `/api/accounting/assets/run-depreciation` endpoint.
+  - **Schedule:** Runs on the 1st day of every month at 00:00 UTC (`0 0 1 * *`).
+- **Technical Detail:** This ensures that asset values and corresponding depreciation journal entries are kept up-to-date without manual intervention, maintaining accurate Balance Sheet and P&L reporting.
+
 ### Case Details Enhancement & Unified Meeting Management (May 2026)
 - **Problem:** Users could not view related cases or files directly from the Case Details page. Additionally, meeting management was fragmented with multiple non-standard modals across different modules (Potential Clients, Parties).
 - **Solution:** Enhanced the Case Details view and unified the meeting/consultation workflow across the platform.

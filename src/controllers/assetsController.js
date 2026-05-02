@@ -1,5 +1,7 @@
 const assetsModel = require("../models/assetsModel");
+const accountingService = require("../services/accountingService");
 const { deleteDocumentFiles } = require("../services/storageService");
+const db = require("../config/db");
 
 // Get all assets with branch info and documents count
 const getAssets = async (req, res) => {
@@ -84,7 +86,10 @@ const getAssetDocuments = async (req, res) => {
 // Create new asset with documents
 const createAsset = async (req, res) => {
   try {
-    const { name, type, branch_id, issue_date, expiry_date, note, documents, record_type } = req.body;
+    const { 
+      name, type, branch_id, issue_date, expiry_date, note, documents, record_type,
+      purchase_cost, purchase_date, account_id, depreciation_rate, salvage_value, current_value
+    } = req.body;
     
     // Validate required fields
     if (!name || !type || !branch_id) {
@@ -106,7 +111,13 @@ const createAsset = async (req, res) => {
       expiry_date: expiry_date || null,
       note: note || null,
       created_by,
-      record_type: record_type || 'resource' // Default to 'resource' if not provided
+      record_type: record_type || 'resource', // Default to 'resource' if not provided
+      purchase_cost,
+      purchase_date,
+      account_id,
+      depreciation_rate,
+      salvage_value,
+      current_value
     };
     
     const result = await assetsModel.createAsset(assetData);
@@ -123,6 +134,24 @@ const createAsset = async (req, res) => {
       
       await assetsModel.addAssetDocuments(documentsData);
     }
+    
+    // Automation: Post Journal Entry for Asset Purchase
+    if (purchase_cost > 0) {
+      try {
+        await accountingService.postAutomatedEntry('ASSET_PURCHASE', {
+          amount: purchase_cost,
+          description: `Purchase of asset: ${name}`,
+          name: name,
+          debit_account_id: account_id, // Use the asset's specific account
+          branch_id: branch_id,
+          created_by: created_by
+        });
+      } catch (accErr) {
+        console.error("Failed to post automated entry for asset purchase:", accErr);
+        // We don't fail the whole request if accounting fails, but we log it
+      }
+    }
+    
     
     // Get the created asset with details
     const createdAsset = await assetsModel.getAssetById(assetId);
@@ -147,8 +176,10 @@ const createAsset = async (req, res) => {
 // Update asset
 const updateAsset = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, type, branch_id, issue_date, expiry_date, note, documents } = req.body;
+    const { 
+      name, type, branch_id, issue_date, expiry_date, note, documents,
+      purchase_cost, purchase_date, account_id, depreciation_rate, salvage_value, current_value
+    } = req.body;
     
     // Check if asset exists
     const existingAsset = await assetsModel.getAssetById(id);
@@ -177,7 +208,13 @@ const updateAsset = async (req, res) => {
       branch_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
-      note: note || null
+      note: note || null,
+      purchase_cost,
+      purchase_date,
+      account_id,
+      depreciation_rate,
+      salvage_value,
+      current_value
     };
     
     await assetsModel.updateAsset(id, assetData);
@@ -289,6 +326,47 @@ const deleteAssetDocument = async (req, res) => {
   }
 };
 
+// Dispose asset (Financial disposal)
+const disposeAsset = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const { id } = req.params;
+    const { disposal_date, disposal_value, reason, note } = req.body;
+    
+    const asset = await assetsModel.getAssetById(id);
+    if (!asset) {
+      return res.status(404).json({ success: false, message: "Asset not found" });
+    }
+
+    // Update asset status/record (assuming we might want to keep it as 'disposed')
+    // For now, we'll just update current_value to 0 and maybe add a note
+    await assetsModel.updateAsset(id, {
+      ...asset,
+      current_value: 0,
+      note: `${asset.note || ''}\n[DISPOSED ${disposal_date || new Date().toISOString()}] Reason: ${reason || 'N/A'}`
+    }, connection);
+
+    // Automation: Post Journal Entry for Asset Disposal
+    await accountingService.postAutomatedEntry('ASSET_DISPOSAL', {
+      amount: asset.current_value || 0,
+      description: `Disposal of asset: ${asset.name}. Reason: ${reason || 'N/A'}`,
+      name: asset.name,
+      credit_account_id: asset.account_id, // Credit the asset account
+      branch_id: asset.branch_id,
+      created_by: req.user?.id
+    }, connection);
+
+    await connection.commit();
+    res.json({ success: true, message: "Asset disposed successfully" });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getAssets,
   getAsset,
@@ -296,5 +374,6 @@ module.exports = {
   createAsset,
   updateAsset,
   deleteAsset,
-  deleteAssetDocument
+  deleteAssetDocument,
+  disposeAsset
 };

@@ -7,10 +7,14 @@ const getAllAssets = async (branch_id = null) => {
       SELECT 
         a.*,
         b.name_ar as branch_name,
-        e.name as created_by_name
+        e.name as created_by_name,
+        acc.name_ar as account_name_ar,
+        acc.name_en as account_name_en,
+        acc.code as account_code
       FROM assets a
       LEFT JOIN branches b ON a.branch_id = b.id
       LEFT JOIN employees e ON a.created_by = e.id
+      LEFT JOIN accounts acc ON a.account_id = acc.id
     `;
     
     const params = [];
@@ -35,10 +39,14 @@ const getAssetById = async (id) => {
       SELECT 
         a.*,
         b.name_ar as branch_name,
-        e.name as created_by_name
+        e.name as created_by_name,
+        acc.name_ar as account_name_ar,
+        acc.name_en as account_name_en,
+        acc.code as account_code
       FROM assets a
       LEFT JOIN branches b ON a.branch_id = b.id
       LEFT JOIN employees e ON a.created_by = e.id
+      LEFT JOIN accounts acc ON a.account_id = acc.id
       WHERE a.id = ?
     `;
     
@@ -72,11 +80,17 @@ const getAssetDocuments = async (asset_id) => {
 // Create new asset
 const createAsset = async (assetData) => {
   try {
-    const { name, type, branch_id, issue_date, expiry_date, note, created_by, record_type } = assetData;
+    const { 
+      name, type, branch_id, issue_date, expiry_date, note, created_by, record_type,
+      purchase_cost, purchase_date, account_id, depreciation_rate, salvage_value, current_value 
+    } = assetData;
     
     const query = `
-      INSERT INTO assets (name, type, branch_id, issue_date, expiry_date, note, created_by, record_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO assets (
+        name, type, branch_id, issue_date, expiry_date, note, created_by, record_type,
+        purchase_cost, purchase_date, account_id, depreciation_rate, salvage_value, current_value
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const [result] = await db.query(query, [
@@ -87,7 +101,13 @@ const createAsset = async (assetData) => {
       expiry_date,
       note,
       created_by,
-      record_type || 'resource' // Default to 'resource' if not provided
+      record_type || 'resource',
+      purchase_cost || 0,
+      purchase_date || null,
+      account_id || null,
+      depreciation_rate || 0,
+      salvage_value || 0,
+      current_value || purchase_cost || 0
     ]);
     
     return result;
@@ -123,23 +143,34 @@ const addAssetDocuments = async (documentsArray) => {
 };
 
 // Update asset
-const updateAsset = async (id, assetData) => {
+const updateAsset = async (id, assetData, connection = null) => {
+  const queryRunner = connection || db;
   try {
-    const { name, type, branch_id, issue_date, expiry_date, note } = assetData;
+    const { 
+      name, type, branch_id, issue_date, expiry_date, note,
+      purchase_cost, purchase_date, account_id, depreciation_rate, salvage_value, current_value
+    } = assetData;
     
     const query = `
       UPDATE assets
-      SET name = ?, type = ?, branch_id = ?, issue_date = ?, expiry_date = ?, note = ?
+      SET name = ?, type = ?, branch_id = ?, issue_date = ?, expiry_date = ?, note = ?,
+          purchase_cost = ?, purchase_date = ?, account_id = ?, depreciation_rate = ?, salvage_value = ?, current_value = ?
       WHERE id = ?
     `;
     
-    const [result] = await db.query(query, [
+    const [result] = await queryRunner.query(query, [
       name,
       type,
       branch_id,
       issue_date,
       expiry_date,
       note,
+      purchase_cost || 0,
+      purchase_date || null,
+      account_id || null,
+      depreciation_rate || 0,
+      salvage_value || 0,
+      current_value || 0,
       id
     ]);
     

@@ -66,7 +66,7 @@ const getAllEmployeeRequests = async (filters = {}) => {
       er.created_by,
       er.created_at,
       e.name  AS employee_name,
-      e.base_salary,
+      e.basic_salary,
       cb.name AS created_by_name,
       fb.name AS finance_approved_by_name,
       da.code  AS debit_account_code,
@@ -125,7 +125,7 @@ const getEmployeeRequestById = async (id) => {
     SELECT 
       er.*,
       e.name     AS employee_name,
-      e.base_salary,
+      e.basic_salary,
       cb.name    AS created_by_name,
       fb.name    AS finance_approved_by_name,
       da.code    AS debit_account_code,
@@ -160,11 +160,11 @@ const resolveAccountIds = async (debitCode, creditCode) => {
 
 // ─────────────────────────────────────────────────────────────────
 // Helper: calculate daily rate from monthly base salary
-// UAE: daily_rate = base_salary / 30
+// UAE: daily_rate = basic_salary / 30
 // ─────────────────────────────────────────────────────────────────
-const calcDailyRate = (base_salary) => {
-  if (!base_salary || base_salary <= 0) return 0;
-  return parseFloat((base_salary / 30).toFixed(2));
+const calcDailyRate = (basic_salary) => {
+  if (!basic_salary || basic_salary <= 0) return 0;
+  return parseFloat((basic_salary / 30).toFixed(2));
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -209,11 +209,11 @@ const createEmployeeRequest = async (requestData) => {
     contra_account_id = ids.contra_account_id;
   }
 
-  // Fetch employee base_salary for daily_rate
+  // Fetch employee basic_salary for daily_rate
   let daily_rate = dailyRateOverride || 0;
   if (!daily_rate && employee_id) {
-    const [empRows] = await db.query('SELECT base_salary FROM employees WHERE id = ? LIMIT 1', [employee_id]);
-    daily_rate = calcDailyRate(empRows[0]?.base_salary);
+    const [empRows] = await db.query('SELECT basic_salary FROM employees WHERE id = ? LIMIT 1', [employee_id]);
+    daily_rate = calcDailyRate(empRows[0]?.basic_salary);
   }
 
   // Leave value (paid=full rate, unpaid=0, partial handled by override)

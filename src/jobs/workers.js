@@ -23,4 +23,11 @@ registerWorker('bank-sync', async (payload) => {
   return await bankService.syncBankAccount(bank_account_id, user_id);
 });
 
+// Depreciation Worker
+const depreciationService = require('../services/depreciationService');
+registerWorker('run-depreciation', async (payload) => {
+  const { user_id } = payload;
+  return await depreciationService.runDepreciation(user_id);
+});
+
 module.exports = {}; // side-effect registration
