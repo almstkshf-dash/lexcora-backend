@@ -9,6 +9,7 @@ const { uploadToS3, generatePresignedUrl } = require('../services/storageService
 const MESSAGE_TYPES = [
   'welcome_client',
   'acquittal',
+  'price_quote',
   'eid_al_fitr',
   'eid_al_adha',
   'national_day',
@@ -64,6 +65,12 @@ const getDefaultTemplate = (type) => {
       title_en: 'Congratulations on Your Acquittal',
       body_ar: 'عزيزي/عزيزتي {{client_name}}،\n\nيسعدنا أن نبشرك بصدور حكم البراءة في قضيتك رقم {{case_number}}.\n\nملخص الحكم:\n{{verdict_summary}}\n\nنتمنى لك حياةً مليئة بالأمن والسعادة.\n\nمع خالص التقدير والاحترام،\nفريق {{firm_name}}',
       body_en: 'Dear {{client_name}},\n\nWe are delighted to inform you that the acquittal verdict has been issued in your case number {{case_number}}.\n\nVerdict Summary:\n{{verdict_summary}}\n\nWe wish you a life full of peace and happiness.\n\nWith warm regards,\n{{firm_name}} Team'
+    },
+    price_quote: {
+      title_ar: 'عرض سعر مبدئي',
+      title_en: 'Price Quote',
+      body_ar: 'عزيزي/عزيزتي {{client_name}}،\n\nيسرنا في {{firm_name}} تقديم عرض السعر التالي للخدمات القانونية المطلوبة.\n\nالخدمات المقدمة:\n{{services_list}}\n\nالمبلغ الإجمالي: {{total_amount}} {{currency}}\n\nإذا كان لديكم أي استفسارات، فلا تترددوا في التواصل معنا.\n\nمع خالص التقدير،\nفريق {{firm_name}}',
+      body_en: 'Dear {{client_name}},\n\nWe at {{firm_name}} are pleased to provide the following price quote for the requested legal services.\n\nProvided Services:\n{{services_list}}\n\nTotal Amount: {{total_amount}} {{currency}}\n\nShould you have any questions, please do not hesitate to contact us.\n\nBest regards,\n{{firm_name}} Team'
     },
     eid_al_fitr: {
       title_ar: 'كل عام وأنتم بخير بمناسبة عيد الفطر المبارك',
