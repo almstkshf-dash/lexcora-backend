@@ -333,6 +333,11 @@ app.get("/ping", (req, res) => {
   res.success({ timestamp: new Date().toISOString() }, "pong");
 });
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.success({ name: "Lexcora API", status: "running" }, "Welcome to Lexcora API");
+});
+
 // 404 handler - must be last before error handler
 app.use((req, res) => {
   res.fail("Route not found", 404, "NOT_FOUND");
