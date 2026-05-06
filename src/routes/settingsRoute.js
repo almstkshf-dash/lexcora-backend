@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const settingsController = require("../controllers/settingsController");
 const { authenticateToken } = require("../middlewares/authMiddleware");
-const { checkPermission } = require("../middlewares/permissionMiddleware");
+const { checkPermission } = require("../middlewares/permissionsMiddleware");
 
 // Both viewing and managing require authentication
 // Viewing settings might be needed by many, but managing is restricted
