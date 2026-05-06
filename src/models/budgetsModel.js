@@ -93,7 +93,58 @@ const getBudgetVsActual = async (filters = {}) => {
   }
 };
 
+const getBudgets = async (filters = {}) => {
+  const { fiscal_year, fiscal_month, branch_id, account_id } = filters;
+  let query = `
+    SELECT ab.*, a.code, a.name_en, a.name_ar, a.type
+    FROM account_budgets ab
+    JOIN accounts a ON ab.account_id = a.id
+  `;
+
+  const params = [];
+  const where = [];
+
+  if (fiscal_year) {
+    where.push('ab.fiscal_year = ?');
+    params.push(fiscal_year);
+  }
+
+  if (fiscal_month !== undefined) {
+    if (fiscal_month === null) {
+      where.push('ab.fiscal_month IS NULL');
+    } else {
+      where.push('ab.fiscal_month = ?');
+      params.push(fiscal_month);
+    }
+  }
+
+  if (branch_id) {
+    where.push('ab.branch_id = ?');
+    params.push(branch_id);
+  }
+
+  if (account_id) {
+    where.push('ab.account_id = ?');
+    params.push(account_id);
+  }
+
+  if (where.length > 0) {
+    query += ' WHERE ' + where.join(' AND ');
+  }
+
+  query += ' ORDER BY ab.fiscal_year DESC, ab.fiscal_month DESC, a.code';
+
+  try {
+    const [rows] = await db.query(query, params);
+    return rows;
+  } catch (error) {
+    console.error('Error fetching budgets:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   setBudget,
-  getBudgetVsActual
+  getBudgetVsActual,
+  getBudgets
 };

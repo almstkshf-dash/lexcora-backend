@@ -225,6 +225,15 @@ const getBudgetVsActual = async (req, res) => {
   }
 };
 
+const getBudgets = async (req, res) => {
+  try {
+    const result = await budgetsModel.getBudgets(req.query);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, message: req.t('generic.internalError') });
+  }
+};
+
 const triggerDepreciationJob = async (req, res) => {
   try {
     const { enqueueJob } = require('../jobs/jobQueue');
@@ -266,5 +275,6 @@ module.exports = {
   updateFiscalPeriodStatus,
   setBudget,
   getBudgetVsActual,
+  getBudgets,
   triggerDepreciationJob
 };

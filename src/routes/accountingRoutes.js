@@ -39,6 +39,7 @@ router.get("/reports/budget-vs-actual", accountingController.getBudgetVsActual);
 router.get("/reports/assets", accountingController.getAssetsReport);
 
 // Budgets
+router.get("/budgets", accountingController.getBudgets);
 router.post("/budgets", accountingController.setBudget);
 
 // Depreciation Job Trigger

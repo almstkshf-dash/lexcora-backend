@@ -40,6 +40,7 @@ async function run() {
     ['1205', 'مجمع الاستهلاك',           'Accumulated Depreciation',     'asset'],
     ['5130', 'مصروف الاستهلاك',         'Depreciation Expense',        'expense'],
     ['5131', 'أرباح/خسائر بيع أصول',    'Gain/Loss on Asset Disposal', 'expense'],
+    ['5132', 'أرباح/خسائر إعادة تقييم أصول', 'Gain/Loss on Asset Revaluation', 'expense'],
   ];
 
   for (const [code, name_ar, name_en, type] of accounts) {
@@ -60,6 +61,7 @@ async function run() {
     ['ASSET_PURCHASE', accountMap['1201'] || 1, accountMap['1102'] || 4, 'Purchase of asset: {name}'],
     ['ASSET_DEPRECIATION', accountMap['5130'], accountMap['1205'], 'Monthly depreciation for {name}'],
     ['ASSET_DISPOSAL', accountMap['5131'], accountMap['1201'] || 1, 'Disposal of asset: {name}'],
+    ['ASSET_REVALUATION', accountMap['1201'] || 1, accountMap['5132'], 'Revaluation of asset: {name}'],
   ];
 
   for (const [event, debit, credit, template] of settings) {

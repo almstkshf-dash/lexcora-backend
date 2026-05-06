@@ -101,7 +101,7 @@ async function run() {
     ['5120', 'مصاريف نهاية الخدمة (EOE)',        'End of Service Benefit Expense',    'expense'],
     ['2200', 'مخصص الإجازات المدفوعة',           'Accrued Paid Leave Liability',      'liability'],
     ['2201', 'مخصص إجازة سنوية - التزام',        'Annual Leave Accrual - Liability',  'liability'],
-    ['2202', 'ذمم دائنة - موظفون',               'Payroll Payable - Employees',       'liability'],
+    ['2202', 'ذمم دائنة - رواتب الموظفين',        'Payroll Payable - Employees',       'liability'],
     ['2210', 'مخصص نهاية الخدمة',                'End of Service Benefit Accrual',    'liability'],
   ];
   for (const [code, name_ar, name_en, type] of accounts) {

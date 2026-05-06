@@ -44,7 +44,7 @@ VALUES
   ('5120', 'مصاريف نهاية الخدمة (EOE)',            'End of Service Benefit Expense',          'expense', 1, 1),
   ('2200', 'مخصص الإجازات المدفوعة',               'Accrued Paid Leave Liability',            'liability', 1, 1),
   ('2201', 'مخصص إجازة سنوية - التزام',            'Annual Leave Accrual - Liability',        'liability', 1, 1),
-  ('2202', 'ذمم دائنة - موظفون',                   'Payroll Payable - Employees',             'liability', 1, 1),
+  ('2202', 'ذمم دائنة - رواتب الموظفين',            'Payroll Payable - Employees',             'liability', 1, 1),
   ('2210', 'مخصص نهاية الخدمة',                    'End of Service Benefit Accrual',          'liability', 1, 1);
 
 -- 3. Seed HR-Finance permissions (idempotent via IGNORE)
