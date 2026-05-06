@@ -9,7 +9,7 @@ const {
   getPartiesFormTypes,
   downloadPartiesForm
 } = require("../controllers/partiesFormsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Parties Forms routes
 router.get("/", authenticateToken, getPartiesForms);
@@ -21,3 +21,4 @@ router.put("/:id", authenticateToken, updatePartiesForm);
 router.delete("/:id", authenticateToken, deletePartiesForm);
 
 module.exports = router;
+

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const partiesOrdersController = require("../controllers/partiesOrdersController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { check } = require("express-validator");
 const { checkPermission } = require("../middlewares/permissionsMiddleware");
 // const { 
@@ -44,3 +44,4 @@ router.put("/:id", authenticateToken, checkPermission('Edit Party Order'), parti
 router.delete("/:id", authenticateToken, checkPermission('Delete Party Order'), partiesOrdersController.deletePartyOrder);
 
 module.exports = router;
+

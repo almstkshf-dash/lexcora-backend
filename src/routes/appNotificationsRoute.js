@@ -9,7 +9,7 @@ const {
   deleteNotification,
   createNotification
 } = require("../controllers/appNotificationsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Get user notifications with filters
 router.get("/", authenticateToken, getUserNotifications);

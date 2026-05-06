@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const courtsController = require('../controllers/courtsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // GET /api/courts - Get all courts
 router.get('/', courtsController.getAllCourts);

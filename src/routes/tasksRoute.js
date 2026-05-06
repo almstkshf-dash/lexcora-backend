@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const tasksController = require('../controllers/tasksController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { check } = require('express-validator');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { paginationValidator, sortValidator } = require('../middlewares/validators');
@@ -55,3 +55,4 @@ router.delete('/:id', authenticateToken, checkPermission('Delete Task'), tasksCo
 router.post('/:taskId/comments', authenticateToken, tasksController.addCommentToTask);
 
 module.exports = router;
+

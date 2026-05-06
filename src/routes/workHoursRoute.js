@@ -4,7 +4,7 @@ const {
   getWorkingHours,
   updateWorkingHours,
 } = require("../controllers/workHoursController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Get current working hours
 router.get("/", authenticateToken, getWorkingHours);

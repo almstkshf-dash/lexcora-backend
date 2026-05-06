@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const performanceController = require('../controllers/performanceController');
-// const { authenticateToken } = require('../middliewares/authMiddleware');
+// const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get performance statistics (temporarily without auth for testing)
 router.get('/stats', performanceController.getPerformanceStats);
@@ -13,3 +13,4 @@ router.delete('/clear-logs', performanceController.clearSystemLogs);
 router.delete('/clear-notifications', performanceController.clearNotifications);
 
 module.exports = router;
+

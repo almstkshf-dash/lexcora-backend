@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const logsController = require('../controllers/logsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Apply authentication middleware to all routes
 // router.use(authenticateToken);

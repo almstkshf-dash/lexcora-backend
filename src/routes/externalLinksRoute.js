@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const externalLinksController = require('../controllers/externalLinksController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get all external links
 router.get('/', authenticateToken, externalLinksController.getAllExternalLinks);
@@ -13,3 +13,4 @@ router.post('/', authenticateToken, externalLinksController.createExternalLink);
 router.delete('/:id', authenticateToken, externalLinksController.deleteExternalLink);
 
 module.exports = router;
+

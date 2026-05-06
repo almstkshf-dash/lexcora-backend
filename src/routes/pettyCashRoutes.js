@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pettyCashController = require('../controllers/pettyCashController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 router.get('/funds', authenticateToken, pettyCashController.getFunds);
 router.get('/funds/:id', authenticateToken, pettyCashController.getFundById);
@@ -11,3 +11,4 @@ router.post('/transactions', authenticateToken, pettyCashController.createTransa
 router.get('/funds/:id/transactions', authenticateToken, pettyCashController.getFundTransactions);
 
 module.exports = router;
+

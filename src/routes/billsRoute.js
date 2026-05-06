@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const billsController = require("../controllers/billsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 router.use(authenticateToken);
 
@@ -11,3 +11,4 @@ router.post("/", billsController.createBill);
 router.put("/:id/status", billsController.updateBillStatus);
 
 module.exports = router;
+

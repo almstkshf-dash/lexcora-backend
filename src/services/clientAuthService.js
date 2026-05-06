@@ -1,5 +1,5 @@
 const { getPartyByUsername } = require('../models/partiesModel');
-const { generateToken } = require('../middliewares/authMiddleware');
+const { generateToken } = require('../middlewares/authMiddleware');
 
 /**
  * Client Login Service
@@ -78,3 +78,4 @@ module.exports = {
   loginClient,
   logoutClient
 };
+

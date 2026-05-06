@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const caseClassificationsController = require('../controllers/caseClassificationsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 
@@ -17,3 +17,4 @@ router.put('/:id', authenticateToken, caseClassificationsController.updateCaseCl
 router.delete('/:id', authenticateToken, checkPermission('Delete Case Classification'), caseClassificationsController.deleteCaseClassification);
 
 module.exports = router;
+

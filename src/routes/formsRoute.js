@@ -9,7 +9,7 @@ const {
   getFormTypes,
   downloadForm
 } = require("../controllers/formsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Forms routes
 router.get("/", authenticateToken, getForms);

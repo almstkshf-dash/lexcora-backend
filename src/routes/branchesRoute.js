@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const branchesController = require('../controllers/branchesController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 
@@ -15,3 +15,4 @@ router.put('/:id', authenticateToken, checkPermission('Update Branch'), branches
 router.delete('/:id', authenticateToken, checkPermission('Delete Branch'), branchesController.deleteBranch);
 
 module.exports = router;
+

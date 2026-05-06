@@ -19,7 +19,7 @@ const {
   getDepreciationPreview,
   getDepreciationMethods
 } = require("../controllers/assetsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Assets routes
 router.get("/", authenticateToken, getAssets);
@@ -48,3 +48,4 @@ router.put("/:id/depreciation/settings", authenticateToken, updateDepreciationSe
 router.post("/depreciation/preview", authenticateToken, getDepreciationPreview);
 
 module.exports = router;
+

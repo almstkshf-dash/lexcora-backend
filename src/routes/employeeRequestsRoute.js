@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const c = require('../controllers/employeeRequestsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission }   = require('../middlewares/permissionsMiddleware');
 
 // ── Public (authenticated) reads ─────────────────────────────────
@@ -31,3 +31,4 @@ router.patch('/:id/financial-values',  authenticateToken, c.updateLeaveFinancial
 router.delete('/:id',                  authenticateToken, c.deleteEmployeeRequest);
 
 module.exports = router;
+

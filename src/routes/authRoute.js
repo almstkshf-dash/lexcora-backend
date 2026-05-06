@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../middlewares/validators');
 
@@ -41,3 +41,4 @@ router.post('/me', authenticateToken, authController.getCurrentUser);
 router.put('/change-password', authenticateToken, changePasswordValidators, authController.changePassword);
 
 module.exports = router;
+

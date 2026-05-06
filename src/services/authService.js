@@ -1,5 +1,5 @@
 const { getEmployeeByUsername, createEmployee, getEmployeeById, updateEmployeePassword, getEmployeePermissions, updateEmployeeLastLogin } = require('../models/employeeModel');
-const { generateToken } = require('../middliewares/authMiddleware');
+const { generateToken } = require('../middlewares/authMiddleware');
 const { logLogin } = require('./logsService');
 
 

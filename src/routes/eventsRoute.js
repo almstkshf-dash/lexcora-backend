@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const eventsController = require("../controllers/eventsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Events routes
 router.get("/", authenticateToken, eventsController.getAllEvents);           // GET /events
@@ -11,3 +11,4 @@ router.put("/:id", authenticateToken, eventsController.updateEvent);         // 
 router.delete("/:id", authenticateToken, eventsController.deleteEvent);      // DELETE /events/:id
 
 module.exports = router;
+

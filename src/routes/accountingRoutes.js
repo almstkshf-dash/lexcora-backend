@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const accountingController = require("../controllers/accountingController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // All accounting routes require authentication
 router.use(authenticateToken);
@@ -46,3 +46,4 @@ router.post("/budgets", accountingController.setBudget);
 router.post("/assets/run-depreciation", accountingController.triggerDepreciationJob);
 
 module.exports = router;
+

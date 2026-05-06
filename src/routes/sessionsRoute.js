@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const sessionsController = require('../controllers/sessionsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
@@ -53,3 +53,4 @@ router.put('/:id', authenticateToken, checkPermission('Edit Session'), sessionsC
 router.delete('/:id', authenticateToken, checkPermission('Delete Session'), sessionsController.deleteSession);
 
 module.exports = router;
+

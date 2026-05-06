@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const casesController = require('../controllers/casesController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { check } = require('express-validator');
 // Get all cases
@@ -86,3 +86,4 @@ router.patch('/:id/additional-note', authenticateToken, casesController.updateCa
 router.delete('/:id', authenticateToken, casesController.deleteCase);
 
 module.exports = router;
+

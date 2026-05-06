@@ -7,7 +7,7 @@ const {
   getDocumentCountByType,
   deleteDocument,
 } = require('../controllers/employeeDocumentsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Apply authentication middleware to all routes
 router.use(authenticateToken);
@@ -28,3 +28,4 @@ router.get('/employee/:employeeId/counts', getDocumentCountByType);
 router.delete('/:id', deleteDocument);
 
 module.exports = router;
+

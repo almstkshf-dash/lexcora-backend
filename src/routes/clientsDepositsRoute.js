@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const clientsDepositsController = require("../controllers/clientsDepositsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { checkPermission } = require("../middlewares/permissionsMiddleware");
 const { PERMISSIONS } = require("../config/permissions");
 const { paginationValidator, sortValidator } = require("../middlewares/validators");
@@ -29,3 +29,4 @@ router.put("/:id", authenticateToken, checkPermission(PERMISSIONS.clientsDeposit
 router.delete("/:id", authenticateToken, checkPermission(PERMISSIONS.clientsDeposits.delete), clientsDepositsController.deleteDeposit);
 
 module.exports = router;
+

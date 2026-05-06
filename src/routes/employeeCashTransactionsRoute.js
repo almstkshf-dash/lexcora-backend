@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const employeeCashTransactionsController = require('../controllers/employeeCashTransactionsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
 
@@ -30,3 +30,4 @@ router.delete('/:id', authenticateToken, checkPermission(PERMISSIONS.employeeCas
 router.delete('/:transactionId/attachments/:attachmentId', authenticateToken, checkPermission(PERMISSIONS.employeeCashTransactions.deleteAttachment), employeeCashTransactionsController.deleteAttachment);
 
 module.exports = router;
+

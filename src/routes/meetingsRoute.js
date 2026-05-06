@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const meetingsController = require('../controllers/meetingsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get all meetings with pagination and filters
 router.get('/', meetingsController.getAllMeetings);

@@ -6,9 +6,10 @@ const courtsService = require('../services/courtsService');
 const getAllCourts = async (req, res) => {
   try {
     const courts = await courtsService.getAllCourts();
-    res.json({success: true, data: courts});
+    res.success(courts);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch courts' });
+    console.error('[GET_ALL_COURTS_ERROR]', { message: error.message, stack: error.stack });
+    res.fail(req.t('court.failedFetch'), 500, 'COURTS_LIST_ERROR');
   }
 };
 
@@ -16,12 +17,13 @@ const getCourtById = async (req, res) => {
   try {
     const court = await courtsService.getCourtById(req.params.id);
     if (court) {
-      res.json(court);
+      res.success(court);
     } else {
-      res.status(404).json({ error: 'Court not found' });
+      res.fail(req.t('court.notFound'), 404, 'NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch court' });
+    console.error('[GET_COURT_BY_ID_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('court.failedFetch'), 500, 'COURT_GET_ERROR');
   }
 };
 
@@ -30,9 +32,10 @@ const createCourt = async (req, res) => {
     const { court_ar, court_en } = req.body;
     const createdBy = req.user?.id || null;
     const courtId = await courtsService.createCourt({ court_ar, court_en }, createdBy);
-    res.status(201).json({ id: courtId });
+    res.created({ id: courtId }, req.t('generic.created'));
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create court' });
+    console.error('[CREATE_COURT_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('court.failedCreate'), 500, 'COURT_CREATE_ERROR');
   }
 };
 
@@ -42,12 +45,13 @@ const updateCourt = async (req, res) => {
     const updatedBy = req.user?.id || null;
     const success = await courtsService.updateCourt(req.params.id, { court_ar, court_en }, updatedBy);
     if (success) {
-      res.json({ message: 'Court updated successfully' });
+      res.success(null, req.t('generic.ok'));
     } else {
-      res.status(404).json({ error: 'Court not found' });
+      res.fail(req.t('court.notFound'), 404, 'NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update court' });
+    console.error('[UPDATE_COURT_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('court.failedUpdate'), 500, 'COURT_UPDATE_ERROR');
   }
 };
 
@@ -56,12 +60,13 @@ const deleteCourt = async (req, res) => {
     const deletedBy = req.user?.id || null;
     const success = await courtsService.deleteCourt(req.params.id, deletedBy);
     if (success) {
-      res.json({ message: 'Court deleted' });
+      res.success(null, req.t('court.deleted'));
     } else {
-      res.status(404).json({ error: 'Court not found' });
+      res.fail(req.t('court.notFound'), 404, 'NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete court' });
+    console.error('[DELETE_COURT_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('court.failedDelete'), 500, 'COURT_DELETE_ERROR');
   }
 };
 

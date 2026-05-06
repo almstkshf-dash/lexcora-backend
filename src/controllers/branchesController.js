@@ -6,9 +6,10 @@ const branchesService = require('../services/branchesService');
 const getAllBranches = async (req, res) => {
   try {
     const branches = await branchesService.getAllBranches();
-    res.json(branches);
+    res.success(branches);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch branches' });
+    console.error('[GET_ALL_BRANCHES_ERROR]', { message: error.message, stack: error.stack });
+    res.fail(req.t('branch.failedFetch'), 500, 'BRANCHES_LIST_ERROR');
   }
 };
 
@@ -17,9 +18,10 @@ const createBranch = async (req, res) => {
     const { name_ar, name_en, location } = req.body;
     const createdBy = req.user?.id || null;
     const branchId = await branchesService.createBranch({ name_ar, name_en, location }, createdBy);
-    res.status(201).json({ id: branchId });
+    res.created({ id: branchId }, req.t('generic.created'));
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create branch' });
+    console.error('[CREATE_BRANCH_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('branch.failedCreate'), 500, 'BRANCH_CREATE_ERROR');
   }
 };
 
@@ -29,12 +31,13 @@ const updateBranch = async (req, res) => {
     const updatedBy = req.user?.id || null;
     const success = await branchesService.updateBranch(req.params.id, { name_ar, name_en, location }, updatedBy);
     if (success) {
-      res.json({ message: 'Branch updated successfully' });
+      res.success(null, req.t('generic.ok'));
     } else {
-      res.status(404).json({ error: 'Branch not found' });
+      res.fail(req.t('branch.notFound'), 404, 'NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update branch' });
+    console.error('[UPDATE_BRANCH_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('branch.failedUpdate'), 500, 'BRANCH_UPDATE_ERROR');
   }
 };
 
@@ -43,12 +46,13 @@ const deleteBranch = async (req, res) => {
     const deletedBy = req.user?.id || null;
     const success = await branchesService.deleteBranch(req.params.id, deletedBy);
     if (success) {
-      res.json({ message: 'Branch deleted' });
+      res.success(null, req.t('generic.ok'));
     } else {
-      res.status(404).json({ error: 'Branch not found' });
+      res.fail(req.t('branch.notFound'), 404, 'NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete branch' });
+    console.error('[DELETE_BRANCH_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('branch.failedDelete'), 500, 'BRANCH_DELETE_ERROR');
   }
 };
 

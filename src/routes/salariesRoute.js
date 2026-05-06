@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const salariesController = require("../controllers/salariesController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { checkPermission } = require("../middlewares/permissionsMiddleware");
 const { PERMISSIONS } = require("../config/permissions");
 
@@ -34,3 +34,4 @@ router.post(
 );
 
 module.exports = router;
+

@@ -6,7 +6,7 @@ const {
   updateAttendanceRecord,
   deleteAttendanceRecord,
 } = require("../controllers/employeeAttendanceController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // Get attendance records for an employee
 router.get("/:employeeId", authenticateToken, getAttendance);
@@ -21,3 +21,4 @@ router.put("/:id", authenticateToken, updateAttendanceRecord);
 router.delete("/:id", authenticateToken, deleteAttendanceRecord);
 
 module.exports = router;
+

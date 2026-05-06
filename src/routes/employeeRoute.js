@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const employeeController = require("../controllers/employeeController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { checkPermission } = require("../middlewares/permissionsMiddleware");
 const { PERMISSIONS } = require("../config/permissions");
 const { paginationValidator, searchValidator, sortValidator } = require("../middlewares/validators");
@@ -26,3 +26,4 @@ router.delete("/:id", authenticateToken, checkPermission(PERMISSIONS.employees.d
 router.get("/:id/account-statement", authenticateToken, checkPermission(PERMISSIONS.employees.accountStatement), employeeController.getEmployeeAccountStatement);  // GET /employees/:id/account-statement
 
 module.exports = router;
+

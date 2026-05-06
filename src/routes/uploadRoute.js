@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { upload, uploadFiles, getPresignedUrl, deleteFile, deleteFiles } = require('../controllers/uploadController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Upload multiple files
 router.post('/', authenticateToken, upload.array('files', 10), uploadFiles);
@@ -16,3 +16,4 @@ router.delete('/', authenticateToken, deleteFile);
 router.delete('/batch', authenticateToken, deleteFiles);
 
 module.exports = router;
+

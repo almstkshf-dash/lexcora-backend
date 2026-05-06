@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const clientsAgreementsController = require('../controllers/clientsAgreementsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get all clients agreements with pagination and filters
 router.get('/', authenticateToken, clientsAgreementsController.getAllClientsAgreements);
@@ -19,3 +19,4 @@ router.put('/:id', authenticateToken, clientsAgreementsController.updateClientAg
 router.delete('/:id', authenticateToken, clientsAgreementsController.deleteClientAgreement);
 
 module.exports = router;
+

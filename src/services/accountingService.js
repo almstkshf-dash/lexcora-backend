@@ -536,7 +536,10 @@ module.exports = {
       }
     });
 
-    const sumBalance = (list) => list.reduce((sum, a) => sum + parseFloat(a.balance), 0);
+    const sumBalance = (list) => list.reduce((sum, a) => {
+      const val = parseFloat(a.balance);
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
 
     const netOperating = sumBalance(operating) * -1; // Reverse sign for net cash
     const netInvesting = sumBalance(investing) * -1;

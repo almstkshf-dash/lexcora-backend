@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const clientsDealsController = require('../controllers/clientsDealsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { check } = require('express-validator');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 

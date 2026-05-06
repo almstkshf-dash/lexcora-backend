@@ -28,7 +28,8 @@ const getWarnings = async (req, res) => {
     
     res.success(warningsWithDocs, req.t('generic.ok'), 200, pagination);
   } catch (err) {
-    res.fail(err.message, 500, 'WARNINGS_LIST_ERROR');
+    console.error('[GET_WARNINGS_ERROR]', { message: err.message, stack: err.stack, query: req.query });
+    res.fail(req.t('warning.failedFetch'), 500, 'WARNINGS_LIST_ERROR');
   }
 };
 
@@ -39,27 +40,19 @@ const getWarning = async (req, res) => {
     const warning = await warningsModel.getWarningById(id);
     
     if (!warning) {
-      return res.status(404).json({
-        success: false,
-        message: "Warning not found"
-      });
+      return res.fail(req.t('warning.notFound'), 404, 'NOT_FOUND');
     }
     
     // Get documents
     const documents = await warningsModel.getWarningDocuments(id);
     
-    res.json({
-      success: true,
-      data: {
-        ...warning,
-        documents
-      }
+    res.success({
+      ...warning,
+      documents
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_WARNING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(req.t('warning.failedFetch'), 500, 'GET_WARNING_FAILED');
   }
 };
 
@@ -69,16 +62,12 @@ const getWarningDocuments = async (req, res) => {
     const { id } = req.params;
     const documents = await warningsModel.getWarningDocuments(id);
     
-    res.json({
-      success: true,
-      data: documents,
+    res.success(documents, req.t('generic.ok'), 200, {
       count: documents.length
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_WARNING_DOCS_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(req.t('warning.failedFetch'), 500, 'GET_WARNING_DOCS_FAILED');
   }
 };
 
@@ -89,18 +78,12 @@ const createWarning = async (req, res) => {
     
     // Validate required fields
     if (!employee_id || !date || !type || !reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: employee_id, date, type, reason"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Validate type enum
     if (!['verbal', 'written'].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid type. Must be 'verbal' or 'written'"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'INVALID_TYPE');
     }
     
     // Get created_by from authenticated user
@@ -135,19 +118,13 @@ const createWarning = async (req, res) => {
     const newWarning = await warningsModel.getWarningById(warningId);
     const warningDocuments = await warningsModel.getWarningDocuments(warningId);
     
-    res.status(201).json({
-      success: true,
-      message: "Warning created successfully",
-      data: {
-        ...newWarning,
-        documents: warningDocuments
-      }
-    });
+    res.created({
+      ...newWarning,
+      documents: warningDocuments
+    }, req.t('generic.created'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[CREATE_WARNING_ERROR]', { message: err.message, stack: err.stack, body: req.body });
+    res.fail(req.t('warning.failedCreate'), 500, 'CREATE_WARNING_FAILED');
   }
 };
 
@@ -159,27 +136,18 @@ const updateWarning = async (req, res) => {
     
     // Validate required fields
     if (!date || !type || !reason) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: date, type, reason"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Validate type enum
     if (!['verbal', 'written'].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid type. Must be 'verbal' or 'written'"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'INVALID_TYPE');
     }
     
     // Check if warning exists
     const existingWarning = await warningsModel.getWarningById(id);
     if (!existingWarning) {
-      return res.status(404).json({
-        success: false,
-        message: "Warning not found"
-      });
+      return res.fail(req.t('warning.notFound'), 404, 'NOT_FOUND');
     }
     
     // Update warning
@@ -210,19 +178,13 @@ const updateWarning = async (req, res) => {
     const updatedWarning = await warningsModel.getWarningById(id);
     const warningDocuments = await warningsModel.getWarningDocuments(id);
     
-    res.json({
-      success: true,
-      message: "Warning updated successfully",
-      data: {
-        ...updatedWarning,
-        documents: warningDocuments
-      }
-    });
+    res.success({
+      ...updatedWarning,
+      documents: warningDocuments
+    }, req.t('generic.ok'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[UPDATE_WARNING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack, body: req.body });
+    res.fail(req.t('warning.failedUpdate'), 500, 'UPDATE_WARNING_FAILED');
   }
 };
 
@@ -236,10 +198,7 @@ const deleteWarningDocument = async (req, res) => {
     const documentToDelete = documents.find(doc => doc.id === parseInt(documentId));
     
     if (!documentToDelete) {
-      return res.status(404).json({
-        success: false,
-        message: "Document not found"
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'NOT_FOUND');
     }
     
     // Delete from database
@@ -250,16 +209,10 @@ const deleteWarningDocument = async (req, res) => {
       await deleteDocumentFiles([documentToDelete]);
     }
     
-    res.json({
-      success: true,
-      message: "Document deleted successfully"
-    });
+    res.success(null, req.t('generic.ok'));
   } catch (err) {
-    console.error('Error deleting warning document:', err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_WARNING_DOC_ERROR]', { params: req.params, message: err.message, stack: err.stack });
+    res.fail(req.t('generic.failedDelete'), 500, 'DELETE_WARNING_DOC_FAILED');
   }
 };
 
@@ -271,10 +224,7 @@ const deleteWarning = async (req, res) => {
     // Check if warning exists
     const existingWarning = await warningsModel.getWarningById(id);
     if (!existingWarning) {
-      return res.status(404).json({
-        success: false,
-        message: "Warning not found"
-      });
+      return res.fail(req.t('warning.notFound'), 404, 'NOT_FOUND');
     }
     
     // Get documents before deleting
@@ -288,16 +238,10 @@ const deleteWarning = async (req, res) => {
       await deleteDocumentFiles(documents);
     }
     
-    res.json({
-      success: true,
-      message: "Warning deleted successfully"
-    });
+    res.success(null, req.t('generic.ok'));
   } catch (err) {
-    console.error('Error deleting warning:', err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_WARNING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(req.t('warning.failedDelete'), 500, 'DELETE_WARNING_FAILED');
   }
 };
 

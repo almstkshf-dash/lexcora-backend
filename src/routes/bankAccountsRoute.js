@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bankAccountsController = require('../controllers/bankAccountsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { upload } = require('../controllers/uploadController');
 const { 
   idValidator, 
@@ -46,3 +46,4 @@ router.put('/logs/:id', authenticateToken, idValidator, upload.array('attachment
 router.delete('/logs/:id', authenticateToken, idValidator, bankAccountsController.deleteBankAccountLog);
 
 module.exports = router;
+

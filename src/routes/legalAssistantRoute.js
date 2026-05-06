@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const legalAssistantController = require('../controllers/legalAssistantController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../middlewares/validators');
@@ -41,3 +41,4 @@ router.get('/history/:caseId', authenticateToken, checkPermission('View Case'), 
 router.post('/stream', authenticateToken, chatValidators, legalAssistantController.streamChat);
 
 module.exports = router;
+

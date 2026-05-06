@@ -15,20 +15,14 @@ const getUserNotifications = async (req, res) => {
     const notifications = await appNotificationsModel.getNotificationsWithFilters(userId, filters);
     const unreadCount = await appNotificationsModel.getUnreadCount(userId);
     
-    res.json({
-      success: true,
-      data: {
-        notifications,
-        unread_count: unreadCount,
-        total: notifications.length
-      }
+    res.success({
+      notifications,
+      unread_count: unreadCount,
+      total: notifications.length
     });
   } catch (err) {
-    console.error('Get notifications error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[GET_NOTIFICATIONS_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id, query: req.query });
+    res.fail(req.t('notifications.failedFetch'), 500, 'GET_NOTIFICATIONS_FAILED');
   }
 };
 
@@ -38,16 +32,10 @@ const getUnreadCount = async (req, res) => {
     const userId = req.user.id;
     const count = await appNotificationsModel.getUnreadCount(userId);
     
-    res.json({
-      success: true,
-      data: { unread_count: count }
-    });
+    res.success({ unread_count: count });
   } catch (err) {
-    console.error('Get unread count error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[GET_UNREAD_COUNT_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id });
+    res.fail(req.t('notifications.failedFetch'), 500, 'GET_UNREAD_COUNT_FAILED');
   }
 };
 
@@ -66,16 +54,10 @@ const markAsRead = async (req, res) => {
       });
     }
     
-    res.json({
-      success: true,
-      message: "Notification marked as read"
-    });
+    res.success(null, req.t('generic.ok'));
   } catch (err) {
-    console.error('Mark as read error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[MARK_AS_READ_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id, params: req.params });
+    res.fail(req.t('notifications.failedMarkRead'), 500, 'MARK_AS_READ_FAILED');
   }
 };
 
@@ -85,16 +67,10 @@ const markAllAsRead = async (req, res) => {
     const userId = req.user.id;
     const affectedRows = await appNotificationsModel.markAllAsRead(userId);
     
-    res.json({
-      success: true,
-      message: `${affectedRows} notifications marked as read`
-    });
+    res.success({ affectedRows }, req.t('notifications.markedAllRead'));
   } catch (err) {
-    console.error('Mark all as read error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[MARK_ALL_READ_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id });
+    res.fail(req.t('notifications.failedMarkRead'), 500, 'MARK_ALL_READ_FAILED');
   }
 };
 
@@ -105,31 +81,19 @@ const getNotificationById = async (req, res) => {
     const notification = await appNotificationsModel.getNotificationById(id);
     
     if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: "Notification not found"
-      });
+      return res.fail(req.t('notifications.notFound'), 404, 'NOTIFICATION_NOT_FOUND');
     }
     
     // Check if user has access to this notification
     const userId = req.user.id;
     if (notification.recipient_id !== null && notification.recipient_id !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied"
-      });
+      return res.fail(req.t('notifications.accessDenied'), 403, 'ACCESS_DENIED');
     }
     
-    res.json({
-      success: true,
-      data: notification
-    });
+    res.success(notification);
   } catch (err) {
-    console.error('Get notification by ID error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[GET_NOTIFICATION_BY_ID_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id, params: req.params });
+    res.fail(req.t('notifications.failedFetch'), 500, 'GET_NOTIFICATION_FAILED');
   }
 };
 
@@ -142,22 +106,13 @@ const deleteNotification = async (req, res) => {
     const success = await appNotificationsModel.deleteNotification(id, userId);
     
     if (!success) {
-      return res.status(404).json({
-        success: false,
-        message: "Notification not found or access denied"
-      });
+      return res.fail(req.t('notifications.notFound'), 404, 'NOTIFICATION_NOT_FOUND');
     }
     
-    res.json({
-      success: true,
-      message: "Notification deleted successfully"
-    });
+    res.success(null, req.t('generic.ok'));
   } catch (err) {
-    console.error('Delete notification error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[DELETE_NOTIFICATION_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id, params: req.params });
+    res.fail(req.t('notifications.failedDelete'), 500, 'DELETE_NOTIFICATION_FAILED');
   }
 };
 
@@ -168,10 +123,7 @@ const createNotification = async (req, res) => {
     const created_by = req.user.id;
     
     if (!title || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "Title and message are required"
-      });
+      return res.fail(req.t('notifications.titleMessageRequired'), 400, 'MISSING_FIELDS');
     }
     
     const result = await appNotificationsModel.createNotification({
@@ -183,17 +135,10 @@ const createNotification = async (req, res) => {
       created_by
     });
     
-    res.status(201).json({
-      success: true,
-      data: { id: result.id },
-      message: "Notification created successfully"
-    });
+    res.created({ id: result.id }, req.t('generic.created'));
   } catch (err) {
-    console.error('Create notification error:', err);
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error('[CREATE_NOTIFICATION_ERROR]', { message: err.message, stack: err.stack, userId: req.user.id, body: req.body });
+    res.fail(req.t('notifications.failedCreate'), 500, 'CREATE_NOTIFICATION_FAILED');
   }
 };
 

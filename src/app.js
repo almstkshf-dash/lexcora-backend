@@ -62,9 +62,16 @@ const eventsRoute = require("./routes/eventsRoute");
 const hrNotificationsRoute = require("./routes/hrNotificationsRoute");
 const appNotificationsRoute = require("./routes/appNotificationsRoute");
 const jobsRoute = require("./routes/jobsRoute");
-const { checkDb, checkBlob, getVersionInfo } = require("./utils/healthChecks");
 const db = require("./config/db");
-require("./jobs/workers"); // Initialize background job workers
+// Background job workers are disabled in production (Vercel) to prevent crashes
+if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+  try {
+    require("./jobs/workers"); 
+    console.log('Background job workers initialized');
+  } catch (err) {
+    console.warn('Failed to initialize background workers:', err.message);
+  }
+}
 const formsRoute = require("./routes/formsRoute");
 const partiesFormsRoute = require("./routes/partiesFormsRoute");
 const workHoursRoute = require("./routes/workHoursRoute");
@@ -89,50 +96,62 @@ const ledgerRoute = require("./routes/ledgerRoute");
 const app = express();
 
 // Ensure required tables exist (idempotent migrations)
-(async () => {
-  try {
-    await db.query(`CREATE TABLE IF NOT EXISTS projects (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      description TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )`);
+// Only run in development or when explicitly enabled to avoid cold start issues in Vercel
+if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'true') {
+  (async () => {
+    try {
+      // Use a timeout for startup migrations to prevent hanging the process
+      const migrationTimeout = setTimeout(() => {
+        console.warn('Startup migrations are taking too long...');
+      }, 5000);
 
-    await db.query(`CREATE TABLE IF NOT EXISTS bank_accounts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      bank_name VARCHAR(255),
-      account_name VARCHAR(255),
-      account_number VARCHAR(100),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+      await db.query(`CREATE TABLE IF NOT EXISTS projects (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`);
 
-    await db.query(`CREATE TABLE IF NOT EXISTS cash_transaction_attachments (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      transaction_id INT NOT NULL,
-      attachment_url TEXT,
-      attachment_name VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+      await db.query(`CREATE TABLE IF NOT EXISTS bank_accounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        bank_name VARCHAR(255),
+        account_name VARCHAR(255),
+        account_number VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`);
 
-    // Add bank_account_id column to employee_cash_transactions if missing
-    const [cols] = await db.query(`
-      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'employee_cash_transactions'
-        AND COLUMN_NAME = 'bank_account_id'
-    `);
-    if (cols.length === 0) {
-      await db.query(`
-        ALTER TABLE employee_cash_transactions
-        ADD COLUMN bank_account_id INT DEFAULT NULL
+      await db.query(`CREATE TABLE IF NOT EXISTS cash_transaction_attachments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        transaction_id INT NOT NULL,
+        attachment_url TEXT,
+        attachment_name VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`);
+
+      // Add bank_account_id column to employee_cash_transactions if missing
+      const [cols] = await db.query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'employee_cash_transactions'
+          AND COLUMN_NAME = 'bank_account_id'
       `);
-      console.log('Startup migration: added bank_account_id to employee_cash_transactions');
+      if (cols.length === 0) {
+        await db.query(`
+          ALTER TABLE employee_cash_transactions
+          ADD COLUMN bank_account_id INT DEFAULT NULL
+        `);
+        console.log('Startup migration: added bank_account_id to employee_cash_transactions');
+      }
+      clearTimeout(migrationTimeout);
+    } catch (e) {
+      console.error('Startup migration error:', {
+        message: e.message,
+        code: e.code
+      });
     }
-  } catch (e) {
-    console.warn('Startup migration warning:', e.message);
-  }
-})();
+  })();
+}
 
 // Middleware
 // Dynamic CORS: allow explicit web origins (with credentials) and null origins for RN/bearer calls

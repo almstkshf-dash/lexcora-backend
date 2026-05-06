@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const clientAuthController = require('../controllers/clientAuthController');
 const clientCasesController = require('../controllers/clientCasesController');
-const { authenticateClientToken } = require('../middliewares/clientAuthMiddleware');
+const { authenticateClientToken } = require('../middlewares/clientAuthMiddleware');
 
 // Client login
 router.post('/login', clientAuthController.loginClient);
@@ -33,3 +33,4 @@ router.get('/finance-summary', authenticateClientToken, clientAuthController.get
 router.get('/invoices', authenticateClientToken, clientAuthController.getClientInvoices);
 
 module.exports = router;
+

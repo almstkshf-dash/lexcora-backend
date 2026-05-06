@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jobsController = require('../controllers/jobsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Queue a new job
 router.post('/', authenticateToken, jobsController.createJob);
@@ -13,3 +13,4 @@ router.get('/:id', authenticateToken, jobsController.getJobStatus);
 router.get('/', authenticateToken, jobsController.listQueuedJobs);
 
 module.exports = router;
+

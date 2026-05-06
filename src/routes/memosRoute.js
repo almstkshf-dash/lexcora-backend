@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const memosController = require('../controllers/memosController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
@@ -63,3 +63,4 @@ router.patch('/:id/employee-status', authenticateToken, memosController.updateEm
 router.delete('/:id', authenticateToken, checkPermission('Delete Memo'), memosController.deleteMemo);
 
 module.exports = router;
+

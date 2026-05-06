@@ -1,7 +1,7 @@
 const express = require("express");
 const partiesDocumentsController = require("../controllers/partiesDocumentsController");
 const { upload } = require("../controllers/uploadController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { paginationValidator, sortValidator } = require("../middlewares/validators");
 
 const router = express.Router();
@@ -43,3 +43,4 @@ router.put("/:id", authenticateToken, partiesDocumentsController.updatePartiesDo
 router.delete("/:id", authenticateToken, partiesDocumentsController.deletePartiesDocument);
 
 module.exports = router;
+

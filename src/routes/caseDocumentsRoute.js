@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const caseDocumentsController = require("../controllers/caseDocumentsController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 const { paginationValidator, sortValidator } = require("../middlewares/validators");
 
 // GET /api/case-documents - Get all case documents
@@ -28,3 +28,4 @@ router.delete("/:id", authenticateToken, caseDocumentsController.deleteCaseDocum
 router.get("/case/:caseId", caseDocumentsController.getCaseDocumentsByCaseId);
 
 module.exports = router;
+

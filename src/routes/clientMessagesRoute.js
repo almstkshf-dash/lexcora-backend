@@ -8,7 +8,7 @@ const {
   updateSettings,
   sendMessage
 } = require('../controllers/clientMessagesController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Template routes
 router.get('/', authenticateToken, getTemplates);
@@ -19,3 +19,4 @@ router.get('/:type', authenticateToken, getTemplate);
 router.put('/:type', authenticateToken, updateTemplate);
 
 module.exports = router;
+

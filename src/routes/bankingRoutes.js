@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bankController = require('../controllers/bankController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { upload } = require('../controllers/uploadController');
 const {
   cashFlowQueryValidator,
@@ -20,3 +20,4 @@ router.get('/cash-flow', authenticateToken, cashFlowQueryValidator, bankControll
 router.get('/cash-flow/daily', authenticateToken, dailyCashFlowQueryValidator, bankController.getDailyCashFlow);
 
 module.exports = router;
+

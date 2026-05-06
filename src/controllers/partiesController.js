@@ -1,4 +1,3 @@
-
 const partiesService = require('../services/partiesService');
 const { normalizePagination } = require('../utils/pagination');
 
@@ -15,10 +14,9 @@ const getAllParties = async (req, res) => {
     };
     
     const result = await partiesService.getAllParties(filters);
-    res.success(result.data, req.t('generic.ok'), 200, {
-      pagination: result.pagination
-    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
+    console.error('[GET_ALL_PARTIES_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('party.failedFetchParties'), 500, 'PARTIES_LIST_ERROR');
   }
 };
@@ -27,9 +25,10 @@ const getPartiesByBranchId = async (req, res) => {
   try {
     const { branchId } = req.params;
     const parties = await partiesService.getPartiesByBranchId(branchId);
-    res.json({ success: true, data: parties });
+    res.success(parties);
   } catch (error) {
-    res.status(500).json({ error: req.t('party.failedFetchPartiesByBranch') });
+    console.error('[GET_PARTIES_BY_BRANCH_ID_ERROR]', { branchId: req.params.branchId, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedFetchPartiesByBranch'), 500, 'GET_PARTIES_BY_BRANCH_FAILED');
   }
 };
 
@@ -38,8 +37,6 @@ const createParty = async (req, res) => {
     const party = req.body;
     const files = party.files || [];
     
-    // Add created_by from authenticated user
-    party.created_by = req.user.id;
     const createdBy = req.user?.id || null;
     
     // Create party and get the ID
@@ -50,10 +47,10 @@ const createParty = async (req, res) => {
       await partiesService.addPartyDocuments(partyId, files);
     }
     
-    res.status(201).json({ success: true, id: partyId });
+    res.created({ id: partyId }, req.t('generic.created'));
   } catch (error) {
-    console.error('Error creating party:', error);
-    res.status(500).json({ success: false, error: req.t('party.failedCreateParty') });
+    console.error('[CREATE_PARTY_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('party.failedCreateParty'), 500, 'CREATE_PARTY_FAILED');
   }
 };
 
@@ -62,35 +59,38 @@ const deleteParty = async (req, res) => {
     const deletedBy = req.user?.id || null;
     const success = await partiesService.deleteParty(req.params.id, deletedBy);
     if (success) {
-      res.json({ success: true, message: req.t('party.partyDeleted') });
+      res.success(null, req.t('party.partyDeleted'));
     } else {
-      res.status(404).json({ error: req.t('party.partyNotFound') });
+      res.fail(req.t('party.partyNotFound'), 404, 'PARTY_NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: req.t('party.failedDeleteParty') });
+    console.error('[DELETE_PARTY_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedDeleteParty'), 500, 'DELETE_PARTY_FAILED');
   }
 };
+
 const getPartyById = async (req, res) => {
   try {
     const { id } = req.params;
     const party = await partiesService.getPartyById(id);
     if (party) {
-      const isAdmin = req.user && ( req.user.role_en === 'admin');
+      const isAdmin = req.user && (req.user.role_en === 'admin');
       
       const partyData = {
         ...party,
         password: isAdmin ? party.password : '********'
       };
       
-      res.json(partyData);
+      res.success(partyData);
     } else {
-      res.status(404).json({ error: req.t('party.partyNotFound') });
+      res.fail(req.t('party.partyNotFound'), 404, 'PARTY_NOT_FOUND');
     }
   } catch (error) {
-    console.error('Error fetching party:', error);
-    res.status(500).json({ error: req.t('party.failedFetchParty') });
+    console.error('[GET_PARTY_BY_ID_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedFetchParty'), 500, 'GET_PARTY_FAILED');
   }
 };
+
 const updateParty = async (req, res) => {
   try {
     const { id } = req.params;
@@ -107,13 +107,13 @@ const updateParty = async (req, res) => {
     }
     
     if (success) {
-      res.json({ success: true, message: req.t('party.partyUpdated') });
+      res.success(null, req.t('party.partyUpdated'));
     } else {
-      res.status(404).json({ success: false, error: req.t('party.partyNotFound') });
+      res.fail(req.t('party.partyNotFound'), 404, 'PARTY_NOT_FOUND');
     }
   } catch (error) {
-    console.error('Error updating party:', error);
-    res.status(500).json({ success: false, error: req.t('party.failedUpdateParty') });
+    console.error('[UPDATE_PARTY_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('party.failedUpdateParty'), 500, 'UPDATE_PARTY_FAILED');
   }
 };
 
@@ -121,9 +121,10 @@ const getPartyCases = async (req, res) => {
   try {
     const { id } = req.params;
     const cases = await partiesService.getPartyCases(id);
-    res.json({ success: true, data: cases });
+    res.success(cases);
   } catch (error) {
-    res.status(500).json({ success: false, error: req.t('party.failedFetchPartyCases') });
+    console.error('[GET_PARTY_CASES_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedFetchPartyCases'), 500, 'GET_PARTY_CASES_FAILED');
   }
 };
 
@@ -139,13 +140,10 @@ const getPotentialClients = async (req, res) => {
     };
     
     const result = await partiesService.getPotentialClients(filters);
-    res.json({
-      success: true,
-      data: result.data,
-      pagination: result.pagination
-    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    res.status(500).json({ error: req.t('party.failedFetchPotentialClients') });
+    console.error('[GET_POTENTIAL_CLIENTS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
+    res.fail(req.t('party.failedFetchPotentialClients'), 500, 'GET_POTENTIAL_CLIENTS_FAILED');
   }
 };
 
@@ -155,20 +153,14 @@ const searchParties = async (req, res) => {
     
     // Validate minimum query length
     if (!query || query.trim().length < 3) {
-      return res.json({
-        success: true,
-        data: []
-      });
+      return res.success([]);
     }
     
     const result = await partiesService.searchParties(query.trim(), partyType);
-    res.json({
-      success: true,
-      data: result
-    });
+    res.success(result);
   } catch (error) {
-    console.error('Error searching parties:', error);
-    res.status(500).json({ success: false, error: req.t('party.failedSearchParties') });
+    console.error('[SEARCH_PARTIES_ERROR]', { query: req.query, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedSearchParties'), 500, 'SEARCH_PARTIES_FAILED');
   }
 };
 
@@ -178,10 +170,7 @@ const checkDuplicateParty = async (req, res) => {
     
     // Validate that at least one field is provided for checking
     if (!name && !phone && !email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: req.t('party.validationNamePhoneEmailRequired') 
-      });
+      return res.fail(req.t('party.validationNamePhoneEmailRequired'), 400, 'VALIDATION_ERROR');
     }
     
     const duplicates = await partiesService.checkDuplicateParty(
@@ -194,8 +183,7 @@ const checkDuplicateParty = async (req, res) => {
     // Check if any duplicates were found
     const hasDuplicate = !!(duplicates.name || duplicates.phone || duplicates.email);
     
-    res.json({
-      success: true,
+    res.success({
       isDuplicate: hasDuplicate,
       duplicates: {
         name: duplicates.name ? { id: duplicates.name.id, name: duplicates.name.name } : null,
@@ -204,8 +192,8 @@ const checkDuplicateParty = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error checking duplicate party:', error);
-    res.status(500).json({ success: false, error: req.t('party.failedCheckDuplicate') });
+    console.error('[CHECK_DUPLICATE_PARTY_ERROR]', { query: req.query, message: error.message, stack: error.stack });
+    res.fail(req.t('party.failedCheckDuplicate'), 500, 'CHECK_DUPLICATE_PARTY_FAILED');
   }
 };
 
@@ -219,22 +207,10 @@ const getClientsForFinance = async (req, res) => {
     };
     
     const result = await partiesService.getClientsForFinance(filters);
-    res.json({
-      success: true,
-      data: result.data,
-      pagination: {
-        total: result.total,
-        page: result.page,
-        limit: result.limit,
-        totalPages: result.totalPages
-      }
-    });
+    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (error) {
-    console.error("Error fetching finance clients:", error);
-    res.status(500).json({ 
-      success: false,
-      error: req.t('finance.failedFetchFinanceClients')
-    });
+    console.error('[GET_FINANCE_CLIENTS_ERROR]', { query: req.query, message: error.message, stack: error.stack });
+    res.fail(req.t('finance.failedFetchFinanceClients'), 500, 'GET_FINANCE_CLIENTS_FAILED');
   }
 };
 

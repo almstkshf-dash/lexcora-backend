@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const trainingsController = require('../controllers/trainingsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // All routes require authentication
 router.get('/', authenticateToken, trainingsController.getTrainings);
@@ -13,3 +13,4 @@ router.delete('/:trainingId/documents/:documentId', authenticateToken, trainings
 router.delete('/:id', authenticateToken, trainingsController.deleteTraining);
 
 module.exports = router;
+

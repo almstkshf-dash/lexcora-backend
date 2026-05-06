@@ -13,6 +13,7 @@ const getEmployees = async (req, res) => {
     const result = await employeeService.listEmployees({ page, limit, sortBy, sortOrder, search });
     res.success(result.data, req.t('generic.ok'), 200, result.pagination);
   } catch (err) {
+    console.error('[GET_EMPLOYEES_ERROR]', { message: err.message, stack: err.stack, query: req.query });
     res.fail(err.message, 500, 'EMPLOYEE_LIST_ERROR');
   }
 };
@@ -25,6 +26,11 @@ const getEmployee = async (req, res) => {
     const employee = await employeeService.getEmployeeSanitized(id, { maskPassword: !isAdmin });
     res.success(employee, req.t('generic.ok'));
   } catch (err) {
+    console.error('[GET_EMPLOYEE_ERROR]', {
+      id: req.params.id,
+      message: err.message,
+      stack: err.stack
+    });
     const statusCode = err.message === "Employee not found" ? 404 : 500;
     res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_GET_ERROR');
   }
@@ -37,6 +43,7 @@ const createEmployee = async (req, res) => {
     const newEmployee = await employeeService.addEmployeeWithFetch(req.body, createdBy);
     res.created(newEmployee, req.t('generic.created'));
   } catch (err) {
+    console.error('[CREATE_EMPLOYEE_ERROR]', { message: err.message, stack: err.stack, body: req.body });
     res.fail(err.message, 400, 'EMPLOYEE_CREATE_ERROR');
   }
 };
@@ -49,6 +56,7 @@ const updateEmployee = async (req, res) => {
     const updatedEmployee = await employeeService.updateEmployee(id, req.body, updatedBy);
     res.success(updatedEmployee, req.t('generic.ok'));
   } catch (err) {
+    console.error('[UPDATE_EMPLOYEE_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
     const statusCode = err.message === "Employee not found" ? 404 : 400;
     res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_UPDATE_ERROR');
   }
@@ -62,6 +70,7 @@ const deleteEmployee = async (req, res) => {
     const result = await employeeService.removeEmployee(id, deletedBy);
     res.success(null, result.message);
   } catch (err) {
+    console.error('[DELETE_EMPLOYEE_ERROR]', { message: err.message, stack: err.stack, params: req.params });
     const statusCode = err.message === "Employee not found" ? 404 : 500;
     res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_DELETE_ERROR');
   }
@@ -76,16 +85,13 @@ const getEmployeeAccountStatement = async (req, res) => {
     const result = await employeeService.getEmployeeAccountStatement(id, from, to);
     
     if (result.success) {
-      res.json(result);
+      res.success(result.data, req.t('generic.ok'), 200, result.pagination);
     } else {
-      res.status(400).json(result);
+      res.fail(result.message || req.t('generic.internalError'), 400, 'STATEMENT_FETCH_FAILED');
     }
   } catch (err) {
-    console.error('Error in getEmployeeAccountStatement controller:', err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_EMPLOYEE_STATEMENT_ERROR]', { message: err.message, stack: err.stack, params: req.params, query: req.query });
+    res.fail(err.message, 500, 'STATEMENT_ERROR');
   }
 };
 
@@ -94,17 +100,13 @@ const checkDuplicateEmployee = async (req, res) => {
     const { name, phone, email, excludeId } = req.query;
     
     if (!name && !phone && !email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Name, phone, or email is required' 
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     const duplicate = await employeeService.checkDuplicateEmployee(name, phone, email, excludeId);
     
     if (duplicate) {
-      return res.json({
-        success: true,
+      return res.success({
         isDuplicate: true,
         duplicate: {
           id: duplicate.id,
@@ -115,13 +117,12 @@ const checkDuplicateEmployee = async (req, res) => {
       });
     }
     
-    res.json({
-      success: true,
+    res.success({
       isDuplicate: false
     });
   } catch (error) {
-    console.error('Error checking duplicate employee:', error);
-    res.status(500).json({ success: false, error: 'Failed to check duplicate' });
+    console.error('[CHECK_DUPLICATE_EMPLOYEE_ERROR]', { message: error.message, stack: error.stack, query: req.query });
+    res.fail(req.t('notify.serverError'), 500, 'CHECK_DUPLICATE_FAILED');
   }
 };
 

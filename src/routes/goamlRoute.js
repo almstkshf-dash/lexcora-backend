@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const goamlController = require("../controllers/goamlController");
-const { authenticateToken } = require("../middliewares/authMiddleware");
+const { authenticateToken } = require("../middlewares/authMiddleware");
 
 // GoAML routes
 router.get("/", authenticateToken, goamlController.getAllGoamlRecords);           // GET /goaml
@@ -11,3 +11,4 @@ router.put("/:id", authenticateToken, goamlController.updateGoamlRecord);       
 router.delete("/:id", authenticateToken, goamlController.deleteGoamlRecord);      // DELETE /goaml/:id
 
 module.exports = router;
+

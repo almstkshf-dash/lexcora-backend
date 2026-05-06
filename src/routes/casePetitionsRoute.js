@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const casePetitionsController = require('../controllers/casePetitionsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get all case petitions
 router.get('/', authenticateToken, casePetitionsController.getAllCasePetitions);

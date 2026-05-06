@@ -25,16 +25,12 @@ const getAssets = async (req, res) => {
       })
     );
     
-    res.json({
-      success: true,
-      data: assetsWithDocs,
+    res.success(assetsWithDocs, req.t('generic.ok'), 200, {
       count: assetsWithDocs.length
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_ASSETS_ERROR]', { message: err.message, stack: err.stack, query: req.query });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_ASSETS_FAILED');
   }
 };
 
@@ -45,27 +41,19 @@ const getAsset = async (req, res) => {
     const asset = await assetsModel.getAssetById(id);
     
     if (!asset) {
-      return res.status(404).json({
-        success: false,
-        message: "Asset not found"
-      });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
     
     // Get documents
     const documents = await assetsModel.getAssetDocuments(id);
     
-    res.json({
-      success: true,
-      data: {
-        ...asset,
-        documents
-      }
+    res.success({
+      ...asset,
+      documents
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_ASSET_FAILED');
   }
 };
 
@@ -75,16 +63,12 @@ const getAssetDocuments = async (req, res) => {
     const { id } = req.params;
     const documents = await assetsModel.getAssetDocuments(id);
     
-    res.json({
-      success: true,
-      data: documents,
+    res.success(documents, req.t('generic.ok'), 200, {
       count: documents.length
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_ASSET_DOCUMENTS_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_ASSET_DOCS_FAILED');
   }
 };
 
@@ -126,10 +110,7 @@ const createAsset = async (req, res) => {
     
     // Validate required fields
     if (!name || !type || !branch_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: name, type, branch_id"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     const effectiveCost = purchase_cost ?? acquisition_cost ?? 0;
@@ -207,29 +188,21 @@ const createAsset = async (req, res) => {
           created_by: created_by
         });
       } catch (accErr) {
-        console.error("Failed to post automated entry for asset purchase:", accErr);
-        // We don't fail the whole request if accounting fails, but we log it
+        console.error("[POST_AUTOMATED_ENTRY_ERROR]", { message: accErr.message, stack: accErr.stack });
       }
     }
-    
     
     // Get the created asset with details
     const createdAsset = await assetsModel.getAssetById(assetId);
     const assetDocuments = await assetsModel.getAssetDocuments(assetId);
     
-    res.status(201).json({
-      success: true,
-      message: "Asset created successfully",
-      data: {
-        ...createdAsset,
-        documents: assetDocuments
-      }
-    });
+    res.created({
+      ...createdAsset,
+      documents: assetDocuments
+    }, req.t('asset.failedCreate'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[CREATE_ASSET_ERROR]', { message: err.message, stack: err.stack, body: req.body });
+    res.fail(req.t('asset.failedCreate'), 500, 'CREATE_ASSET_FAILED');
   }
 };
 
@@ -246,18 +219,12 @@ const updateAsset = async (req, res) => {
     // Check if asset exists
     const existingAsset = await assetsModel.getAssetById(id);
     if (!existingAsset) {
-      return res.status(404).json({
-        success: false,
-        message: "Asset not found"
-      });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
     
     // Validate required fields
     if (!name || !type || !branch_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: name, type, branch_id"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     const effectiveCost = purchase_cost ?? acquisition_cost ?? existingAsset.purchase_cost ?? 0;
@@ -324,19 +291,13 @@ const updateAsset = async (req, res) => {
     const updatedAsset = await assetsModel.getAssetById(id);
     const assetDocuments = await assetsModel.getAssetDocuments(id);
     
-    res.json({
-      success: true,
-      message: "Asset updated successfully",
-      data: {
-        ...updatedAsset,
-        documents: assetDocuments
-      }
-    });
+    res.success({
+      ...updatedAsset,
+      documents: assetDocuments
+    }, req.t('asset.failedUpdate'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[UPDATE_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
+    res.fail(req.t('asset.failedUpdate'), 500, 'UPDATE_ASSET_FAILED');
   }
 };
 
@@ -348,10 +309,7 @@ const deleteAsset = async (req, res) => {
     // Check if asset exists
     const asset = await assetsModel.getAssetById(id);
     if (!asset) {
-      return res.status(404).json({
-        success: false,
-        message: "Asset not found"
-      });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
     
     // Get all documents BEFORE deleting
@@ -365,16 +323,10 @@ const deleteAsset = async (req, res) => {
       await deleteDocumentFiles(documents);
     }
     
-    res.json({
-      success: true,
-      message: "Asset and all associated files deleted successfully"
-    });
+    res.success(null, req.t('asset.failedDelete'));
   } catch (err) {
-    console.error("Error deleting asset:", err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedDelete'), 500, 'DELETE_ASSET_FAILED');
   }
 };
 
@@ -388,10 +340,7 @@ const deleteAssetDocument = async (req, res) => {
     const documentToDelete = documents.find(doc => doc.id === parseInt(documentId));
     
     if (!documentToDelete) {
-      return res.status(404).json({
-        success: false,
-        message: "Document not found"
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'NOT_FOUND');
     }
     
     // Delete document from database
@@ -402,16 +351,10 @@ const deleteAssetDocument = async (req, res) => {
       await deleteDocumentFiles([documentToDelete]);
     }
     
-    res.json({
-      success: true,
-      message: "Document deleted successfully"
-    });
+    res.success(null, req.t('asset.docDeleted'));
   } catch (err) {
-    console.error("Error deleting asset document:", err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_ASSET_DOCUMENT_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedDelete'), 500, 'DELETE_ASSET_DOC_FAILED');
   }
 };
 
@@ -433,7 +376,7 @@ const disposeAsset = async (req, res) => {
     
     const asset = await assetsModel.getAssetById(id);
     if (!asset) {
-      return res.status(404).json({ success: false, message: "Asset not found" });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
 
     const disposalAmount = disposal_value !== undefined && disposal_value !== null
@@ -462,10 +405,11 @@ const disposeAsset = async (req, res) => {
     }
 
     await connection.commit();
-    res.json({ success: true, message: "Asset disposed successfully" });
+    res.success(null, req.t('asset.disposed'));
   } catch (err) {
     await connection.rollback();
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[DISPOSE_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
+    res.fail(err.message, 500, 'DISPOSE_ASSET_FAILED');
   } finally {
     connection.release();
   }
@@ -480,15 +424,15 @@ const transferAsset = async (req, res) => {
 
     const asset = await assetsModel.getAssetById(id);
     if (!asset) {
-      return res.status(404).json({ success: false, message: "Asset not found" });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
 
     if (!to_branch_id && !to_custodian_id) {
-      return res.status(400).json({ success: false, message: "At least one of to_branch_id or to_custodian_id is required" });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
 
     if (to_branch_id === asset.branch_id && to_custodian_id === asset.custodian_id) {
-      return res.status(400).json({ success: false, message: "Asset is already assigned to the requested branch/custodian" });
+      return res.fail(req.t('generic.validationError'), 400, 'NO_CHANGE');
     }
 
     await assetsModel.createAssetTransfer({
@@ -515,6 +459,7 @@ const transferAsset = async (req, res) => {
     res.json({ success: true, message: "Asset transfer recorded successfully" });
   } catch (err) {
     await connection.rollback();
+    console.error('[TRANSFER_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
     res.status(500).json({ success: false, message: err.message });
   } finally {
     connection.release();
@@ -526,13 +471,12 @@ const getAssetTransfers = async (req, res) => {
     const { id } = req.params;
     const transfers = await assetsModel.getAssetTransfers(id);
 
-    res.json({
-      success: true,
-      data: transfers,
+    res.success(transfers, req.t('generic.ok'), 200, {
       count: transfers.length
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[GET_ASSET_TRANSFERS_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_TRANSFERS_FAILED');
   }
 };
 
@@ -545,19 +489,19 @@ const revalueAsset = async (req, res) => {
 
     const asset = await assetsModel.getAssetById(id);
     if (!asset) {
-      return res.status(404).json({ success: false, message: "Asset not found" });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
 
     const currentValue = parseFloat(asset.current_value || 0);
     const targetValue = parseFloat(new_value);
 
     if (Number.isNaN(targetValue) || targetValue <= 0) {
-      return res.status(400).json({ success: false, message: "new_value is required and must be greater than 0" });
+      return res.fail(req.t('generic.validationError'), 400, 'INVALID_VALUE');
     }
 
     const changeAmount = targetValue - currentValue;
     if (changeAmount === 0) {
-      return res.status(400).json({ success: false, message: "Revaluation amount must differ from current asset value" });
+      return res.fail(req.t('generic.validationError'), 400, 'NO_CHANGE');
     }
 
     const effectiveDate = revaluation_date || new Date().toISOString().split('T')[0];
@@ -605,10 +549,11 @@ const revalueAsset = async (req, res) => {
     }, connection);
 
     await connection.commit();
-    res.json({ success: true, message: 'Asset revalued successfully' });
+    res.success(null, req.t('asset.revalued'));
   } catch (err) {
     await connection.rollback();
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[REVALUE_ASSET_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
+    res.fail(req.t('asset.failedRevalue'), 500, 'REVALUE_ASSET_FAILED');
   } finally {
     connection.release();
   }
@@ -619,13 +564,12 @@ const getAssetRevaluations = async (req, res) => {
     const { id } = req.params;
     const revaluations = await assetsModel.getAssetRevaluations(id);
 
-    res.json({
-      success: true,
-      data: revaluations,
+    res.success(revaluations, req.t('generic.ok'), 200, {
       count: revaluations.length
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[GET_ASSET_REVALUATIONS_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_REVALUATIONS_FAILED');
   }
 };
 
@@ -637,17 +581,13 @@ const getDepreciationSchedule = async (req, res) => {
 
     const schedule = await depreciationService.getAssetDepreciationSchedule(id, parseInt(months));
 
-    res.json({
-      success: true,
-      data: schedule,
+    res.success(schedule, req.t('generic.ok'), 200, {
       asset_id: id,
       total_periods: schedule.length
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_DEPRECIATION_SCHEDULE_ERROR]', { message: err.message, stack: err.stack, params: req.params, query: req.query });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_SCHEDULE_FAILED');
   }
 };
 
@@ -658,15 +598,10 @@ const getCurrentMonthDepreciation = async (req, res) => {
 
     const calculation = await depreciationService.calculateCurrentMonthDepreciation(id);
 
-    res.json({
-      success: true,
-      data: calculation
-    });
+    res.success(calculation);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_CURRENT_MONTH_DEPRECIATION_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_MONTHLY_DEPRECIATION_FAILED');
   }
 };
 
@@ -683,10 +618,7 @@ const updateDepreciationSettings = async (req, res) => {
 
     const asset = await assetsModel.getAssetById(id);
     if (!asset) {
-      return res.status(404).json({
-        success: false,
-        message: "Asset not found"
-      });
+      return res.fail(req.t('asset.notFound'), 404, 'NOT_FOUND');
     }
 
     const validationMessage = validateDepreciationInput({
@@ -698,7 +630,7 @@ const updateDepreciationSettings = async (req, res) => {
     });
 
     if (validationMessage) {
-      return res.status(400).json({ success: false, message: validationMessage });
+      return res.fail(validationMessage, 400, 'VALIDATION_ERROR');
     }
 
     // Update depreciation settings
@@ -710,31 +642,23 @@ const updateDepreciationSettings = async (req, res) => {
       salvage_value
     });
 
-    res.json({
-      success: true,
-      message: "Depreciation settings updated successfully",
-      data: updatedAsset
-    });
+    res.success(updatedAsset, req.t('asset.settingsUpdated'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[UPDATE_DEPRECIATION_SETTINGS_ERROR]', { message: err.message, stack: err.stack, params: req.params, body: req.body });
+    res.fail(req.t('asset.failedUpdate'), 500, 'UPDATE_SETTINGS_FAILED');
   }
 };
 
 // Calculate depreciation preview
 const getDepreciationMethods = async (req, res) => {
   try {
-    res.json({
-      success: true,
-      data: Object.entries(DEPRECIATION_METHOD_LABELS).map(([value, label]) => ({
-        value,
-        label
-      }))
-    });
+    res.success(Object.entries(DEPRECIATION_METHOD_LABELS).map(([value, label]) => ({
+      value,
+      label
+    })));
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error('[GET_DEPRECIATION_METHODS_ERROR]', { message: err.message, stack: err.stack });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_METHODS_FAILED');
   }
 };
 
@@ -750,10 +674,7 @@ const getDepreciationPreview = async (req, res) => {
     } = req.body;
 
     if (!purchase_cost || purchase_cost <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Purchase cost is required and must be greater than 0"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'INVALID_COST');
     }
 
     const method = depreciation_method || DEPRECIATION_METHODS.STRAIGHT_LINE;
@@ -767,7 +688,7 @@ const getDepreciationPreview = async (req, res) => {
     });
 
     if (validationMessage) {
-      return res.status(400).json({ success: false, message: validationMessage });
+      return res.fail(validationMessage, 400, 'VALIDATION_ERROR');
     }
 
     const { getDepreciationSchedule } = require("../utils/depreciationCalculator");
@@ -783,25 +704,20 @@ const getDepreciationPreview = async (req, res) => {
       periodType: 'month'
     });
 
-    res.json({
-      success: true,
-      data: {
-        method,
-        method_label: DEPRECIATION_METHOD_LABELS[method] || null,
-        schedule,
-        summary: {
-          purchase_cost,
-          salvage_value: salvage_value || 0,
-          total_depreciation: schedule[schedule.length - 1].totalDepreciation,
-          monthly_avg: schedule[schedule.length - 1].totalDepreciation / schedule.length
-        }
+    res.success({
+      method,
+      method_label: DEPRECIATION_METHOD_LABELS[method] || null,
+      schedule,
+      summary: {
+        purchase_cost,
+        salvage_value: salvage_value || 0,
+        total_depreciation: schedule[schedule.length - 1].totalDepreciation,
+        monthly_avg: schedule[schedule.length - 1].totalDepreciation / schedule.length
       }
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_DEPRECIATION_PREVIEW_ERROR]', { message: err.message, stack: err.stack, body: req.body });
+    res.fail(req.t('asset.failedFetch'), 500, 'GET_PREVIEW_FAILED');
   }
 };
 

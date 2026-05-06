@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const invoicesController = require('../controllers/invoicesController');
 const { upload } = require('../controllers/uploadController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { 
   idValidator,
   clientIdValidator
@@ -37,3 +37,4 @@ router.post('/:id/attachments', authenticateToken, idValidator, upload.array('fi
 router.delete('/attachments/:attachmentId', authenticateToken, invoicesController.deleteInvoiceAttachment);
 
 module.exports = router;
+

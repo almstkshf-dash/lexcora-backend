@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const reviewsController = require('../controllers/reviewsController');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 const { paginationValidator, sortValidator } = require('../middlewares/validators');
 
 // All routes require authentication
@@ -20,3 +20,4 @@ router.delete('/:reviewId/documents/:documentId', authenticateToken, reviewsCont
 router.delete('/:id', authenticateToken, reviewsController.deleteReview);
 
 module.exports = router;
+

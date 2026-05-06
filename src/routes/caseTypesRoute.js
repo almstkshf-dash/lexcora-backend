@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 const caseTypesController = require('../controllers/caseTypesController');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
-const { authenticateToken } = require('../middliewares/authMiddleware');
+const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get all case types
 router.get('/', authenticateToken, caseTypesController.getAllCaseTypes);
@@ -21,3 +21,4 @@ router.put('/:id', authenticateToken, caseTypesController.updateCaseType);
 router.delete('/:id', authenticateToken, checkPermission('Delete Case Type'), caseTypesController.deleteCaseType);
 
 module.exports = router;
+

@@ -91,7 +91,11 @@ const getCurrentUser = async (req, res) => {
     
     return res.success(result, req.t('auth.profileFetched'));
   } catch (error) {
-    console.error('Get current user error:', error.message);
+    console.error('[GET_CURRENT_USER_ERROR]', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
     return res.fail('Error fetching user profile', 500, 'PROFILE_ERROR');
   }
 };
