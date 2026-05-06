@@ -81,12 +81,14 @@ const createBill = async (billData, items) => {
 
     const [result] = await connection.query(
       `INSERT INTO bills (
-        bill_date, bill_number, amount, vendor_id, branch_id, status, vat, currency, 
+        bill_date, bill_number, amount, vendor_id, branch_id, status, vat, 
+        vat_category, taxable_amount, vat_amount, currency, 
         description, created_by, case_id, project_id, department_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         bill_date, bill_number, amount, vendor_id, branch_id || null, status || 'pending', 
-        vat || 0, currency || 'AED', description || null, created_by,
+        vat || 0, billData.vat_category || 'standard', billData.taxable_amount || amount || 0,
+        billData.vat_amount || 0, currency || 'AED', description || null, created_by,
         case_id || null, project_id || null, department_id || null
       ]
     );
@@ -94,8 +96,17 @@ const createBill = async (billData, items) => {
     const billId = result.insertId;
 
     if (items && items.length > 0) {
-      const itemValues = items.map(item => [billId, item.description, item.amount]);
-      await connection.query("INSERT INTO bill_items (bill_id, description, amount) VALUES ?", [itemValues]);
+      const itemValues = items.map(item => [
+        billId, 
+        item.description, 
+        item.amount,
+        item.vat_rate || 5.00,
+        item.vat_amount || 0
+      ]);
+      await connection.query(
+        "INSERT INTO bill_items (bill_id, description, amount, vat_rate, vat_amount) VALUES ?", 
+        [itemValues]
+      );
     }
 
     // Accounting Posting with Allocation Support

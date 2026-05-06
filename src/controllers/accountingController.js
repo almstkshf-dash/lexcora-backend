@@ -226,6 +226,16 @@ const getAssetsReport = async (req, res) => {
   }
 };
 
+const getVatReturn = async (req, res) => {
+  try {
+    const result = await accountingService.getVatReturn(req.query);
+    res.success(result);
+  } catch (error) {
+    console.error('[GET_VAT_RETURN_ERROR]', { message: error.message, stack: error.stack, query: req.query });
+    res.fail(req.t('accounting.failedFetchReports'), 500, 'GET_VAT_RETURN_FAILED');
+  }
+};
+
 // Budgets
 const setBudget = async (req, res) => {
   try {
@@ -297,5 +307,6 @@ module.exports = {
   setBudget,
   getBudgetVsActual,
   getBudgets,
-  triggerDepreciationJob
+  triggerDepreciationJob,
+  getVatReturn
 };

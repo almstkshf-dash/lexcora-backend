@@ -611,5 +611,71 @@ module.exports = {
     });
     summary.profit = summary.income - summary.expense;
     return summary;
+  },
+
+  /**
+   * Generates a UAE VAT201 Return report.
+   */
+  getVatReturn: async (filters = {}) => {
+    const { start_date, end_date, branch_id } = filters;
+    
+    // Aggregation for Output Tax (Standard Rated Supplies)
+    const [outputRows] = await db.query(`
+      SELECT 
+        b.name_ar as emirate,
+        SUM(i.taxable_amount) as amount,
+        SUM(i.vat_amount) as vat_amount
+      FROM invoices i
+      JOIN branches b ON i.branch_id = b.id
+      WHERE i.vat_category = 'standard'
+      AND i.invoice_date BETWEEN ? AND ?
+      ${branch_id ? 'AND i.branch_id = ?' : ''}
+      AND i.status = 'approved'
+      GROUP BY b.id
+    `, [start_date, end_date, branch_id].filter(Boolean));
+
+    // Aggregation for Input Tax (Standard Rated Expenses)
+    const [inputRows] = await db.query(`
+      SELECT 
+        SUM(taxable_amount) as amount,
+        SUM(vat_amount) as vat_amount
+      FROM bills
+      WHERE vat_category = 'standard'
+      AND bill_date BETWEEN ? AND ?
+      ${branch_id ? 'AND branch_id = ?' : ''}
+      AND status = 'approved'
+    `, [start_date, end_date, branch_id].filter(Boolean));
+
+    // Other categories for Output
+    const [otherRows] = await db.query(`
+      SELECT 
+        vat_category,
+        SUM(amount) as amount
+      FROM invoices
+      WHERE vat_category != 'standard'
+      AND invoice_date BETWEEN ? AND ?
+      ${branch_id ? 'AND branch_id = ?' : ''}
+      AND status = 'approved'
+      GROUP BY vat_category
+    `, [start_date, end_date, branch_id].filter(Boolean));
+
+    const totalOutputVat = outputRows.reduce((sum, r) => sum + parseFloat(r.vat_amount || 0), 0);
+    const totalRecoverableVat = parseFloat(inputRows[0]?.vat_amount || 0);
+
+    return {
+      outputTax: {
+        standardRatedSupplies: outputRows,
+        zeroRatedSupplies: parseFloat(otherRows.find(r => r.vat_category === 'zero_rated')?.amount || 0),
+        exemptSupplies: parseFloat(otherRows.find(r => r.vat_category === 'exempt')?.amount || 0),
+        totalOutputAmount: outputRows.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0),
+        totalOutputVat: totalOutputVat
+      },
+      inputTax: {
+        standardRatedExpenses: parseFloat(inputRows[0]?.amount || 0),
+        recoverableVat: totalRecoverableVat
+      },
+      netVat: totalOutputVat - totalRecoverableVat,
+      reportingPeriod: { start_date, end_date }
+    };
   }
 };

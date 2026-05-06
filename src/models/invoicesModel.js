@@ -145,12 +145,15 @@ const createInvoice = async (invoice, items, attachments = []) => {
         bank_account_id,
         status,
         vat,
+        vat_category,
+        taxable_amount,
+        vat_amount,
         currency,
         case_id,
         project_id,
         department_id,
         created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoice.invoice_date,
         invoiceNumber,
@@ -160,6 +163,9 @@ const createInvoice = async (invoice, items, attachments = []) => {
         invoice.bank_account_id || null,
         invoice.status || 'pending',
         invoice.vat || 0,
+        invoice.vat_category || 'standard',
+        invoice.taxable_amount || invoice.amount || 0,
+        invoice.vat_amount || 0,
         invoice.currency || 'AED',
         invoice.case_id || null,
         invoice.project_id || null,
@@ -175,11 +181,13 @@ const createInvoice = async (invoice, items, attachments = []) => {
       const itemValues = items.map(item => [
         invoiceId,
         item.description,
-        item.amount
+        item.amount,
+        item.vat_rate || 5.00,
+        item.vat_amount || 0
       ]);
 
       await connection.query(
-        `INSERT INTO invoice_items (invoice_id, description, amount) VALUES ?`,
+        `INSERT INTO invoice_items (invoice_id, description, amount, vat_rate, vat_amount) VALUES ?`,
         [itemValues]
       );
     }
@@ -277,6 +285,18 @@ const updateInvoice = async (id, invoice, items, attachments = null) => {
     if (invoice.vat !== undefined) {
       updateFields.push('vat = ?');
       updateValues.push(invoice.vat);
+    }
+    if (invoice.vat_category !== undefined) {
+      updateFields.push('vat_category = ?');
+      updateValues.push(invoice.vat_category);
+    }
+    if (invoice.taxable_amount !== undefined) {
+      updateFields.push('taxable_amount = ?');
+      updateValues.push(invoice.taxable_amount);
+    }
+    if (invoice.vat_amount !== undefined) {
+      updateFields.push('vat_amount = ?');
+      updateValues.push(invoice.vat_amount);
     }
     if (invoice.currency !== undefined) {
       updateFields.push('currency = ?');

@@ -92,6 +92,8 @@ const bankingRoute = require("./routes/bankingRoutes");
 const pettyCashRoute = require("./routes/pettyCashRoutes");
 const clientMessagesRoute = require("./routes/clientMessagesRoute");
 const ledgerRoute = require("./routes/ledgerRoute");
+const settingsRoute = require("./routes/settingsRoute");
+const SettingsModel = require("./models/settingsModel");
 
 const app = express();
 
@@ -143,6 +145,11 @@ if (process.env.NODE_ENV !== 'production' || process.env.RUN_MIGRATIONS === 'tru
         `);
         console.log('Startup migration: added bank_account_id to employee_cash_transactions');
       }
+
+      // Ensure global_settings table exists
+      await SettingsModel.ensureTableExists();
+      console.log('Startup migration: global_settings table verified');
+
       clearTimeout(migrationTimeout);
     } catch (e) {
       console.error('Startup migration error:', {
@@ -297,6 +304,7 @@ app.use("/api/payments", paymentsRoute);
 app.use("/api/banking", bankingRoute);
 app.use("/api/petty-cash", pettyCashRoute);
 app.use("/api/client-messages", clientMessagesRoute);
+app.use("/api/settings", settingsRoute);
 
 app.get("/health", async (req, res) => {
   try {

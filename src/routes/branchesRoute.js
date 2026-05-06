@@ -6,7 +6,7 @@ const { authenticateToken } = require('../middlewares/authMiddleware');
 const { checkPermission } = require('../middlewares/permissionsMiddleware');
 
 
-router.get('/', authenticateToken, branchesController.getAllBranches);
+router.get('/', authenticateToken, checkPermission('view_branches'), branchesController.getAllBranches);
 
 router.post('/', authenticateToken, checkPermission('Add Branch'), branchesController.createBranch);
 
