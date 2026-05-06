@@ -665,6 +665,36 @@ INSERT INTO `deposits` (`id`, `bank_account_id`, `amount`, `deposit_date`, `crea
 -- --------------------------------------------------------
 
 --
+-- بنية الجدول `global_settings`
+--
+
+CREATE TABLE `global_settings` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `company_name_ar` varchar(255) DEFAULT NULL,
+  `company_name_en` varchar(255) DEFAULT NULL,
+  `company_trn` varchar(50) DEFAULT NULL,
+  `company_address_ar` text,
+  `company_address_en` text,
+  `company_phone` varchar(50) DEFAULT NULL,
+  `company_email` varchar(100) DEFAULT NULL,
+  `company_logo_url` varchar(500) DEFAULT NULL,
+  `default_vat_rate` decimal(5,2) DEFAULT '5.00',
+  `terms_conditions_ar` text,
+  `terms_conditions_en` text,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- إرجاع أو استيراد بيانات الجدول `global_settings`
+--
+
+INSERT INTO `global_settings` (`company_name_ar`, `company_name_en`, `company_trn`, `company_address_ar`, `company_address_en`, `company_phone`, `company_email`, `default_vat_rate`) 
+VALUES ('ليكسكورا للمحاماة والاستشارات القانونية', 'Lexcora Advocates & Legal Consultants', '100423000000003', 'دبي، الإمارات العربية المتحدة', 'Dubai, United Arab Emirates', '+971 4 000 0000', 'info@lexcora.com', 5.00);
+
+-- --------------------------------------------------------
+
+--
 -- بنية الجدول `employees`
 --
 
