@@ -1,5 +1,16 @@
 const db = require('../config/db');
 
+// Helper function to add column if not exists
+const addColumnIfNotExists = async (table, column, type) => {
+  const [rows] = await db.query(
+    `SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ? AND TABLE_SCHEMA = DATABASE()`,
+    [table, column]
+  );
+  if (rows[0].count === 0) {
+    await db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
+};
+
 // Ensure table exists (idempotent)
 const ensureTable = async () => {
   await db.query(`
@@ -22,13 +33,9 @@ const ensureTable = async () => {
     )
   `);
 
-  // Add new columns if migrating an existing table (best effort, ignores errors if columns exist)
-  await db
-    .query('ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS table_data JSON NULL')
-    .catch(() => {});
-  await db
-    .query('ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS raw_data JSON NULL')
-    .catch(() => {});
+  // Add new columns if migrating an existing table
+  await addColumnIfNotExists('ai_conversations', 'table_data', 'JSON NULL');
+  await addColumnIfNotExists('ai_conversations', 'raw_data', 'JSON NULL');
 };
 
 ensureTable().catch((err) => console.error('Failed to ensure ai_conversations table:', err));
