@@ -211,7 +211,7 @@ const approveMemo = async (id, position, approvedType) => {
 
     
     // If any approval is removed, set status back to 'Pending Approval'
-    if (success && !isApproved && existingMemo.status === 'Approved') {
+    if (success && !approvedType && existingMemo.status === 'Approved') {
       await memosModel.updateMemoStatus(id, 'Pending Approval');
     }
 

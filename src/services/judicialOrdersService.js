@@ -10,15 +10,11 @@ const getAllJudicialOrders = async () => {
 
 const createJudicialOrder = async (judicialOrder) => {
   const files = judicialOrder.files || [];
-  try {
-    const judicialOrderId = await judicialOrdersModel.createJudicialOrder(judicialOrder);
-    for (const file of files) {
-      await judicialOrdersModel.addJudicialOrderDocument(judicialOrderId, file.document_name, file.document_url);
-    }
-    return judicialOrderId;
-  } catch (error) {
-    throw error;
+  const judicialOrderId = await judicialOrdersModel.createJudicialOrder(judicialOrder);
+  for (const file of files) {
+    await judicialOrdersModel.addJudicialOrderDocument(judicialOrderId, file.document_name, file.document_url);
   }
+  return judicialOrderId;
 };
 
 const updateJudicialOrder = async (id, judicialOrder) => {

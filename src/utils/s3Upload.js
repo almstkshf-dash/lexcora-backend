@@ -12,7 +12,7 @@ const uploadToStorage = async (file, folder = 'documents') => {
     // Decode the original filename to properly handle Arabic and UTF-8 characters
     let originalFilename = file.originalname;
     try {
-      if (/[^\x00-\x7F]/.test(originalFilename)) {
+      if (/[^\u0000-\u007F]/.test(originalFilename)) { // eslint-disable-line no-control-regex
         originalFilename = Buffer.from(originalFilename, 'latin1').toString('utf8');
       }
     } catch (error) {

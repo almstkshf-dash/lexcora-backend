@@ -145,7 +145,7 @@ const updateMemo = async (id, memoData) => {
   }
 };
 
-const updateMemoApproval = async (id, position, approvalType, isApproved) => {
+const updateMemoApproval = async (id, approvalType, isApproved) => {
     approvalType = approvalType.toLowerCase();
 
   try {
@@ -335,7 +335,7 @@ const updateEmployeeMemoStatus = async (id, status, position) => {
   try {
     // Normalize position to lowercase
     position = position.toLowerCase();
-    console
+    // console.log(position); // Fixed stray console
     // Map position to corresponding status field
     const statusFieldMap = {
       'admin': 'admin_status',
