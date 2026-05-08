@@ -189,6 +189,7 @@ const productionCustomDomains = [
   'https://portal.lexcora-mbh.com',
   'https://user.lexcora-mbh.com',
   'https://api.lexcora-mbh.com',
+  'https://lexcora-client-portal.vercel.app',
 ];
 
 [...defaultLocalOrigins, ...productionCustomDomains].forEach(origin => {
@@ -201,6 +202,10 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow no-origin requests (React Native, curl) for bearer-token flows
     if (!origin) {
+      return callback(null, true);
+    }
+    // Allow any Vercel preview deployment for the client portal project
+    if (origin && origin.match(/^https:\/\/lexcora-client-portal[a-z0-9-]*\.vercel\.app$/)) {
       return callback(null, true);
     }
     if (allowedOrigins.includes(origin)) {
