@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getPartyById } = require('../models/partiesModel');
+const db = require('../config/db');
 
 // JWT Secret - should match the one used in clientAuthService
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
@@ -17,13 +17,14 @@ const verifyToken = (token) => {
  */
 const authenticateClientToken = async (req, res, next) => {
   try {
-    // Get token from cookie first, then fallback to header
-    let token = req.cookies?.clientAuthToken;
-    
-    // If no cookie token, check Authorization header
+    // Get token from Authorization header first, then cookie
+    let token = null;
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
     if (!token) {
-      const authHeader = req.headers['authorization'];
-      token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+      token = req.cookies?.clientAuthToken;
     }
 
     if (!token) {
@@ -35,10 +36,14 @@ const authenticateClientToken = async (req, res, next) => {
 
     // Verify token
     const decoded = verifyToken(token);
-    
-    // Get client details from database
-    const client = await getPartyById(decoded.id);
-    
+
+    // Lightweight query — only fetch what we need, no JOINs that can fail
+    const [rows] = await db.query(
+      'SELECT id, name, username, phone, email, address, national_id, status, created_at, updated_at FROM parties WHERE id = ?',
+      [decoded.id]
+    );
+
+    const client = rows[0];
     if (!client) {
       return res.status(401).json({
         success: false,
@@ -46,16 +51,15 @@ const authenticateClientToken = async (req, res, next) => {
       });
     }
 
-    // Add client info to request object
     req.user = {
       id: client.id,
-      party_id: client.party_id,
       username: client.username,
       name: client.name,
       phone: client.phone,
       email: client.email,
       address: client.address,
       national_id: client.national_id,
+      status: client.status,
       created_at: client.created_at,
       updated_at: client.updated_at
     };
@@ -63,23 +67,15 @@ const authenticateClientToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Client authentication error:', error.message);
-    
+
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token has expired'
-      });
-    } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authentication'
-      });
+      return res.status(401).json({ success: false, message: 'Token has expired' });
     }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    // DB errors — return 401 not 500 so the portal redirects to login cleanly
+    return res.status(401).json({ success: false, message: 'Authentication failed' });
   }
 };
 
