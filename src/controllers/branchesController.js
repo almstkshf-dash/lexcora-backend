@@ -6,7 +6,7 @@ const branchesService = require('../services/branchesService');
 const getAllBranches = async (req, res) => {
   try {
     const branches = await branchesService.getAllBranches();
-    res.success(branches);
+    res.list(branches || []);
   } catch (error) {
     console.error('[GET_ALL_BRANCHES_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('branch.failedFetch'), 500, 'BRANCHES_LIST_ERROR');

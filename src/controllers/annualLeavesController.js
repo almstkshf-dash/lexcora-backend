@@ -8,8 +8,9 @@ const getAnnualLeaves = async (req, res) => {
     const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id', 'date']);
     const result = await annualLeavesModel.getAllAnnualLeaves(employee_id || null, { page, limit, sortBy, sortOrder });
     
-    res.success(result.rows || result.data || result, req.t('generic.ok'), 200, result.pagination || undefined);
+    res.list(result.rows || result.data || result || [], req.t('generic.ok'), result.pagination || undefined);
   } catch (err) {
+    console.error('[GET_ANNUAL_LEAVES_ERROR]', { message: err.message, stack: err.stack, query: req.query });
     res.fail(err.message, 500, 'ANNUAL_LEAVES_LIST_ERROR');
   }
 };
@@ -21,21 +22,13 @@ const getAnnualLeave = async (req, res) => {
     const annualLeave = await annualLeavesModel.getAnnualLeaveById(id);
     
     if (!annualLeave) {
-      return res.status(404).json({
-        success: false,
-        message: "Annual leave not found"
-      });
+      return res.fail(req.t('leave.notFound'), 404, 'ANNUAL_LEAVE_NOT_FOUND');
     }
     
-    res.json({
-      success: true,
-      data: annualLeave
-    });
+    res.success(annualLeave);
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_ANNUAL_LEAVE_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'ANNUAL_LEAVE_FETCH_ERROR');
   }
 };
 
@@ -46,22 +39,16 @@ const createAnnualLeave = async (req, res) => {
     
     // Validate required fields
     if (!employee_id || !date || !from_date || !to_date || !total_days || remaining_days === undefined || !leave_type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: employee_id, date, from_date, to_date, total_days, remaining_days, leave_type"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Validate leave_type
     if (!['paid', 'unpaid'].includes(leave_type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid leave_type. Must be 'paid' or 'unpaid'"
-      });
+      return res.fail(req.t('leave.invalidType'), 400, 'INVALID_LEAVE_TYPE');
     }
     
-    // Get created_by from authenticated user (from auth middleware)
-    const created_by = req.user.id;
+    // Get created_by from authenticated user
+    const created_by = req.user?.id || null;
     
     const annualLeaveData = {
       employee_id,
@@ -79,16 +66,10 @@ const createAnnualLeave = async (req, res) => {
     // Fetch the created annual leave with full details
     const newAnnualLeave = await annualLeavesModel.getAnnualLeaveById(annualLeaveId);
     
-    res.status(201).json({
-      success: true,
-      message: "Annual leave created successfully",
-      data: newAnnualLeave
-    });
+    res.created(newAnnualLeave, req.t('leave.created'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[CREATE_ANNUAL_LEAVE_ERROR]', { message: err.message, stack: err.stack, body: req.body });
+    res.fail(err.message, 500, 'ANNUAL_LEAVE_CREATE_ERROR');
   }
 };
 
@@ -100,27 +81,18 @@ const updateAnnualLeave = async (req, res) => {
     
     // Validate required fields
     if (!date || !from_date || !to_date || !total_days || remaining_days === undefined || !leave_type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: date, from_date, to_date, total_days, remaining_days, leave_type"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Validate leave_type
     if (!['paid', 'unpaid'].includes(leave_type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid leave_type. Must be 'paid' or 'unpaid'"
-      });
+      return res.fail(req.t('leave.invalidType'), 400, 'INVALID_LEAVE_TYPE');
     }
     
     // Check if annual leave exists
     const existingAnnualLeave = await annualLeavesModel.getAnnualLeaveById(id);
     if (!existingAnnualLeave) {
-      return res.status(404).json({
-        success: false,
-        message: "Annual leave not found"
-      });
+      return res.fail(req.t('leave.notFound'), 404, 'ANNUAL_LEAVE_NOT_FOUND');
     }
     
     const annualLeaveData = {
@@ -137,16 +109,10 @@ const updateAnnualLeave = async (req, res) => {
     // Fetch the updated annual leave
     const updatedAnnualLeave = await annualLeavesModel.getAnnualLeaveById(id);
     
-    res.json({
-      success: true,
-      message: "Annual leave updated successfully",
-      data: updatedAnnualLeave
-    });
+    res.success(updatedAnnualLeave, req.t('leave.updated'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[UPDATE_ANNUAL_LEAVE_ERROR]', { id: req.params.id, message: err.message, stack: err.stack, body: req.body });
+    res.fail(err.message, 500, 'ANNUAL_LEAVE_UPDATE_ERROR');
   }
 };
 
@@ -158,23 +124,15 @@ const deleteAnnualLeave = async (req, res) => {
     // Check if annual leave exists
     const existingAnnualLeave = await annualLeavesModel.getAnnualLeaveById(id);
     if (!existingAnnualLeave) {
-      return res.status(404).json({
-        success: false,
-        message: "Annual leave not found"
-      });
+      return res.fail(req.t('leave.notFound'), 404, 'ANNUAL_LEAVE_NOT_FOUND');
     }
     
     await annualLeavesModel.deleteAnnualLeave(id);
     
-    res.json({
-      success: true,
-      message: "Annual leave deleted successfully"
-    });
+    res.success(null, req.t('leave.deleted'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_ANNUAL_LEAVE_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'ANNUAL_LEAVE_DELETE_ERROR');
   }
 };
 

@@ -12,7 +12,7 @@ const getEmployees = async (req, res) => {
     const search = req.query.search ? String(req.query.search).trim() : null;
 
     const result = await employeeService.listEmployees({ page, limit, sortBy, sortOrder, search });
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (err) {
     console.error('[GET_EMPLOYEES_ERROR]', { message: err.message, stack: err.stack, query: req.query });
     res.fail(err.message, 500, 'EMPLOYEE_LIST_ERROR');
@@ -90,7 +90,7 @@ const getEmployeeAccountStatement = async (req, res) => {
     const result = await employeeService.getEmployeeAccountStatement(id, from, to);
     
     if (result.success) {
-      res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+      res.list(result.data || result, req.t('generic.ok'), result.pagination);
     } else {
       res.fail(result.message || req.t('generic.internalError'), 400, 'STATEMENT_FETCH_FAILED');
     }

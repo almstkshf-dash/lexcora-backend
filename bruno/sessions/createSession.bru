@@ -1,0 +1,36 @@
+meta {
+  name: Create Session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/sessions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "Bruno Test Session",
+    "session_date": "2025-06-01",
+    "session_time": "10:00",
+    "location": "Test Court",
+    "notes": "Created by Bruno automated test"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data && res.body.data.id) {
+    bru.setEnvVar("testSessionId", String(res.body.data.id));
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.success: eq true
+}

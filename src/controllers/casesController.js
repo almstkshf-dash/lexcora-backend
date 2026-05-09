@@ -40,7 +40,7 @@ const getAllCases = async (req, res) => {
     };
 
     const result = await casesService.getAllCases(filters);
-    return res.success(result.cases, req.t('generic.ok'), 200, {
+    return res.list(result.cases || result.data || result, req.t('generic.ok'), {
       pagination: result.pagination,
       stats: result.stats
     });
@@ -107,7 +107,7 @@ const deleteCase = async (req, res) => {
 const getCasesByBranch = async (req, res) => {
   try {
     const data = await casesService.getCasesByBranch(req.params.branchId);
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASES_BY_BRANCH_ERROR]', { branchId: req.params.branchId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASES_BRANCH_ERROR');
@@ -117,7 +117,7 @@ const getCasesByBranch = async (req, res) => {
 const getCasesByLawyer = async (req, res) => {
   try {
     const data = await casesService.getCasesByLawyer(req.params.lawyerId);
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASES_BY_LAWYER_ERROR]', { lawyerId: req.params.lawyerId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASES_LAWYER_ERROR');
@@ -127,7 +127,7 @@ const getCasesByLawyer = async (req, res) => {
 const getCasesByLegalAdvisor = async (req, res) => {
   try {
     const data = await casesService.getCasesByLegalAdvisor(req.params.legalAdvisorId);
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASES_BY_ADVISOR_ERROR]', { legalAdvisorId: req.params.legalAdvisorId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASES_ADVISOR_ERROR');
@@ -137,7 +137,7 @@ const getCasesByLegalAdvisor = async (req, res) => {
 const getCasesByLegalResearcher = async (req, res) => {
   try {
     const data = await casesService.getCasesByLegalResearcher(req.params.legalResearcherId);
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASES_BY_RESEARCHER_ERROR]', { legalResearcherId: req.params.legalResearcherId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASES_RESEARCHER_ERROR');
@@ -171,7 +171,7 @@ const deletePartyFromCase = async (req, res) => {
 const searchCasesForAddNewCasePage = async (req, res) => {
   try {
     const data = await casesService.searchCasesForAddNewCasePage(req.query.q || '');
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[SEARCH_CASES_ERROR]', { query: req.query, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_SEARCH_ERROR');
@@ -181,7 +181,7 @@ const searchCasesForAddNewCasePage = async (req, res) => {
 const getCaseParties = async (req, res) => {
   try {
     const data = await casesService.getCaseParties(req.params.caseId);
-    return res.success(data, req.t('generic.ok'));
+    return res.list(data, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASE_PARTIES_ERROR]', { caseId: req.params.caseId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_PARTIES_ERROR');
@@ -193,7 +193,7 @@ const getCaseSessions = async (req, res) => {
     const { caseId } = req.params;
     if (!caseId) return res.fail('Case ID is required', 400, 'VALIDATION_ERROR');
     const sessions = await sessionsService.getSessionsByCase(caseId);
-    return res.success(sessions, req.t('generic.ok'));
+    return res.list(sessions, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASE_SESSIONS_ERROR]', { caseId: req.params.caseId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_SESSIONS_ERROR');
@@ -203,7 +203,7 @@ const getCaseSessions = async (req, res) => {
 const getEmployeesCaseDocuments = async (req, res) => {
   try {
     const docs = await casesService.getEmployeesCaseDocuments(req.params.id);
-    return res.success(docs, req.t('generic.ok'));
+    return res.list(docs, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_EMP_CASE_DOCS_ERROR]', { caseId: req.params.id, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_EMP_DOCS_ERROR');
@@ -224,7 +224,7 @@ const deleteEmployeeCaseDocument = async (req, res) => {
 const getCaseDocuments = async (req, res) => {
   try {
     const docs = await casesService.getCaseDocuments(req.params.id);
-    return res.success(docs, req.t('generic.ok'));
+    return res.list(docs, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASE_DOCS_ERROR]', { caseId: req.params.id, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_DOCS_ERROR');
@@ -245,7 +245,7 @@ const deleteCaseDocument = async (req, res) => {
 const getCaseCourtDocuments = async (req, res) => {
   try {
     const docs = await casesService.getCaseCourtDocuments(req.params.id);
-    return res.success(docs, req.t('generic.ok'));
+    return res.list(docs, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASE_COURT_DOCS_ERROR]', { caseId: req.params.id, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_COURT_DOCS_ERROR');
@@ -266,7 +266,7 @@ const deleteCaseCourtDocument = async (req, res) => {
 const getCasePartyDocuments = async (req, res) => {
   try {
     const docs = await casesService.getCasePartyDocuments(req.params.id, req.params.partyId);
-    return res.success(docs, req.t('generic.ok'));
+    return res.list(docs, req.t('generic.ok'));
   } catch (error) {
     console.error('[GET_CASE_PARTY_DOCS_ERROR]', { caseId: req.params.id, partyId: req.params.partyId, message: error.message, stack: error.stack });
     return res.fail(req.t('case.failedFetch'), 500, 'CASE_PARTY_DOCS_ERROR');

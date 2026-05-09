@@ -6,7 +6,7 @@ const bankAccountsService = require('../services/bankAccountsService');
 const getAllBankAccounts = async (req, res) => {
   try {
     const result = await bankAccountsService.getAllBankAccounts();
-    res.success(result);
+    res.list(result || []);
   } catch (error) {
     console.error('[GET_ALL_BANK_ACCOUNTS_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('bank.failedFetchBankAccounts'), 500, 'GET_BANK_ACCOUNTS_FAILED');
@@ -148,7 +148,7 @@ const getBankAccountLogs = async (req, res) => {
       return res.fail(req.t('bank.notFound'), 404, 'BANK_ACCOUNT_NOT_FOUND');
     }
     
-    res.success(result.data);
+    res.list(result.data || result || []);
   } catch (error) {
     console.error('[GET_BANK_ACCOUNT_LOGS_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
     res.fail(req.t('bank.failedFetchBankAccountLogs'), 500, 'GET_BANK_LOGS_FAILED');

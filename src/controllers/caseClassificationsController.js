@@ -4,18 +4,20 @@ const caseClassificationsService = require('../services/caseClassificationsServi
 const getAllCaseClassifications = async (req, res) => {
   try {
     const classifications = await caseClassificationsService.getAllCaseClassifications();
-    res.json({success: true, data: classifications});
+    res.list(classifications || [], req.t('generic.ok'));
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to fetch case classifications', error: error.message });
+    console.error('[GET_ALL_CASE_CLASSIFICATIONS_ERROR]', { message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedFetchClassifications'), 500, 'CLASSIFICATIONS_LIST_ERROR');
   }
 };
 
 const createCaseClassification = async (req, res) => {
   try {
     const classificationId = await caseClassificationsService.createCaseClassification(req.body);
-    res.status(201).json({ id: classificationId });
+    res.created({ id: classificationId }, req.t('generic.created'));
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create case classification' });
+    console.error('[CREATE_CASE_CLASSIFICATION_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('case.failedCreateClassification'), 500, 'CLASSIFICATION_CREATE_ERROR');
   }
 };
 
@@ -23,12 +25,13 @@ const updateCaseClassification = async (req, res) => {
   try {
     const success = await caseClassificationsService.updateCaseClassification(req.params.id, req.body);
     if (success) {
-      res.json({ message: 'Case classification updated' });
+      res.success(null, req.t('generic.ok'));
     } else {
-      res.status(404).json({ error: 'Case classification not found' });
+      res.fail(req.t('generic.notFound'), 404, 'CLASSIFICATION_NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update case classification' });
+    console.error('[UPDATE_CASE_CLASSIFICATION_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('case.failedUpdateClassification'), 500, 'CLASSIFICATION_UPDATE_ERROR');
   }
 };
 
@@ -36,12 +39,13 @@ const deleteCaseClassification = async (req, res) => {
   try {
     const success = await caseClassificationsService.deleteCaseClassification(req.params.id);
     if (success) {
-      res.json({ message: 'Case classification deleted' });
+      res.success(null, req.t('generic.ok'));
     } else {
-      res.status(404).json({ error: 'Case classification not found' });
+      res.fail(req.t('generic.notFound'), 404, 'CLASSIFICATION_NOT_FOUND');
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete case classification' });
+    console.error('[DELETE_CASE_CLASSIFICATION_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedDeleteClassification'), 500, 'CLASSIFICATION_DELETE_ERROR');
   }
 };
 

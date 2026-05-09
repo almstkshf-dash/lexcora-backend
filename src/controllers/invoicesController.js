@@ -6,7 +6,7 @@ const invoicesService = require('../services/invoicesService');
 const getAllInvoices = async (req, res) => {
   try {
     const result = await invoicesService.getAllInvoices();
-    res.success(result.data);
+    res.list(result.data || result);
   } catch (error) {
     console.error('[GET_ALL_INVOICES_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('finance.failedFetchInvoices'), 500, 'INVOICES_LIST_ERROR');
@@ -29,7 +29,7 @@ const getInvoiceById = async (req, res) => {
 const getInvoicesByClientId = async (req, res) => {
   try {
     const result = await invoicesService.getInvoicesByClientId(req.params.clientId);
-    res.success(result.data);
+    res.list(result.data || result);
   } catch (error) {
     console.error('[GET_CLIENT_INVOICES_ERROR]', { clientId: req.params.clientId, message: error.message, stack: error.stack });
     res.fail(req.t('finance.failedFetchClientInvoices'), 500, 'CLIENT_INVOICES_ERROR');

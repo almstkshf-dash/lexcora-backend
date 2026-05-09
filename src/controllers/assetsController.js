@@ -25,7 +25,7 @@ const getAssets = async (req, res) => {
       })
     );
     
-    res.success(assetsWithDocs, req.t('generic.ok'), 200, {
+    res.list(assetsWithDocs || [], req.t('generic.ok'), {
       count: assetsWithDocs.length
     });
   } catch (err) {
@@ -63,7 +63,7 @@ const getAssetDocuments = async (req, res) => {
     const { id } = req.params;
     const documents = await assetsModel.getAssetDocuments(id);
     
-    res.success(documents, req.t('generic.ok'), 200, {
+    res.list(documents || [], req.t('generic.ok'), {
       count: documents.length
     });
   } catch (err) {
@@ -471,7 +471,7 @@ const getAssetTransfers = async (req, res) => {
     const { id } = req.params;
     const transfers = await assetsModel.getAssetTransfers(id);
 
-    res.success(transfers, req.t('generic.ok'), 200, {
+    res.list(transfers || [], req.t('generic.ok'), {
       count: transfers.length
     });
   } catch (err) {
@@ -564,7 +564,7 @@ const getAssetRevaluations = async (req, res) => {
     const { id } = req.params;
     const revaluations = await assetsModel.getAssetRevaluations(id);
 
-    res.success(revaluations, req.t('generic.ok'), 200, {
+    res.list(revaluations || [], req.t('generic.ok'), {
       count: revaluations.length
     });
   } catch (err) {
@@ -581,7 +581,7 @@ const getDepreciationSchedule = async (req, res) => {
 
     const schedule = await depreciationService.getAssetDepreciationSchedule(id, parseInt(months));
 
-    res.success(schedule, req.t('generic.ok'), 200, {
+    res.list(schedule || [], req.t('generic.ok'), {
       asset_id: id,
       total_periods: schedule.length
     });
@@ -652,7 +652,7 @@ const updateDepreciationSettings = async (req, res) => {
 // Calculate depreciation preview
 const getDepreciationMethods = async (req, res) => {
   try {
-    res.success(Object.entries(DEPRECIATION_METHOD_LABELS).map(([value, label]) => ({
+    res.list(Object.entries(DEPRECIATION_METHOD_LABELS).map(([value, label]) => ({
       value,
       label
     })));

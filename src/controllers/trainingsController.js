@@ -8,7 +8,7 @@ const getTrainings = async (req, res) => {
     const { employee_id } = req.query;
     const { page, limit, sortBy, sortOrder } = normalizePagination(req.query, ['created_at', 'id', 'date']);
     const trainingsResult = await trainingsModel.getAllTrainings(employee_id || null, { page, limit, sortBy, sortOrder });
-    const trainings = trainingsResult.rows || trainingsResult.data || trainingsResult;
+    const trainings = trainingsResult.rows || trainingsResult.data || trainingsResult || [];
     const pagination = trainingsResult.pagination || (trainingsResult.total ? {
       total: trainingsResult.total,
       page,
@@ -27,8 +27,9 @@ const getTrainings = async (req, res) => {
       })
     );
     
-    res.success(trainingsWithDocs, req.t('generic.ok'), 200, pagination);
+    res.list(trainingsWithDocs, req.t('generic.ok'), pagination);
   } catch (err) {
+    console.error('[GET_TRAININGS_ERROR]', { message: err.message, stack: err.stack, query: req.query });
     res.fail(err.message, 500, 'TRAININGS_LIST_ERROR');
   }
 };
@@ -40,27 +41,19 @@ const getTraining = async (req, res) => {
     const training = await trainingsModel.getTrainingById(id);
     
     if (!training) {
-      return res.status(404).json({
-        success: false,
-        message: "Training not found"
-      });
+      return res.fail(req.t('training.notFound'), 404, 'TRAINING_NOT_FOUND');
     }
     
     // Get documents
     const documents = await trainingsModel.getTrainingDocuments(id);
     
-    res.json({
-      success: true,
-      data: {
-        ...training,
-        documents
-      }
+    res.success({
+      ...training,
+      documents
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_TRAINING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'TRAINING_FETCH_ERROR');
   }
 };
 
@@ -70,16 +63,12 @@ const getTrainingDocuments = async (req, res) => {
     const { id } = req.params;
     const documents = await trainingsModel.getTrainingDocuments(id);
     
-    res.json({
-      success: true,
-      data: documents,
+    res.list(documents || [], req.t('generic.ok'), {
       count: documents.length
     });
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[GET_TRAINING_DOCUMENTS_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'TRAINING_DOCS_ERROR');
   }
 };
 
@@ -90,14 +79,11 @@ const createTraining = async (req, res) => {
     
     // Validate required fields
     if (!employee_id || !training_date || !type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: employee_id, training_date, type"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Get created_by from authenticated user
-    const created_by = req.user.id;
+    const created_by = req.user?.id || null;
     
     // Create training
     const trainingData = {
@@ -127,19 +113,13 @@ const createTraining = async (req, res) => {
     const newTraining = await trainingsModel.getTrainingById(trainingId);
     const trainingDocuments = await trainingsModel.getTrainingDocuments(trainingId);
     
-    res.status(201).json({
-      success: true,
-      message: "Training created successfully",
-      data: {
-        ...newTraining,
-        documents: trainingDocuments
-      }
-    });
+    res.created({
+      ...newTraining,
+      documents: trainingDocuments
+    }, req.t('training.created'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[CREATE_TRAINING_ERROR]', { message: err.message, stack: err.stack, body: req.body });
+    res.fail(err.message, 500, 'TRAINING_CREATE_ERROR');
   }
 };
 
@@ -151,19 +131,13 @@ const updateTraining = async (req, res) => {
     
     // Validate required fields
     if (!training_date || !type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: training_date, type"
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
     
     // Check if training exists
     const existingTraining = await trainingsModel.getTrainingById(id);
     if (!existingTraining) {
-      return res.status(404).json({
-        success: false,
-        message: "Training not found"
-      });
+      return res.fail(req.t('training.notFound'), 404, 'TRAINING_NOT_FOUND');
     }
     
     // Update training
@@ -175,7 +149,7 @@ const updateTraining = async (req, res) => {
     await trainingsModel.updateTraining(id, trainingData);
     
     // Add new documents if provided
-    const created_by = req.user.id;
+    const created_by = req.user?.id || null;
     if (documents && Array.isArray(documents) && documents.length > 0) {
       for (const doc of documents) {
         if (doc.document_name && doc.document_url) {
@@ -193,19 +167,13 @@ const updateTraining = async (req, res) => {
     const updatedTraining = await trainingsModel.getTrainingById(id);
     const trainingDocuments = await trainingsModel.getTrainingDocuments(id);
     
-    res.json({
-      success: true,
-      message: "Training updated successfully",
-      data: {
-        ...updatedTraining,
-        documents: trainingDocuments
-      }
-    });
+    res.success({
+      ...updatedTraining,
+      documents: trainingDocuments
+    }, req.t('training.updated'));
   } catch (err) {
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[UPDATE_TRAINING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack, body: req.body });
+    res.fail(err.message, 500, 'TRAINING_UPDATE_ERROR');
   }
 };
 
@@ -219,30 +187,21 @@ const deleteTrainingDocument = async (req, res) => {
     const documentToDelete = documents.find(doc => doc.id === parseInt(documentId));
     
     if (!documentToDelete) {
-      return res.status(404).json({
-        success: false,
-        message: "Document not found"
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'DOC_NOT_FOUND');
     }
     
     // Delete from database
     await trainingsModel.deleteTrainingDocument(documentId, trainingId);
     
-    // Delete file from Cloudflare R2
+    // Delete file
     if (documentToDelete.document_url) {
       await deleteDocumentFiles([documentToDelete]);
     }
     
-    res.json({
-      success: true,
-      message: "Document deleted successfully"
-    });
+    res.success(null, req.t('training.docDeleted'));
   } catch (err) {
-    console.error('Error deleting training document:', err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_TRAINING_DOC_ERROR]', { trainingId: req.params.trainingId, documentId: req.params.documentId, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'TRAINING_DOC_DELETE_ERROR');
   }
 };
 
@@ -254,10 +213,7 @@ const deleteTraining = async (req, res) => {
     // Check if training exists
     const existingTraining = await trainingsModel.getTrainingById(id);
     if (!existingTraining) {
-      return res.status(404).json({
-        success: false,
-        message: "Training not found"
-      });
+      return res.fail(req.t('training.notFound'), 404, 'TRAINING_NOT_FOUND');
     }
     
     // Get documents before deleting
@@ -266,21 +222,15 @@ const deleteTraining = async (req, res) => {
     // Delete from database (cascade will delete document records)
     await trainingsModel.deleteTraining(id);
     
-    // Delete files from Cloudflare R2
+    // Delete files
     if (documents && documents.length > 0) {
       await deleteDocumentFiles(documents);
     }
     
-    res.json({
-      success: true,
-      message: "Training deleted successfully"
-    });
+    res.success(null, req.t('training.deleted'));
   } catch (err) {
-    console.error('Error deleting training:', err);
-    res.status(500).json({ 
-      success: false,
-      message: err.message 
-    });
+    console.error('[DELETE_TRAINING_ERROR]', { id: req.params.id, message: err.message, stack: err.stack });
+    res.fail(err.message, 500, 'TRAINING_DELETE_ERROR');
   }
 };
 

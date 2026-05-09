@@ -1,0 +1,32 @@
+meta {
+  name: Search Parties - Regression (Short Query)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/parties/search?q=ab
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  // Regression test: short query (< 3 chars) must return empty array, not crash
+  // This was previously causing a syntax error in the controller
+  test("Short query returns empty array safely", function() {
+    expect(res.status).to.equal(200);
+    expect(res.body.success).to.equal(true);
+    expect(res.body.data).to.be.an('array');
+    expect(res.body.data.length).to.equal(0);
+  });
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+  res.body.data: isArray
+}

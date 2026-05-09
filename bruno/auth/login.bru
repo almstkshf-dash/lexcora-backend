@@ -1,0 +1,37 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "{{adminUsername}}",
+    "password": "{{adminPassword}}"
+  }
+}
+
+script:post-response {
+  // Save token for all subsequent requests
+  if (res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+    console.log("✅ Token saved successfully");
+  } else if (res.body.data && res.body.data.token) {
+    // Fallback: token inside data object
+    bru.setEnvVar("token", res.body.data.token);
+    console.log("✅ Token saved from data.token");
+  } else {
+    console.error("❌ Login failed - no token in response:", JSON.stringify(res.body));
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+}

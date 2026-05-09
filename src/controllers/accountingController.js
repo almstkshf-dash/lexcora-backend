@@ -10,7 +10,7 @@ const assetsModel = require("../models/assetsModel");
 const getAccounts = async (req, res) => {
   try {
     const result = await accountsModel.getAllAccounts(req.query);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_ACCOUNTS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('accounting.failedFetchAccounts'), 500, 'GET_ACCOUNTS_FAILED');
@@ -20,7 +20,7 @@ const getAccounts = async (req, res) => {
 const getAccountsTree = async (req, res) => {
   try {
     const result = await accountsModel.getAccountsTree(req.query);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_ACCOUNTS_TREE_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('accounting.failedFetchAccounts'), 500, 'GET_ACCOUNTS_TREE_FAILED');
@@ -41,7 +41,7 @@ const createAccount = async (req, res) => {
 const getFiscalPeriods = async (req, res) => {
   try {
     const result = await fiscalPeriodsModel.getAllPeriods(req.query);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_FISCAL_PERIODS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('accounting.failedFetchFiscalPeriods'), 500, 'GET_FISCAL_PERIODS_FAILED');
@@ -73,7 +73,7 @@ const updateFiscalPeriodStatus = async (req, res) => {
 const getJournalEntries = async (req, res) => {
   try {
     const result = await journalEntriesModel.getAllJournalEntries(req.query);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_JOURNAL_ENTRIES_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('accounting.failedFetchJournalEntries'), 500, 'GET_JOURNAL_ENTRIES_FAILED');
@@ -107,7 +107,7 @@ const createJournalEntry = async (req, res) => {
 const getCurrencies = async (req, res) => {
   try {
     const result = await currenciesModel.getAllCurrencies();
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_CURRENCIES_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('generic.internalError'), 500, 'GET_CURRENCIES_FAILED');
@@ -261,7 +261,7 @@ const getBudgetVsActual = async (req, res) => {
 const getBudgets = async (req, res) => {
   try {
     const result = await budgetsModel.getAllBudgets(req.query);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[GET_BUDGETS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('accounting.failedFetchBudgets'), 500, 'GET_BUDGETS_FAILED');
@@ -272,9 +272,9 @@ const triggerDepreciationJob = async (req, res) => {
   try {
     const { enqueueJob } = require('../jobs/jobQueue');
     const user_id = req.user ? req.user.id : null;
-    
+
     const job = await enqueueJob('run-depreciation', { user_id });
-    
+
     res.success({ job_id: job.id }, req.t('accounting.depreciationQueued'));
   } catch (error) {
     console.error('[TRIGGER_DEPRECIATION_JOB_ERROR]', { message: error.message, stack: error.stack });

@@ -6,7 +6,7 @@ const courtsService = require('../services/courtsService');
 const getAllCourts = async (req, res) => {
   try {
     const courts = await courtsService.getAllCourts();
-    res.success(courts);
+    res.list(courts || []);
   } catch (error) {
     console.error('[GET_ALL_COURTS_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('court.failedFetch'), 500, 'COURTS_LIST_ERROR');

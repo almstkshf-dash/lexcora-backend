@@ -8,6 +8,7 @@
     "build": "echo 'not needed for Express'",
     "dev": "node index.js",
     "test": "node --test tests/**/*.test.js",
+    "test:api": "bru run ./bruno --env local",
     "cleanup:orphaned-files": "node scripts/cleanupOrphanedFiles.js",
     "db:import": "node scripts/import_dump.js",
     "lint": "eslint ."
@@ -40,6 +41,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@usebruno/cli": "^3.3.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.2.5",

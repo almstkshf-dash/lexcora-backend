@@ -15,7 +15,7 @@ const getAllParties = async (req, res) => {
     };
     
     const result = await partiesService.getAllParties(filters);
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_ALL_PARTIES_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('party.failedFetchParties'), 500, 'PARTIES_LIST_ERROR');
@@ -26,7 +26,7 @@ const getPartiesByBranchId = async (req, res) => {
   try {
     const { branchId } = req.params;
     const parties = await partiesService.getPartiesByBranchId(branchId);
-    res.success(parties);
+    res.list(parties);
   } catch (error) {
     console.error('[GET_PARTIES_BY_BRANCH_ID_ERROR]', { branchId: req.params.branchId, message: error.message, stack: error.stack });
     res.fail(req.t('party.failedFetchPartiesByBranch'), 500, 'GET_PARTIES_BY_BRANCH_FAILED');
@@ -127,7 +127,7 @@ const getPartyCases = async (req, res) => {
   try {
     const { id } = req.params;
     const cases = await partiesService.getPartyCases(id);
-    res.success(cases);
+    res.list(cases);
   } catch (error) {
     console.error('[GET_PARTY_CASES_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
     res.fail(req.t('party.failedFetchPartyCases'), 500, 'GET_PARTY_CASES_FAILED');
@@ -146,7 +146,7 @@ const getPotentialClients = async (req, res) => {
     };
     
     const result = await partiesService.getPotentialClients(filters);
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_POTENTIAL_CLIENTS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('party.failedFetchPotentialClients'), 500, 'GET_POTENTIAL_CLIENTS_FAILED');
@@ -159,11 +159,10 @@ const searchParties = async (req, res) => {
     
     // Validate minimum query length
     if (!query || query.trim().length < 3) {
-      return res.success([]);
+      return res.list([], req.t('generic.ok'));
     }
-    
     const result = await partiesService.searchParties(query.trim(), partyType);
-    res.success(result);
+    res.list(result);
   } catch (error) {
     console.error('[SEARCH_PARTIES_ERROR]', { query: req.query, message: error.message, stack: error.stack });
     res.fail(req.t('party.failedSearchParties'), 500, 'SEARCH_PARTIES_FAILED');
@@ -213,7 +212,7 @@ const getClientsForFinance = async (req, res) => {
     };
     
     const result = await partiesService.getClientsForFinance(filters);
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_FINANCE_CLIENTS_ERROR]', { query: req.query, message: error.message, stack: error.stack });
     res.fail(req.t('finance.failedFetchFinanceClients'), 500, 'GET_FINANCE_CLIENTS_FAILED');

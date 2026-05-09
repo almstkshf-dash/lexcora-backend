@@ -7,13 +7,10 @@ const caseDegreesService = require('../services/caseDegreesService');
 const getAllCaseDegrees = async (req, res) => {
   try {
     const caseDegrees = await caseDegreesService.getAllCaseDegrees();
-    res.json({ success: true, data: caseDegrees });
+    res.list(caseDegrees || [], req.t('generic.ok'));
   } catch (error) {
-    console.error('Error fetching case degrees:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to fetch case degrees' 
-    });
+    console.error('[GET_ALL_CASE_DEGREES_ERROR]', { message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedFetchDegrees'), 500, 'CASE_DEGREES_LIST_ERROR');
   }
 };
 
@@ -22,19 +19,13 @@ const getCaseDegreeById = async (req, res) => {
   try {
     const caseDegree = await caseDegreesService.getCaseDegreeById(req.params.id);
     if (caseDegree) {
-      res.json({ success: true, data: caseDegree });
+      res.success(caseDegree);
     } else {
-      res.status(404).json({ 
-        success: false, 
-        error: 'Case degree not found' 
-      });
+      res.fail(req.t('case.degreeNotFound'), 404, 'CASE_DEGREE_NOT_FOUND');
     }
   } catch (error) {
-    console.error('Error fetching case degree:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to fetch case degree' 
-    });
+    console.error('[GET_CASE_DEGREE_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedFetchDegree'), 500, 'CASE_DEGREE_FETCH_ERROR');
   }
 };
 
@@ -42,13 +33,10 @@ const getCaseDegreeById = async (req, res) => {
 const getCaseDegreesByCaseId = async (req, res) => {
   try {
     const caseDegrees = await caseDegreesService.getCaseDegreesByCaseId(req.params.caseId);
-    res.json({ success: true, data: caseDegrees });
+    res.list(caseDegrees || [], req.t('generic.ok'));
   } catch (error) {
-    console.error('Error fetching case degrees by case ID:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to fetch case degrees for case' 
-    });
+    console.error('[GET_CASE_DEGREES_BY_CASE_ID_ERROR]', { caseId: req.params.caseId, message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedFetchDegrees'), 500, 'CASE_DEGREES_BY_CASE_ERROR');
   }
 };
 
@@ -66,10 +54,7 @@ const createCaseDegree = async (req, res) => {
     } = req.body;
 
     if (!case_id || !degree) {
-      return res.status(400).json({
-        success: false,
-        error: 'Case ID and degree are required'
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
 
     const caseDegreeData = {
@@ -83,17 +68,10 @@ const createCaseDegree = async (req, res) => {
     };
 
     const newCaseDegree = await caseDegreesService.createCaseDegree(caseDegreeData);
-    res.status(201).json({ 
-      success: true, 
-      data: newCaseDegree,
-      message: 'Case degree created successfully' 
-    });
+    res.created(newCaseDegree, req.t('case.degreeCreated'));
   } catch (error) {
-    console.error('Error creating case degree:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to create case degree' 
-    });
+    console.error('[CREATE_CASE_DEGREE_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('case.failedCreateDegree'), 500, 'CASE_DEGREE_CREATE_ERROR');
   }
 };
 
@@ -123,22 +101,13 @@ const updateCaseDegree = async (req, res) => {
     const updated = await caseDegreesService.updateCaseDegree(req.params.id, caseDegreeData);
     
     if (updated) {
-      res.json({ 
-        success: true, 
-        message: 'Case degree updated successfully' 
-      });
+      res.success(null, req.t('case.degreeUpdated'));
     } else {
-      res.status(404).json({ 
-        success: false, 
-        error: 'Case degree not found' 
-      });
+      res.fail(req.t('case.degreeNotFound'), 404, 'CASE_DEGREE_NOT_FOUND');
     }
   } catch (error) {
-    console.error('Error updating case degree:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to update case degree' 
-    });
+    console.error('[UPDATE_CASE_DEGREE_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('case.failedUpdateDegree'), 500, 'CASE_DEGREE_UPDATE_ERROR');
   }
 };
 
@@ -148,22 +117,13 @@ const deleteCaseDegree = async (req, res) => {
     const deleted = await caseDegreesService.deleteCaseDegree(req.params.id);
     
     if (deleted) {
-      res.json({ 
-        success: true, 
-        message: 'Case degree deleted successfully' 
-      });
+      res.success(null, req.t('case.degreeDeleted'));
     } else {
-      res.status(404).json({ 
-        success: false, 
-        error: 'Case degree not found' 
-      });
+      res.fail(req.t('case.degreeNotFound'), 404, 'CASE_DEGREE_NOT_FOUND');
     }
   } catch (error) {
-    console.error('Error deleting case degree:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to delete case degree' 
-    });
+    console.error('[DELETE_CASE_DEGREE_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('case.failedDeleteDegree'), 500, 'CASE_DEGREE_DELETE_ERROR');
   }
 };
 
@@ -173,20 +133,14 @@ const searchCaseDegrees = async (req, res) => {
     const { q } = req.query;
     
     if (!q) {
-      return res.status(400).json({
-        success: false,
-        error: 'Search query is required'
-      });
+      return res.fail(req.t('generic.searchRequired'), 400, 'SEARCH_QUERY_REQUIRED');
     }
 
     const caseDegrees = await caseDegreesService.searchCaseDegrees(q);
-    res.json({ success: true, data: caseDegrees });
+    res.list(caseDegrees || [], req.t('generic.ok'));
   } catch (error) {
-    console.error('Error searching case degrees:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to search case degrees' 
-    });
+    console.error('[SEARCH_CASE_DEGREES_ERROR]', { message: error.message, stack: error.stack, query: req.query });
+    res.fail(req.t('case.failedFetchDegrees'), 500, 'CASE_DEGREES_SEARCH_ERROR');
   }
 };
 

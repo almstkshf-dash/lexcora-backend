@@ -1,0 +1,36 @@
+meta {
+  name: Create Task
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/tasks
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "title": "Bruno Test Task",
+    "description": "Automated regression test task",
+    "priority": "medium",
+    "status": "pending",
+    "due_date": "2025-12-31"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data && res.body.data.id) {
+    bru.setEnvVar("testTaskId", String(res.body.data.id));
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.success: eq true
+}

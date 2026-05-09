@@ -22,7 +22,7 @@ const getAllSessions = async (req, res) => {
     };
     
     const result = await sessionsService.getAllSessions(filters);
-    res.success(result.sessions, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.sessions || result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_ALL_SESSIONS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('case.failedFetch'), 500, 'SESSIONS_LIST_ERROR');
@@ -91,7 +91,7 @@ const deleteSession = async (req, res) => {
 const getSessionsWithNoDecision = async (req, res) => {
   try {
     const sessions = await sessionsService.getSessionsWithNoDecision();
-    res.success(sessions);
+    res.list(sessions);
   } catch (error) {
     console.error('[GET_SESSIONS_NO_DECISION_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('session.failedFetch'), 500, 'SESSIONS_NO_DECISION_ERROR');
@@ -101,7 +101,7 @@ const getSessionsWithNoDecision = async (req, res) => {
 const getSessionsWithDecision = async (req, res) => {
   try {
     const sessions = await sessionsService.getSessionsWithDecision();
-    res.success(sessions);
+    res.list(sessions);
   } catch (error) {
     console.error('[GET_SESSIONS_WITH_DECISION_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('session.failedFetch'), 500, 'SESSIONS_WITH_DECISION_ERROR');
@@ -111,7 +111,7 @@ const getSessionsWithDecision = async (req, res) => {
 const getSessionsInThisWeek = async (req, res) => {
   try {
     const sessions = await sessionsService.getSessionsInThisWeek();
-    res.success(sessions);
+    res.list(sessions);
   } catch (error) {
     console.error('[GET_SESSIONS_THIS_WEEK_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('session.failedFetch'), 500, 'SESSIONS_WEEK_ERROR');
@@ -122,7 +122,7 @@ const getSessionDocuments = async (req, res) => {
   try {
     const sessionId = req.params.id;
     const documents = await sessionsService.getSessionDocuments(sessionId);
-    res.success(documents);
+    res.list(documents);
   } catch (error) {
     console.error('[GET_SESSION_DOCS_ERROR]', { sessionId: req.params.id, message: error.message, stack: error.stack });
     res.fail(req.t('session.failedFetchDocs'), 500, 'SESSION_DOCS_ERROR');
@@ -147,7 +147,7 @@ const deleteSessionDocument = async (req, res) => {
 const getAppealsAndChallenges = async (req, res) => {
   try {
     const sessions = await sessionsService.getAppealsAndChallenges();
-    res.success(sessions);
+    res.list(sessions);
   } catch (error) {
     console.error('[GET_APPEALS_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('session.failedFetch'), 500, 'SESSIONS_APPEALS_ERROR');
@@ -169,7 +169,7 @@ const getJudicialDecisions = async (req, res) => {
     };
     
     const result = await sessionsService.getJudicialDecisions(filters);
-    res.success(result.sessions, req.t('generic.ok'), 200, {
+    res.list(result.sessions || result.data || result, req.t('generic.ok'), {
       total: result.total,
       totalPages: result.totalPages,
       currentPage: result.currentPage

@@ -18,7 +18,7 @@ const getAllTasks = async (req, res) => {
       assigned_to,
       due_date: normalizedDueDate
     });
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_ALL_TASKS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('tasks.fetchError'), 500, 'TASKS_LIST_ERROR');
@@ -63,7 +63,7 @@ const deleteTask = async (req, res) => {
     }
   } catch (error) {
     console.error('[DELETE_TASK_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
-    
+
     if (isConstraintError(error)) {
       return res.fail(getConstraintErrorMessage(req), 400, 'TASK_HAS_RECORDS');
     }
@@ -89,7 +89,7 @@ const getTaskById = async (req, res) => {
 const getTasksByEmployeeId = async (req, res) => {
   try {
     const tasks = await tasksService.getTasksByEmployeeId(req.params.employeeId);
-    res.success(tasks);
+    res.list(tasks);
   } catch (error) {
     console.error('[GET_TASKS_BY_EMPLOYEE_ID_ERROR]', { employeeId: req.params.employeeId, message: error.message, stack: error.stack });
     res.fail(req.t('tasks.fetchError'), 500, 'TASKS_EMPLOYEE_ERROR');
@@ -99,7 +99,7 @@ const getTasksByEmployeeId = async (req, res) => {
 const getTasksByCaseId = async (req, res) => {
   try {
     const tasks = await tasksService.getTasksByCaseId(req.params.caseId);
-    res.success(tasks);
+    res.list(tasks);
   } catch (error) {
     console.error('[GET_TASKS_BY_CASE_ID_ERROR]', { caseId: req.params.caseId, message: error.message, stack: error.stack });
     res.fail(req.t('tasks.fetchError'), 500, 'TASKS_CASE_ERROR');
@@ -122,7 +122,7 @@ const getAssignedToTasks = async (req, res) => {
       due_date: normalizedDueDate,
       search
     });
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_ASSIGNED_TO_TASKS_ERROR]', { employeeId: req.params.employeeId, message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('tasks.fetchError'), 500, 'ASSIGNED_TASKS_ERROR');
@@ -132,7 +132,7 @@ const getAssignedToTasks = async (req, res) => {
 const getCaseTasks = async (req, res) => {
   try {
     const tasks = await tasksService.getCaseTasks(req.params.caseId);
-    res.success(tasks);
+    res.list(tasks);
   } catch (error) {
     console.error('[GET_CASE_TASKS_ERROR]', { caseId: req.params.caseId, message: error.message, stack: error.stack });
     res.fail(req.t('tasks.fetchError'), 500, 'CASE_TASKS_ERROR');
@@ -156,7 +156,7 @@ const getCreatorTasks = async (req, res) => {
       due_date: normalizedDueDate,
       search
     });
-    res.success(result.data, req.t('generic.ok'), 200, result.pagination);
+    res.list(result.data || result, req.t('generic.ok'), result.pagination);
   } catch (error) {
     console.error('[GET_CREATOR_TASKS_ERROR]', { employeeId: req.params.employeeId, message: error.message, stack: error.stack, query: req.query });
     res.fail(req.t('tasks.fetchError'), 500, 'CREATOR_TASKS_ERROR');
@@ -196,11 +196,11 @@ const addCommentToTask = async (req, res) => {
     const { taskId } = req.params;
     const { comment } = req.body;
     const commentedBy = req.user ? req.user.id : null;
-    
+
     if (!comment) {
       return res.fail(req.t('tasks.commentRequired'), 400, 'VALIDATION_ERROR');
     }
-    
+
     const commentId = await tasksService.addCommentToTask(taskId, comment, commentedBy);
     res.created({ id: commentId }, req.t('tasks.commentAdded'));
   } catch (error) {

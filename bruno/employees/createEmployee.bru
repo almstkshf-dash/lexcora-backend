@@ -1,0 +1,39 @@
+meta {
+  name: Create Employee
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/employees
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "name": "Test Employee Bruno",
+    "email": "bruno.test.employee@lexcora.test",
+    "phone": "0501234999",
+    "job_title": "Test QA",
+    "department": "Testing",
+    "hire_date": "2025-01-01",
+    "salary": 10000,
+    "status": "active"
+  }
+}
+
+script:post-response {
+  if (res.body.success && res.body.data && res.body.data.id) {
+    bru.setEnvVar("testEmployeeId", String(res.body.data.id));
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.success: eq true
+}

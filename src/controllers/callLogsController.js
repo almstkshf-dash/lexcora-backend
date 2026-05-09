@@ -15,25 +15,17 @@ const getAllCallLogs = async (req, res) => {
     const totalCount = await callLogsModel.getCallLogsCount(search, callType);
     const totalPages = Math.ceil(totalCount / limit);
 
-    res.status(200).json({
-      success: true,
-      data: callLogs,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalCount,
-        limit,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
-      }
+    res.list(callLogs || [], req.t('generic.ok'), {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      limit,
+      hasNext: page < totalPages,
+      hasPrev: page > 1
     });
   } catch (error) {
-    console.error('Error fetching call logs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطأ في جلب سجلات المكالمات',
-      error: error.message
-    });
+    console.error('[GET_ALL_CALL_LOGS_ERROR]', { message: error.message, stack: error.stack, query: req.query });
+    res.fail(req.t('call.failedFetch'), 500, 'CALL_LOGS_LIST_ERROR');
   }
 };
 
@@ -45,32 +37,19 @@ const getCallLogById = async (req, res) => {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'معرف المكالمة مطلوب'
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'ID_REQUIRED');
     }
 
     const callLog = await callLogsModel.getCallLogById(id);
 
     if (!callLog) {
-      return res.status(404).json({
-        success: false,
-        message: 'المكالمة غير موجودة'
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'CALL_LOG_NOT_FOUND');
     }
 
-    res.status(200).json({
-      success: true,
-      data: callLog
-    });
+    res.success(callLog);
   } catch (error) {
-    console.error('Error fetching call log:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطأ في جلب المكالمة',
-      error: error.message
-    });
+    console.error('[GET_CALL_LOG_BY_ID_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('call.failedFetch'), 500, 'CALL_LOG_FETCH_ERROR');
   }
 };
 
@@ -93,10 +72,7 @@ const createCallLog = async (req, res) => {
 
     // Validation
     if (!caller_name || !phone_number || !call_type || !call_date) {
-      return res.status(400).json({
-        success: false,
-        message: 'اسم المتصل ورقم الهاتف ونوع المكالمة والتاريخ مطلوبة'
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'MISSING_FIELDS');
     }
 
     const created_by = req.user?.id || null;
@@ -127,21 +103,12 @@ const createCallLog = async (req, res) => {
       });
     } catch (notifError) {
       console.error('Error sending notification:', notifError);
-      // Don't fail the request if notification fails
     }
 
-    res.status(201).json({
-      success: true,
-      message: 'تم إضافة المكالمة بنجاح',
-      data: { id: callLogId }
-    });
+    res.created({ id: callLogId }, req.t('call.created'));
   } catch (error) {
-    console.error('Error creating call log:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطأ في إضافة المكالمة',
-      error: error.message
-    });
+    console.error('[CREATE_CALL_LOG_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('call.failedCreate'), 500, 'CALL_LOG_CREATE_ERROR');
   }
 };
 
@@ -164,10 +131,7 @@ const updateCallLog = async (req, res) => {
     } = req.body;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'معرف المكالمة مطلوب'
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'ID_REQUIRED');
     }
 
     const result = await callLogsModel.updateCallLog(id, {
@@ -183,10 +147,7 @@ const updateCallLog = async (req, res) => {
     });
 
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: 'المكالمة غير موجودة'
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'CALL_LOG_NOT_FOUND');
     }
 
     // Send notification to all admins
@@ -203,20 +164,12 @@ const updateCallLog = async (req, res) => {
       });
     } catch (notifError) {
       console.error('Error sending notification:', notifError);
-      // Don't fail the request if notification fails
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'تم تحديث المكالمة بنجاح'
-    });
+    res.success(null, req.t('call.updated'));
   } catch (error) {
-    console.error('Error updating call log:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطأ في تحديث المكالمة',
-      error: error.message
-    });
+    console.error('[UPDATE_CALL_LOG_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    res.fail(req.t('call.failedUpdate'), 500, 'CALL_LOG_UPDATE_ERROR');
   }
 };
 
@@ -228,29 +181,20 @@ const deleteCallLog = async (req, res) => {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'معرف المكالمة مطلوب'
-      });
+      return res.fail(req.t('generic.validationError'), 400, 'ID_REQUIRED');
     }
 
     // Get call log details before deleting for notification
     const callLog = await callLogsModel.getCallLogById(id);
     
     if (!callLog) {
-      return res.status(404).json({
-        success: false,
-        message: 'المكالمة غير موجودة'
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'CALL_LOG_NOT_FOUND');
     }
 
     const result = await callLogsModel.deleteCallLog(id);
 
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: 'المكالمة غير موجودة'
-      });
+      return res.fail(req.t('generic.notFound'), 404, 'CALL_LOG_NOT_FOUND');
     }
 
     // Send notification to all admins
@@ -267,20 +211,12 @@ const deleteCallLog = async (req, res) => {
       });
     } catch (notifError) {
       console.error('Error sending notification:', notifError);
-      // Don't fail the request if notification fails
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'تم حذف المكالمة بنجاح'
-    });
+    res.success(null, req.t('call.deleted'));
   } catch (error) {
-    console.error('Error deleting call log:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطأ في حذف المكالمة',
-      error: error.message
-    });
+    console.error('[DELETE_CALL_LOG_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    res.fail(req.t('call.failedDelete'), 500, 'CALL_LOG_DELETE_ERROR');
   }
 };
 

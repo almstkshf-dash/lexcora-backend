@@ -3,7 +3,7 @@ const departmentsService = require('../services/departmentsService');
 const getAllDepartments = async (req, res) => {
   try {
     const departments = await departmentsService.getAllDepartments();
-    res.success(departments);
+    res.list(departments || []);
   } catch (error) {
     console.error('[GET_ALL_DEPARTMENTS_ERROR]', { message: error.message, stack: error.stack });
     res.fail(req.t('department.failedFetch'), 500, 'DEPARTMENTS_LIST_ERROR');

@@ -9,6 +9,7 @@ const { responseMiddleware } = require("./middlewares/responseMiddleware");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { i18nMiddleware } = require("./middlewares/i18nMiddleware");
 const { requestLogger } = require("./middlewares/requestLogger");
+const { checkDb, checkBlob, getVersionInfo } = require("./utils/healthChecks");
 
 // Import routes
 const authRoute = require("./routes/authRoute");
