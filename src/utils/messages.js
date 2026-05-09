@@ -9,6 +9,10 @@ const messages = {
     notFound: { en: 'Not found', ar: 'غير موجود' },
     validationError: { en: 'Validation failed', ar: 'فشل التحقق' },
     internalError: { en: 'Internal server error', ar: 'خطأ داخلي في الخادم' },
+    cannotDeleteHasRecords: { 
+      en: 'Cannot delete this record because it has associated data. Please deactivate it instead.', 
+      ar: 'لا يمكن حذف هذا السجل لوجود بيانات مرتبطة به. يرجى إيقاف تفعيله بدلاً من الحذف.' 
+    },
   },
   auth: {
     loginSuccess: { en: 'Login successful', ar: 'تم تسجيل الدخول بنجاح' },
@@ -156,6 +160,13 @@ const messages = {
     partyRemoved: { en: 'Party removed from case successfully', ar: 'تم إزالة الطرف من القضية بنجاح' },
     docDeleted: { en: 'Document deleted successfully', ar: 'تم حذف المستند بنجاح' },
     noteUpdated: { en: 'Note updated successfully', ar: 'تم تحديث الملاحظة بنجاح' },
+  },
+  session: {
+    failedFetch: { en: 'Failed to fetch sessions', ar: 'فشل في جلب الجلسات' },
+    failedCreate: { en: 'Failed to create session', ar: 'فشل في إنشاء الجلسة' },
+    failedUpdate: { en: 'Failed to update session', ar: 'فشل في تحديث الجلسة' },
+    failedDelete: { en: 'Failed to delete session', ar: 'فشل في حذف الجلسة' },
+    notFound: { en: 'Session not found', ar: 'الجلسة غير موجودة' },
   },
   court: {
     failedFetch: { en: 'Failed to fetch courts', ar: 'فشل في جلب المحاكم' },

@@ -4,6 +4,7 @@
 const casesService = require('../services/casesService');
 const sessionsService = require('../services/sessionsService');
 const { normalizePagination } = require('../utils/pagination');
+const { isConstraintError, getConstraintErrorMessage } = require('../utils/dbErrors');
 
 const addCase = async (req, res) => {
   try {
@@ -94,6 +95,11 @@ const deleteCase = async (req, res) => {
     return res.success(null, req.t('case.deleted'));
   } catch (error) {
     console.error('[DELETE_CASE_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    
+    if (isConstraintError(error)) {
+      return res.fail(getConstraintErrorMessage(req), 400, 'CASE_HAS_RECORDS');
+    }
+
     return res.fail(req.t('case.failedDelete'), 500, 'CASE_DELETE_ERROR');
   }
 };

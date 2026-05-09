@@ -1,5 +1,6 @@
 const employeeService = require("../services/employeeService");
 const { normalizePagination } = require("../utils/pagination");
+const { isConstraintError, getConstraintErrorMessage } = require('../utils/dbErrors');
 
 // Get all employees
 const getEmployees = async (req, res) => {
@@ -70,22 +71,13 @@ const deleteEmployee = async (req, res) => {
     const result = await employeeService.removeEmployee(id, deletedBy);
     res.success(null, result.message);
   } catch (err) {
-    console.error('[DELETE_EMPLOYEE_ERROR]', { message: err.message, stack: err.stack, params: req.params });
+    console.error(`[DELETE_EMPLOYEE_ERROR] id=${req.params.id}:`, err);
     
-    // Check for foreign key constraint error
-    if (err.message.includes('ER_ROW_IS_REFERENCED_2') || err.message.includes('foreign key constraint fails') || err.code === 'ER_ROW_IS_REFERENCED_2') {
-      let errorMessage = 'Cannot delete employee because they have associated records. Please deactivate them instead.';
-      if (req.t) {
-        const translated = req.t('employees.cannotDeleteHasRecords');
-        errorMessage = translated === 'employees.cannotDeleteHasRecords' 
-          ? 'لا يمكن حذف الموظف لوجود سجلات مرتبطة به (مثل قضايا، خصومات، الخ). يرجى إيقاف تفعيله بدلاً من ذلك.' 
-          : translated;
-      }
-      return res.fail(errorMessage, 400, 'EMPLOYEE_HAS_RECORDS');
+    if (isConstraintError(err)) {
+      return res.fail(getConstraintErrorMessage(req), 400, 'EMPLOYEE_HAS_RECORDS');
     }
-    
-    const statusCode = err.message === "Employee not found" ? 404 : 500;
-    res.fail(err.message, statusCode, statusCode === 404 ? 'NOT_FOUND' : 'EMPLOYEE_DELETE_ERROR');
+
+    res.fail(req.t('employee.failedDeleteEmployee'), 500, 'DELETE_EMPLOYEE_ERROR');
   }
 };
 

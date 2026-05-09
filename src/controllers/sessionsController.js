@@ -1,5 +1,6 @@
 const sessionsService = require('../services/sessionsService');
 const { normalizePagination } = require('../utils/pagination');
+const { isConstraintError, getConstraintErrorMessage } = require('../utils/dbErrors');
 
 const getAllSessions = async (req, res) => {
   try {
@@ -78,6 +79,11 @@ const deleteSession = async (req, res) => {
     }
   } catch (error) {
     console.error('[DELETE_SESSION_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    
+    if (isConstraintError(error)) {
+      return res.fail(getConstraintErrorMessage(req), 400, 'SESSION_HAS_RECORDS');
+    }
+
     res.fail(req.t('session.failedDelete'), 500, 'SESSION_DELETE_ERROR');
   }
 };

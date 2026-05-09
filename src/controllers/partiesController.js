@@ -1,5 +1,6 @@
 const partiesService = require('../services/partiesService');
 const { normalizePagination } = require('../utils/pagination');
+const { isConstraintError, getConstraintErrorMessage } = require('../utils/dbErrors');
 
 const getAllParties = async (req, res) => {
   try {
@@ -65,6 +66,11 @@ const deleteParty = async (req, res) => {
     }
   } catch (error) {
     console.error('[DELETE_PARTY_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    
+    if (isConstraintError(error)) {
+      return res.fail(getConstraintErrorMessage(req), 400, 'PARTY_HAS_RECORDS');
+    }
+
     res.fail(req.t('party.failedDeleteParty'), 500, 'DELETE_PARTY_FAILED');
   }
 };

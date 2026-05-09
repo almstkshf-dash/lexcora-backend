@@ -1,5 +1,6 @@
 const tasksService = require('../services/tasksService');
 const { normalizePagination } = require('../utils/pagination');
+const { isConstraintError, getConstraintErrorMessage } = require('../utils/dbErrors');
 
 const getAllTasks = async (req, res) => {
   try {
@@ -62,6 +63,11 @@ const deleteTask = async (req, res) => {
     }
   } catch (error) {
     console.error('[DELETE_TASK_ERROR]', { id: req.params.id, message: error.message, stack: error.stack });
+    
+    if (isConstraintError(error)) {
+      return res.fail(getConstraintErrorMessage(req), 400, 'TASK_HAS_RECORDS');
+    }
+
     res.fail(req.t('tasks.deleteError'), 500, 'TASK_DELETE_ERROR');
   }
 };
