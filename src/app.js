@@ -66,7 +66,7 @@ const db = require("./config/db");
 // Background job workers are disabled in production (Vercel) to prevent crashes
 if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
   try {
-    require("./jobs/workers"); 
+    require("./jobs/workers");
     console.log('Background job workers initialized');
   } catch (err) {
     console.warn('Failed to initialize background workers:', err.message);
@@ -204,8 +204,11 @@ const corsOptions = {
     if (!origin) {
       return callback(null, true);
     }
-    // Allow any Vercel preview deployment for the client portal project
-    if (origin && origin.match(/^https:\/\/lexcora-client-portal[a-z0-9-]*\.vercel\.app$/)) {
+    // Allow any Vercel preview deployment for the client portal and main frontend projects
+    if (origin && (
+      origin.match(/^https:\/\/lexcora-client-portal[a-z0-9-]*\.vercel\.app$/) ||
+      origin.match(/^https:\/\/lexcora-frontend[a-z0-9-]*\.vercel\.app$/)
+    )) {
       return callback(null, true);
     }
     if (allowedOrigins.includes(origin)) {
