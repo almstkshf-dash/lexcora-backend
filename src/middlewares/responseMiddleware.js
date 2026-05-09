@@ -30,6 +30,15 @@ const responseMiddleware = (req, res, next) => {
 
   res.created = (data = null, message = 'Created', meta) => res.success(data, message, 201, meta);
 
+  res.list = (data = [], message = 'OK', meta = {}) => {
+    // Contract: Lists MUST always be arrays
+    const safeData = Array.isArray(data) ? data : (data?.data || data?.results || []);
+    return res.success(safeData, message, 200, {
+      count: safeData.length,
+      ...meta
+    });
+  };
+
   res.fail = (message = 'Bad request', status = 400, errorCode = 'BAD_REQUEST', errors = null) => {
     const body = { 
       success: false, 
