@@ -1,6 +1,7 @@
 const { getEmployeeByUsername, createEmployee, getEmployeeById, updateEmployeePassword, getEmployeePermissions, updateEmployeeLastLogin } = require('../models/employeeModel');
 const { generateToken } = require('../middlewares/authMiddleware');
 const { logLogin } = require('./logsService');
+const { comparePassword } = require('../utils/authUtils');
 
 
 const loginUser = async (username, password) => {
@@ -14,16 +15,18 @@ const loginUser = async (username, password) => {
     const user = await getEmployeeByUsername(username);
     
     if (!user) {
-      throw new Error('Invalid username or password');
+      throw new Error('INVALID_CREDENTIALS');
     }
 
-    if (password !== user.password) {
-      throw new Error('Invalid username or password');
+    // Verify password (hashed comparison)
+    const isPasswordValid = await comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error('INVALID_CREDENTIALS');
     }
 
-    // Check if employee status is active
+    // Check if user status is active
     if (user.status !== 'active') {
-      throw new Error('حسابك غير مفعل. يرجى التواصل مع الإدارة');
+      throw new Error('INACTIVE_ACCOUNT');
     }
 
     // Generate token

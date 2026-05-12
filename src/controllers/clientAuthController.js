@@ -25,16 +25,25 @@ const loginClient = async (req, res) => {
     res.cookie('clientAuthToken', result.token, cookieOptions);
 
     // Send token in response body for localStorage AND in cookie
-    res.status(200).json({
-      ...result,
-      message: 'Login successful'
-    });
+    return res.success(result, req.t('auth.loginSuccess'));
   } catch (error) {
     console.error('Client login error:', error.message);
-    res.status(401).json({
-      success: false,
-      message: error.message
-    });
+    
+    let message = req.t('generic.internalError');
+    let statusCode = 500;
+    let errorCode = 'AUTH_ERROR';
+
+    if (error.message === 'INVALID_CREDENTIALS' || error.message === 'Invalid username or password') {
+      message = req.t('auth.invalidCredentials') || 'Invalid username or password';
+      statusCode = 401;
+      errorCode = 'INVALID_CREDENTIALS';
+    } else if (error.message === 'INACTIVE_ACCOUNT') {
+      message = req.t('auth.inactiveAccount') || 'Account is inactive';
+      statusCode = 403;
+      errorCode = 'INACTIVE_ACCOUNT';
+    }
+
+    return res.fail(message, statusCode, errorCode);
   }
 };
 

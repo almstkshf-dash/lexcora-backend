@@ -1,6 +1,7 @@
 const e = require("express");
 const db = require("../config/db");
 const { generateCredentials } = require("../utils/generateCredentials");
+const { hashPassword } = require("../utils/passwordUtils");
 
 const getAllEmployees = async ({ page, limit, sortBy, sortOrder, search }) => {
   const offset = (page - 1) * limit;
@@ -159,7 +160,8 @@ const createEmployee = async (employee) => {
 
   // Generate password using utility function
   const credentials = await generateCredentials();
-  const password = credentials.password;
+  const plainPassword = credentials.password;
+  const password = await hashPassword(plainPassword);
 
   const [result] = await db.query(`
     INSERT INTO employees (
@@ -365,9 +367,10 @@ const getEmployeeByUsername = async (username) => {
 };
 
 const updateEmployeePassword = async (id, newPassword) => {
+  const hashedPassword = await hashPassword(newPassword);
   const [result] = await db.query(`
     UPDATE employees SET password = ? WHERE id = ?
-  `, [newPassword, id]);
+  `, [hashedPassword, id]);
   
   return result.affectedRows > 0;
 };

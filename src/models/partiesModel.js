@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const { generateCredentials } = require("../utils/generateCredentials");
+const { hashPassword } = require("../utils/passwordUtils");
 
 const getAllParties = async (filters = {}) => {
   const { page = 1, limit = 10, name, phone, party_type } = filters;
@@ -87,7 +88,8 @@ const createParty = async (party) => {
     // Generate credentials using the utility function
     const credentials = await generateCredentials();
     username = credentials.username;
-    password = credentials.password;
+    const plainPassword = credentials.password;
+    password = await hashPassword(plainPassword);
     
     // Check if username already exists
     const [existingUser] = await db.query(
@@ -169,8 +171,9 @@ const updateParty = async (id, party) => {
     params.push(username);
   }
   if (password !== undefined) {
+    const hashedPassword = await hashPassword(password);
     updates.push('password = ?');
-    params.push(password);
+    params.push(hashedPassword);
   }
   if (status !== undefined) {
     updates.push('status = ?');

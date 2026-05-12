@@ -1,26 +1,13 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getEmployeeByUsername } = require('../models/employeeModel');
+const { hashPassword, comparePassword } = require('./passwordUtils');
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
 
-/**
- * Hash password using bcrypt
- * @param {String} password - Plain text password
- * @returns {String} Hashed password
- */
-const hashPassword = async (password) => {
-  const saltRounds = 10;
-  return await bcrypt.hash(password, saltRounds);
-};
 
-
-const comparePassword = async (password, hashedPassword) => {
-  return await bcrypt.compare(password, hashedPassword);
-};
 
 const generateAccessToken = (user) => {
   const payload = {
@@ -30,7 +17,7 @@ const generateAccessToken = (user) => {
     employee_id: user.employee_id,
     type: 'access'
   };
-  
+
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
@@ -41,7 +28,7 @@ const generateRefreshToken = (user) => {
     username: user.username,
     type: 'refresh'
   };
-  
+
   return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 };
 
@@ -74,14 +61,14 @@ const login = async (username, password) => {
   try {
     // Get user by username
     const user = await getEmployeeByUsername(username);
-    
+
     if (!user) {
       throw new Error('Invalid username or password');
     }
 
     // Compare password
     const isPasswordValid = await comparePassword(password, user.password);
-    
+
     if (!isPasswordValid) {
       throw new Error('Invalid username or password');
     }
@@ -91,7 +78,7 @@ const login = async (username, password) => {
 
     // Return user info (without password) and tokens
     const { password: _, ...userWithoutPassword } = user;
-    
+
     return {
       success: true,
       message: 'Login successful',
@@ -108,21 +95,21 @@ const refreshAccessToken = async (refreshToken) => {
   try {
     // Verify refresh token
     const decoded = verifyToken(refreshToken);
-    
+
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid refresh token');
     }
 
     // Get user details
     const user = await getEmployeeByUsername(decoded.username);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
 
     // Generate new access token
     const newAccessToken = generateAccessToken(user);
-    
+
     return {
       success: true,
       accessToken: newAccessToken,

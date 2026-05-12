@@ -1,5 +1,6 @@
 const { getPartyByUsername } = require('../models/partiesModel');
 const { generateToken } = require('../middlewares/authMiddleware');
+const { comparePassword } = require('../utils/authUtils');
 
 /**
  * Client Login Service
@@ -14,19 +15,20 @@ const loginClient = async (username, password) => {
 
     // Get party by username
     const client = await getPartyByUsername(username);
-    
+
     if (!client) {
-      throw new Error('Invalid username or password');
+      throw new Error('INVALID_CREDENTIALS');
     }
 
-    // Verify password (plain text comparison)
-    if (password !== client.password) {
-      throw new Error('Invalid username or password');
+    // Verify password (hashed comparison)
+    const isPasswordValid = await comparePassword(password, client.password);
+    if (!isPasswordValid) {
+      throw new Error('INVALID_CREDENTIALS');
     }
 
     // Check if client status is active
     if (client.status !== 'active') {
-      throw new Error('Your account is inactive. Please contact support.');
+      throw new Error('INACTIVE_ACCOUNT');
     }
 
     // Generate token for client
@@ -37,12 +39,12 @@ const loginClient = async (username, password) => {
       party_type: client.party_type,
       userType: 'client' // Distinguish from employee logins
     };
-    
+
     const token = generateToken(tokenPayload);
 
     // Return client info (without password) and token
     const { password: _, ...clientWithoutPassword } = client;
-    
+
     return {
       success: true,
       message: 'Login successful',
@@ -64,7 +66,7 @@ const logoutClient = async (token) => {
     // 1. Add the token to a blacklist (Redis recommended)
     // 2. Clear any server-side sessions
     // 3. Log the logout event
-    
+
     return {
       success: true,
       message: 'Logged out successfully'

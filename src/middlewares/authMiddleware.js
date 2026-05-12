@@ -12,8 +12,9 @@ const generateToken = (user) => {
     role_id: user.role_id,
     role_ar: user.role_ar,
     role_en: user.role_en,
-    employee_id: user.employee_id,
-    name: user.employeeName,
+    employee_id: user.id, // Fallback to id if employee_id is not explicitly provided
+    name: user.name || user.employeeName,
+    userType: user.userType || 'employee'
   };
   
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });

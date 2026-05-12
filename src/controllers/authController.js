@@ -21,7 +21,7 @@ const loginUser = async (req, res) => {
       secure: process.env.NODE_ENV === 'production', // true for HTTPS in production
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin HTTPS
       maxAge: 86400000, // COOKIE_MAX_AGE=86400000 (24 hours)
-      path: '/' 
+      path: '/'
     };
 
     res.cookie('authToken', result.token, cookieOptions);
@@ -29,10 +29,23 @@ const loginUser = async (req, res) => {
     // Send token in response body for localStorage AND in cookie for httpOnly
     return res.success(result, req.t('auth.loginSuccess'));
   } catch (error) {
-    const mappedError = error instanceof AppError
-      ? error
-      : new AppError(error.message || 'Login failed', error.message?.includes('Invalid') ? 401 : 500, 'AUTH_ERROR');
-    return res.fail(mappedError.message, mappedError.statusCode, mappedError.errorCode);
+    console.error('Login error:', error.message);
+    
+    let message = req.t('generic.internalError');
+    let statusCode = 500;
+    let errorCode = 'AUTH_ERROR';
+
+    if (error.message === 'INVALID_CREDENTIALS' || error.message === 'Invalid username or password') {
+      message = req.t('auth.invalidCredentials') || 'Invalid username or password';
+      statusCode = 401;
+      errorCode = 'INVALID_CREDENTIALS';
+    } else if (error.message === 'INACTIVE_ACCOUNT') {
+      message = req.t('auth.inactiveAccount') || 'Account is inactive';
+      statusCode = 403;
+      errorCode = 'INACTIVE_ACCOUNT';
+    }
+
+    return res.fail(message, statusCode, errorCode);
   }
 };
 
@@ -62,10 +75,10 @@ const logoutUser = async (req, res) => {
   try {
     // Get token from cookie or header
     const token = req.cookies?.authToken || req.headers['authorization']?.split(' ')[1];
-    
+
     // Logout using service
     const result = await authService.logoutUser(token);
-    
+
     // Clear the auth cookie
     res.clearCookie('authToken', {
       httpOnly: true,
@@ -88,7 +101,7 @@ const getCurrentUser = async (req, res) => {
   try {
     // Get user profile with permissions from service
     const result = await authService.getUserProfile(req.user.id);
-    
+
     return res.success(result, req.t('auth.profileFetched'));
   } catch (error) {
     console.error('[GET_CURRENT_USER_ERROR]', {
@@ -118,7 +131,7 @@ const changePassword = async (req, res) => {
     return res.success(result, req.t('auth.passwordChanged'));
   } catch (error) {
     console.error('Change password error:', error.message);
-    
+
     if (error.message.includes('incorrect')) {
       return res.fail(error.message, 400, 'VALIDATION_ERROR');
     }

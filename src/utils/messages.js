@@ -22,6 +22,11 @@ const messages = {
     passwordChanged: { en: 'Password changed successfully', ar: 'تم تغيير كلمة المرور بنجاح' },
     credentialsRequired: { en: 'Username and password are required', ar: 'اسم المستخدم وكلمة المرور مطلوبان' },
     currentPasswordRequired: { en: 'Current password and new password are required', ar: 'كلمة المرور الحالية والجديدة مطلوبتان' },
+    tokenRequired: { en: 'Access token is required', ar: 'مطلوب رمز الوصول (Token)' },
+    invalidToken: { en: 'Invalid or expired token', ar: 'رمز الوصول غير صالح أو منتهي الصلاحية' },
+    unauthorized: { en: 'Access denied. You do not have the required permissions.', ar: 'تم رفض الوصول. ليس لديك الصلاحيات المطلوبة.' },
+    invalidCredentials: { en: 'Invalid username or password', ar: 'اسم المستخدم أو كلمة المرور غير صحيحة' },
+    inactiveAccount: { en: 'Your account is inactive. Please contact administration.', ar: 'حسابك غير مفعل. يرجى التواصل مع الإدارة.' },
   },
   ai: {
     reply: { en: 'Legal assistant reply', ar: 'رد المساعد القانوني' },
