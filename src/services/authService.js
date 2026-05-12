@@ -13,7 +13,7 @@ const loginUser = async (username, password) => {
 
     // Get employee by username
     const user = await getEmployeeByUsername(username);
-    
+
     if (!user) {
       throw new Error('INVALID_CREDENTIALS');
     }
@@ -43,7 +43,7 @@ const loginUser = async (username, password) => {
 
     // Return employee info (without password) and token
     const { password: _, ...userWithoutPassword } = user;
-    
+
     return {
       user: userWithoutPassword,
       permissions,
@@ -93,7 +93,7 @@ const registerUser = async (userData) => {
 const getUserProfile = async (userId) => {
   try {
     const user = await getEmployeeById(userId);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
@@ -103,7 +103,7 @@ const getUserProfile = async (userId) => {
 
     // Return user without password
     const { password: _, ...userProfile } = user;
-    
+
     return {
       user: userProfile,
       permissions
@@ -122,14 +122,15 @@ const changePassword = async (userId, currentPassword, newPassword) => {
       throw new Error('Employee not found');
     }
 
-    // Verify current password (plain text comparison)
-    if (currentPassword !== user.password) {
+    // Verify current password (hashed comparison)
+    const isPasswordValid = await comparePassword(currentPassword, user.password);
+    if (!isPasswordValid) {
       throw new Error('Current password is incorrect');
     }
 
     // Update password in database (plain text)
     const passwordUpdated = await updateEmployeePassword(userId, newPassword);
-    
+
     if (!passwordUpdated) {
       throw new Error('Failed to update password');
     }
@@ -150,7 +151,7 @@ const logoutUser = async (token) => {
     // 1. Add the token to a blacklist (Redis recommended)
     // 2. Clear any server-side sessions
     // 3. Log the logout event
-    
+
     // For now, just return success
     return {
       success: true,

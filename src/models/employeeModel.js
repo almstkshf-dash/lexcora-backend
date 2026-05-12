@@ -74,15 +74,15 @@ const getEmployeeById = async (id) => {
     LEFT JOIN employee_documents ed ON e.id = ed.employee_id
     WHERE e.id = ? 
   `, [id]);
-  
+
   if (rows.length === 0) return null;
-  
+
   const employee = rows[0];
-  
+
   // Extract documents and remove duplicates
   const documents = [];
   const documentIds = new Set();
-  
+
   rows.forEach(row => {
     if (row.document_id && !documentIds.has(row.document_id)) {
       documentIds.add(row.document_id);
@@ -95,18 +95,18 @@ const getEmployeeById = async (id) => {
       });
     }
   });
-  
+
   // Remove document fields from employee object
   const { document_id, document_name, document_url, document_created_at, uploaded_by, ...cleanEmployee } = employee;
-  
+
   return {
     ...cleanEmployee,
     documents
   };
 };
-  
+
 const createEmployee = async (employee) => {
-  
+
   const {
     name,
     username,
@@ -115,9 +115,9 @@ const createEmployee = async (employee) => {
     email,
     identityNumber,
     passportNumber,
-    phoneNumber,  
+    phoneNumber,
     departmentId,
-    directManagerId =null,
+    directManagerId = null,
     identityExpiryDate,
     passportExpiryDate,
     workPermitExpiryDate,
@@ -158,10 +158,15 @@ const createEmployee = async (employee) => {
     return value;
   };
 
-  // Generate password using utility function
-  const credentials = await generateCredentials();
-  const plainPassword = credentials.password;
-  const password = await hashPassword(plainPassword);
+  // Use provided password or generate a new one
+  let password;
+  if (employee.password && employee.password !== '********') {
+    password = await hashPassword(employee.password);
+  } else {
+    const credentials = await generateCredentials();
+    const plainPassword = credentials.password;
+    password = await hashPassword(plainPassword);
+  }
 
   const [result] = await db.query(`
     INSERT INTO employees (
@@ -173,41 +178,41 @@ const createEmployee = async (employee) => {
       registration_expiration_date, hourly_rate
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
-    name, 
-    username, 
-    password, 
-    roleId, 
-    normalizeValue(employeeNumber), 
-    email, 
-    normalizeValue(identityNumber), 
-    normalizeValue(passportNumber), 
-    phoneNumber, 
-    departmentId, 
+    name,
+    username,
+    password,
+    roleId,
+    normalizeValue(employeeNumber),
+    email,
+    normalizeValue(identityNumber),
+    normalizeValue(passportNumber),
+    phoneNumber,
+    departmentId,
     normalizeValue(directManagerId),
-    normalizeDate(residenceExpiryDate), 
-    normalizeDate(identityExpiryDate), 
-    normalizeDate(passportExpiryDate), 
+    normalizeDate(residenceExpiryDate),
+    normalizeDate(identityExpiryDate),
+    normalizeDate(passportExpiryDate),
     normalizeDate(workPermitExpiryDate),
-    normalizeDate(insuranceExpiryDate), 
-    normalizeDate(contractExpiryDate), 
-    basicSalary || 0, 
-    branchId, 
+    normalizeDate(insuranceExpiryDate),
+    normalizeDate(contractExpiryDate),
+    basicSalary || 0,
+    branchId,
     status,
-    normalizeDate(accountCloseDate), 
-    anotherAllowance || 0, 
-    normalizeDate(accountActivationDate), 
+    normalizeDate(accountCloseDate),
+    anotherAllowance || 0,
+    normalizeDate(accountActivationDate),
     normalizeDate(firstDayOfWork),
-    housingAllowance || 0, 
-    transportationAllowance || 0, 
-    normalizeValue(payType), 
-    normalizeValue(iban), 
-    normalizeValue(accountNumber), 
-    normalizeValue(bankName), 
+    housingAllowance || 0,
+    transportationAllowance || 0,
+    normalizeValue(payType),
+    normalizeValue(iban),
+    normalizeValue(accountNumber),
+    normalizeValue(bankName),
     normalizeValue(contractType),
     normalizeDate(registrationExpirationDate),
     hourlyRate || 0
   ]);
-  
+
   return result.insertId;
 };
 
@@ -293,7 +298,7 @@ const updateEmployee = async (id, employee) => {
     fisrt_day_of_work = ?, housing_allowance = ?, trnsportation_allownce = ?,
     pay_type = ?, iban = ?, account_number = ?, bank_name = ?, contract_type = ?,
     registration_expiration_date = ?, hourly_rate = ?`;
-  
+
   let params = [
     normalizeValue(name),
     normalizeValue(username),
@@ -307,39 +312,40 @@ const updateEmployee = async (id, employee) => {
     normalizeValue(branchId),
     normalizeValue(directManagerId),
     normalizeValue(status) || 'active',
-    normalizeDate(finalResidenceEndDate), 
-    normalizeDate(finalIdEndDate), 
-    normalizeDate(finalPassportEndDate), 
+    normalizeDate(finalResidenceEndDate),
+    normalizeDate(finalIdEndDate),
+    normalizeDate(finalPassportEndDate),
     normalizeDate(finalLaborCardEndDate),
-    normalizeDate(finalHealthInsuranceEndDate), 
-    normalizeDate(finalContractEndDate), 
+    normalizeDate(finalHealthInsuranceEndDate),
+    normalizeDate(finalContractEndDate),
     basicSalary || 0,
-    normalizeDate(accountCloseDate), 
-    anotherAllowance || 0, 
+    normalizeDate(accountCloseDate),
+    anotherAllowance || 0,
     normalizeDate(accountActivationDate),
-    normalizeDate(firstDayOfWork), 
-    housingAllowance || 0, 
+    normalizeDate(firstDayOfWork),
+    housingAllowance || 0,
     transportationAllowance || 0,
-    normalizeValue(payType), 
-    normalizeValue(iban), 
-    normalizeValue(accountNumber), 
-    normalizeValue(bankName), 
+    normalizeValue(payType),
+    normalizeValue(iban),
+    normalizeValue(accountNumber),
+    normalizeValue(bankName),
     normalizeValue(contractType),
     normalizeDate(finalRegistrationExpirationDate),
     hourlyRate || 0
   ];
-  
+
   // Only update password if it's provided and not masked
   if (password && password !== '********') {
+    const hashedPwd = await hashPassword(password);
     query = query.replace('registration_expiration_date = ?', 'registration_expiration_date = ?, password = ?');
-    params.push(password);
+    params.push(hashedPwd);
   }
-  
+
   query += ' WHERE id = ?';
   params.push(id);
 
   const [result] = await db.query(query, params);
-  
+
   return result.affectedRows > 0;
 };
 
@@ -362,7 +368,7 @@ const getEmployeeByUsername = async (username) => {
     LEFT JOIN departments d ON e.department_id = d.id
     WHERE e.username = ?
   `, [username]);
-  
+
   return rows[0];
 };
 
@@ -371,7 +377,7 @@ const updateEmployeePassword = async (id, newPassword) => {
   const [result] = await db.query(`
     UPDATE employees SET password = ? WHERE id = ?
   `, [hashedPassword, id]);
-  
+
   return result.affectedRows > 0;
 };
 
@@ -386,7 +392,7 @@ const getEmployeePermissions = async (employeeId) => {
     WHERE ep.employee_id = ?
     ORDER BY p.permission_ar ASC
   `, [employeeId]);
-  
+
   return rows;
 };
 
@@ -394,7 +400,7 @@ const updateEmployeeLastLogin = async (employeeId) => {
   const [result] = await db.query(`
     UPDATE employees SET last_login = NOW() WHERE id = ?
   `, [employeeId]);
-  
+
   return result.affectedRows > 0;
 };
 const addCaseEmployeeDocument = async (case_id, document_name, document_url, uploaded_by = null) => {
@@ -438,7 +444,7 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
   try {
     let dateFilter = '';
     const params = [employeeId];
-    
+
     if (fromDate && toDate) {
       dateFilter = 'AND DATE(created_at) BETWEEN ? AND ?';
       params.push(fromDate, toDate);
@@ -449,7 +455,7 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
       dateFilter = 'AND DATE(created_at) <= ?';
       params.push(toDate);
     }
-    
+
     // Get invoices where employee referred the client
     const invoicesQuery = `
       SELECT 
@@ -469,7 +475,7 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
       LEFT JOIN employees creator ON i.created_by = creator.id
       WHERE i.referred_by_employee_id = ? ${dateFilter.replace(/created_at/g, 'i.created_at')}
     `;
-    
+
     // Get salaries/payments (if you have a salaries table)
     // This is a placeholder - adjust based on your actual salary/payment structure
     const salariesQuery = `
@@ -489,10 +495,10 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
       LEFT JOIN employees creator ON s.created_by = creator.id
       WHERE s.employee_id = ? ${dateFilter.replace(/created_at/g, 's.created_at')}
     `;
-    
+
     // Execute queries
     const [invoicesRows] = await db.query(invoicesQuery, params);
-    
+
     // Try to get salaries (table might not exist)
     let salariesRows = [];
     try {
@@ -501,12 +507,12 @@ const getEmployeeAccountStatement = async (employeeId, fromDate, toDate) => {
     } catch (err) {
       // Salaries table might not exist, that's okay
     }
-    
+
     // Combine all transactions
     const transactions = [...invoicesRows, ...salariesRows].sort((a, b) => {
       return new Date(b.transaction_date || b.created_at) - new Date(a.transaction_date || a.created_at);
     });
-    
+
     return { success: true, data: transactions };
   } catch (error) {
     console.error('Error getting employee account statement:', error);
@@ -521,15 +527,15 @@ const checkDuplicateEmployee = async (name, phone, email, excludeId = null) => {
     WHERE (name = ? OR phone = ? OR email = ?)
   `;
   const params = [name, phone || '', email || ''];
-  
+
   // If excludeId is provided, exclude that employee from the check (for updates)
   if (excludeId) {
     query += ' AND id != ?';
     params.push(excludeId);
   }
-  
+
   query += ' LIMIT 1';
-  
+
   const [rows] = await db.query(query, params);
   return rows[0] || null;
 };

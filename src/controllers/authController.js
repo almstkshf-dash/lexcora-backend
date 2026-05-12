@@ -30,7 +30,7 @@ const loginUser = async (req, res) => {
     return res.success(result, req.t('auth.loginSuccess'));
   } catch (error) {
     console.error('Login error:', error.message);
-    
+
     let message = req.t('generic.internalError');
     let statusCode = 500;
     let errorCode = 'AUTH_ERROR';
