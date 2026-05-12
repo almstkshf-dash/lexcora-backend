@@ -16,7 +16,7 @@ const generateToken = (user) => {
     name: user.name || user.employeeName,
     userType: user.userType || 'employee'
   };
-  
+
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
@@ -33,7 +33,7 @@ const authenticateToken = async (req, res, next) => {
   try {
     // Get token from cookie first, then fallback to header
     let token = req.cookies?.authToken;
-    
+
     // If no cookie token, check Authorization header
     if (!token) {
       const authHeader = req.headers['authorization'];
@@ -49,10 +49,10 @@ const authenticateToken = async (req, res, next) => {
 
     // Verify token
     const decoded = verifyToken(token);
-    
+
     // Get user details from database
     const user = await getEmployeeById(decoded.id);
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -88,7 +88,7 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Authentication error:', error.message);
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
@@ -122,9 +122,9 @@ const authorizeRoles = (allowedRoles) => {
     const userRoleEn = req.user.role_en;
 
     // Check if user role is in allowed roles (by ID, Arabic name, or English name)
-    const hasPermission = allowedRoles.some(role => 
-      role === userRoleId || 
-      role === userRoleAr || 
+    const hasPermission = allowedRoles.some(role =>
+      role === userRoleId ||
+      role === userRoleAr ||
       role === userRoleEn
     );
 
@@ -147,7 +147,7 @@ const optionalAuth = async (req, res, next) => {
     if (token) {
       const decoded = verifyToken(token);
       const user = await getEmployeeById(decoded.id);
-      
+
       if (user) {
         req.user = {
           id: user.id,
