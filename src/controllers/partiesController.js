@@ -51,6 +51,9 @@ const createParty = async (req, res) => {
     res.created({ id: partyId }, req.t('generic.created'));
   } catch (error) {
     console.error('[CREATE_PARTY_ERROR]', { message: error.message, stack: error.stack, body: req.body });
+    if (error.message === 'USERNAME_ALREADY_EXISTS') {
+      return res.fail(req.t('party.usernameExists'), 400, 'USERNAME_ALREADY_EXISTS');
+    }
     res.fail(req.t('party.failedCreateParty'), 500, 'CREATE_PARTY_FAILED');
   }
 };
@@ -119,6 +122,9 @@ const updateParty = async (req, res) => {
     }
   } catch (error) {
     console.error('[UPDATE_PARTY_ERROR]', { id: req.params.id, message: error.message, stack: error.stack, body: req.body });
+    if (error.message === 'USERNAME_ALREADY_EXISTS') {
+      return res.fail(req.t('party.usernameExists'), 400, 'USERNAME_ALREADY_EXISTS');
+    }
     res.fail(req.t('party.failedUpdateParty'), 500, 'UPDATE_PARTY_FAILED');
   }
 };

@@ -109,6 +109,7 @@ const messages = {
     failedSearchParties: { en: 'Failed to search parties', ar: 'فشل في البحث عن الأطراف' },
     validationNamePhoneEmailRequired: { en: 'At least one of name, phone, or email is required', ar: 'مطلوب واحد على الأقل من الاسم أو الهاتف أو البريد الإلكتروني' },
     failedCheckDuplicate: { en: 'Failed to check duplicate', ar: 'فشل في التحقق من التكرار' },
+    usernameExists: { en: 'Username already exists', ar: 'اسم المستخدم موجود بالفعل' },
   },
   tasks: {
     created: { en: 'Task created successfully', ar: 'تم إنشاء المهمة بنجاح' },

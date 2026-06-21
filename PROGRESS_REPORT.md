@@ -123,6 +123,15 @@ Due to the Vercel migration, local disk writing (e.g., via `fs` or traditional `
   - Refactored `PotentialClients.js` and `Parties.js` to utilize the shared meeting service.
   - Added missing translation keys for related files and case management in `en.json` and `ar.json`.
 
+### Client Username and Password Management Stabilization (June 2026)
+- **Problem:** Users were unable to specify custom usernames and passwords when creating clients, as the backend generated random ones and immediately hashed them, making them unreadable. Additionally, editing existing clients ruined their passwords due to double-hashing (when saving a bcrypt hash or the masked `********` value).
+- **Solution:** Restabilized the client (parties) credentials module.
+- **Key Features:**
+  - **Custom Credentials:** Allowed manual entry of username and password during client creation, with auto-generation only as a fallback.
+  - **Password Protection on Edit:** Updated the update action to ignore updating the password if the value sent is empty, masked (`********`), or is already a bcrypt hash. This completely prevents double-hashing and credential degradation.
+  - **Conflict Prevention:** Added check and user-friendly error response (400) if the username is already registered to another client.
+- **Technical Detail:** Modified `partiesModel.js` (`createParty`, `updateParty`) and `partiesController.js` to catch `USERNAME_ALREADY_EXISTS`. Added translation keys to `messages.js`.
+
 ## 7. Ongoing Tasks
 - Completed endpoint validation pass for Express on serverless: confirmed app startup, route registration, and production-safe behavior for Vercel deployment.
 - Disabled local `/uploads` static serving in production so file access is handled exclusively through Vercel Blob.
