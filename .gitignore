@@ -90,3 +90,4 @@ public
 # VS Code
 .vscode/
 .vercel
+.env*.local
