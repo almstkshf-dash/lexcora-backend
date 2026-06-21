@@ -70,7 +70,7 @@ const getPartiesByBranchId = async (branchId) => {
 };
 
 const createParty = async (party) => {
-  const { name, phone, address, e_id, category, email, party_type, status, nationality, branch_id, consultation_type, passport, source, created_by, is_vip } = party;
+  const { name, phone, address, e_id, category, email, party_type, status, nationality, branch_id, consultation_type, passport, source, created_by, is_vip, username: customUsername, password: customPassword } = party;
   
   // Ensure status is either 'active' or 'inactive', default to 'active'
   const partyStatus = status && ['active', 'inactive'].includes(status) ? status : 'active';
@@ -78,33 +78,54 @@ const createParty = async (party) => {
   // Handle is_vip, default to 0 (false)
   const vipStatus = is_vip ? 1 : 0;
   
-  // Generate unique username and password using utility function
-  let username, password;
-  let isUnique = false;
-  let attempts = 0;
-  const maxAttempts = 10;
+  let username = customUsername;
+  let password = customPassword;
   
-  while (!isUnique && attempts < maxAttempts) {
-    // Generate credentials using the utility function
-    const credentials = await generateCredentials();
-    username = credentials.username;
-    const plainPassword = credentials.password;
-    password = await hashPassword(plainPassword);
-    
+  if (username) {
     // Check if username already exists
     const [existingUser] = await db.query(
       'SELECT id FROM parties WHERE username = ?',
       [username]
     );
-    
-    if (existingUser.length === 0) {
-      isUnique = true;
+    if (existingUser.length > 0) {
+      throw new Error('USERNAME_ALREADY_EXISTS');
     }
-    attempts++;
+  } else {
+    // Generate unique username using utility function
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!isUnique && attempts < maxAttempts) {
+      // Generate credentials using the utility function
+      const credentials = await generateCredentials();
+      const tempUsername = credentials.username;
+      
+      // Check if username already exists
+      const [existingUser] = await db.query(
+        'SELECT id FROM parties WHERE username = ?',
+        [tempUsername]
+      );
+      
+      if (existingUser.length === 0) {
+        username = tempUsername;
+        isUnique = true;
+      }
+      attempts++;
+    }
+    
+    if (!isUnique) {
+      throw new Error('Failed to generate unique username after multiple attempts');
+    }
   }
   
-  if (!isUnique) {
-    throw new Error('Failed to generate unique username after multiple attempts');
+  if (password && password !== '********') {
+    password = await hashPassword(password);
+  } else {
+    // Generate credentials using the utility function
+    const credentials = await generateCredentials();
+    const plainPassword = credentials.password;
+    password = await hashPassword(plainPassword);
   }
   
   try {
@@ -167,10 +188,24 @@ const updateParty = async (id, party) => {
     params.push(party_type);
   }
   if (username !== undefined) {
-    updates.push('username = ?');
-    params.push(username);
+    if (username) {
+      // Check if username is already taken by another party
+      const [existingUser] = await db.query(
+        'SELECT id FROM parties WHERE username = ? AND id != ?',
+        [username, id]
+      );
+      if (existingUser.length > 0) {
+        throw new Error('USERNAME_ALREADY_EXISTS');
+      }
+      updates.push('username = ?');
+      params.push(username);
+    } else {
+      updates.push('username = ?');
+      params.push(null);
+    }
   }
-  if (password !== undefined) {
+  // Only update password if it's provided and not masked ('********' or starts with bcrypt hash)
+  if (password !== undefined && password !== '********' && password !== '' && !password.startsWith('$2a$') && !password.startsWith('$2b$')) {
     const hashedPassword = await hashPassword(password);
     updates.push('password = ?');
     params.push(hashedPassword);
